@@ -25,6 +25,11 @@ class DataValidator
     {
         $errors = [];
 
+        // Ensure the product has an 'id' field if it's configured
+        if (isset($this->fieldConfiguration['id']) && !array_key_exists('id', $product)) {
+            $errors[] = "Product must have an 'id' field";
+        }
+
         foreach ($this->fieldConfiguration as $fieldName => $fieldConfig) {
             if (!array_key_exists($fieldName, $product)) {
                 // Field is not present - this might be okay for optional fields
@@ -129,8 +134,30 @@ class DataValidator
                 continue;
             }
 
-            if (!isset($variant['attributes']) || !is_array($variant['attributes'])) {
-                $errors[] = "Field '{$fieldName}' variant at index {$index} must have 'attributes' array";
+            // Validate required variant fields (based on Go ProductVariant struct)
+            $requiredFields = ['id', 'sku', 'url', 'attributes'];
+            foreach ($requiredFields as $requiredField) {
+                if (!isset($variant[$requiredField])) {
+                    $errors[] = "Field '{$fieldName}' variant at index {$index} must have '{$requiredField}' field";
+                    continue 2; // Skip to next variant if any required field is missing
+                }
+            }
+
+            // Validate field types
+            if (!is_string($variant['id']) || empty(trim($variant['id']))) {
+                $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
+            }
+
+            if (!is_string($variant['sku']) || empty(trim($variant['sku']))) {
+                $errors[] = "Field '{$fieldName}' variant at index {$index} 'sku' must be a non-empty string";
+            }
+
+            if (!is_string($variant['url']) || !filter_var($variant['url'], FILTER_VALIDATE_URL)) {
+                $errors[] = "Field '{$fieldName}' variant at index {$index} 'url' must be a valid URL";
+            }
+
+            if (!is_array($variant['attributes'])) {
+                $errors[] = "Field '{$fieldName}' variant at index {$index} 'attributes' must be an array";
                 continue;
             }
 
@@ -138,9 +165,27 @@ class DataValidator
             if ($fieldConfig->attributes !== null) {
                 foreach ($fieldConfig->attributes as $attrName => $attrConfig) {
                     if (isset($variant['attributes'][$attrName])) {
+                        $attribute = $variant['attributes'][$attrName];
+                        
+                        // Validate the attribute structure (must have 'name' and 'value')
+                        if (!is_array($attribute)) {
+                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must be an object with 'name' and 'value' fields";
+                            continue;
+                        }
+                        
+                        if (!isset($attribute['name']) || !isset($attribute['value'])) {
+                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must have 'name' and 'value' fields";
+                            continue;
+                        }
+                        
+                        if (!is_string($attribute['name']) || $attribute['name'] !== $attrName) {
+                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' name field must match the attribute key";
+                        }
+                        
+                        // Validate the attribute value against the field config
                         $attrErrors = $this->validateField(
-                            "{$fieldName}.variants[{$index}].attributes.{$attrName}",
-                            $variant['attributes'][$attrName],
+                            "{$fieldName}.variants[{$index}].attributes.{$attrName}.value",
+                            $attribute['value'],
                             $attrConfig
                         );
                         $errors = array_merge($errors, $attrErrors);

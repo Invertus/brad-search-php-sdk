@@ -74,6 +74,7 @@ class FieldConfigBuilder
     public static function ecommerceFields(): array
     {
         return [
+            'id' => self::keyword(),
             'name' => self::textKeyword(),
             'brand' => self::textKeyword(),
             'categoryDefault' => self::textKeyword(),

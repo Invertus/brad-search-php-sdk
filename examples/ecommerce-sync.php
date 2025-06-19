@@ -13,7 +13,7 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 // Configuration
 $config = new SyncConfig(
     baseUrl: $_ENV['BRADSEARCH_API_URL'] ?? 'http://localhost:8080',
-    authToken: $_ENV['BRADSEARCH_AUTH_TOKEN'] ?? 'your-auth-token',
+    authToken: $_ENV['BRADSEARCH_AUTH_TOKEN'] ?? 'your_actual_secret_here223123',
     timeout: 30,
     verifySSL: false // Set to true in production
 );
@@ -65,29 +65,49 @@ try {
                 [
                     'id' => 'tshirt-001-s-blue',
                     'sku' => 'TSHIRT-PREM-001-S-BLUE',
+                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-s-blue',
                     'attributes' => [
-                        'size' => 'S',
-                        'color' => 'Blue'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => 'S'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Blue'
+                        ]
                     ]
                 ],
                 [
                     'id' => 'tshirt-001-m-blue',
                     'sku' => 'TSHIRT-PREM-001-M-BLUE',
+                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-m-blue',
                     'attributes' => [
-                        'size' => 'M',
-                        'color' => 'Blue'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => 'M'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Blue'
+                        ]
                     ]
                 ],
                 [
                     'id' => 'tshirt-001-l-red',
                     'sku' => 'TSHIRT-PREM-001-L-RED',
+                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-l-red',
                     'attributes' => [
-                        'size' => 'L',
-                        'color' => 'Red'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => 'L'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Red'
+                        ]
                     ]
                 ]
             ],
-            'basePriceInCents' => '2999',
             'imageUrl' => [
                 'small' => 'https://example.com/images/tshirt-001-small.jpg',
                 'medium' => 'https://example.com/images/tshirt-001-medium.jpg'
@@ -110,21 +130,34 @@ try {
                 [
                     'id' => 'jeans-002-30-dark',
                     'sku' => 'JEANS-SLIM-002-30-DARK',
+                    'url' => 'https://shop.example.com/products/slim-fit-denim-jeans/variant/jeans-002-30-dark',
                     'attributes' => [
-                        'size' => '30',
-                        'color' => 'Dark Blue'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => '30'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Dark Blue'
+                        ]
                     ]
                 ],
                 [
                     'id' => 'jeans-002-32-dark',
                     'sku' => 'JEANS-SLIM-002-32-DARK',
+                    'url' => 'https://shop.example.com/products/slim-fit-denim-jeans/variant/jeans-002-32-dark',
                     'attributes' => [
-                        'size' => '32',
-                        'color' => 'Dark Blue'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => '32'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Dark Blue'
+                        ]
                     ]
                 ]
             ],
-            'basePriceInCents' => '7999',
             'imageUrl' => [
                 'small' => 'https://example.com/images/jeans-002-small.jpg',
                 'medium' => 'https://example.com/images/jeans-002-medium.jpg'
@@ -147,29 +180,49 @@ try {
                 [
                     'id' => 'sneakers-003-9-white',
                     'sku' => 'SNEAKERS-RUN-003-9-WHITE',
+                    'url' => 'https://shop.example.com/products/athletic-running-sneakers/variant/sneakers-003-9-white',
                     'attributes' => [
-                        'size' => '9',
-                        'color' => 'White'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => '9'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'White'
+                        ]
                     ]
                 ],
                 [
                     'id' => 'sneakers-003-10-white',
                     'sku' => 'SNEAKERS-RUN-003-10-WHITE',
+                    'url' => 'https://shop.example.com/products/athletic-running-sneakers/variant/sneakers-003-10-white',
                     'attributes' => [
-                        'size' => '10',
-                        'color' => 'White'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => '10'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'White'
+                        ]
                     ]
                 ],
                 [
                     'id' => 'sneakers-003-10-black',
                     'sku' => 'SNEAKERS-RUN-003-10-BLACK',
+                    'url' => 'https://shop.example.com/products/athletic-running-sneakers/variant/sneakers-003-10-black',
                     'attributes' => [
-                        'size' => '10',
-                        'color' => 'Black'
+                        'size' => [
+                            'name' => 'size',
+                            'value' => '10'
+                        ],
+                        'color' => [
+                            'name' => 'color',
+                            'value' => 'Black'
+                        ]
                     ]
                 ]
             ],
-            'basePriceInCents' => '12999',
             'imageUrl' => [
                 'small' => 'https://example.com/images/sneakers-003-small.jpg',
                 'medium' => 'https://example.com/images/sneakers-003-medium.jpg'
