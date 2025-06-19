@@ -45,77 +45,77 @@ try {
 
     // Step 2: Create new index
     echo "Creating index '{$indexName}'...\n";
-    $syncSdk->createIndex($indexName, ['en']);
+    $syncSdk->createIndex($indexName);
     echo "Index created successfully.\n";
 
     // Step 3: Prepare sample products
     $products = [
         [
-            'id' => 'tshirt-001',
-            'name' => 'Premium Cotton T-Shirt',
-            'brand' => 'EcoWear',
-            'sku' => 'TSHIRT-PREM-001',
-            'categoryDefault' => 'Clothing > T-Shirts > Premium',
-            'categories' => [
-                'Clothing',
-                'Clothing > T-Shirts',
-                'Clothing > T-Shirts > Premium'
-            ],
-            'variants' => [
-                [
-                    'id' => 'tshirt-001-s-blue',
-                    'sku' => 'TSHIRT-PREM-001-S-BLUE',
-                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-s-blue',
-                    'attributes' => [
-                        'size' => [
-                            'name' => 'size',
-                            'value' => 'S'
-                        ],
-                        'color' => [
-                            'name' => 'color',
-                            'value' => 'Blue'
+            [
+                'id' => 'tshirt-001',
+                'name' => 'Premium Cotton T-Shirt',
+                'brand' => 'EcoWear',
+                'sku' => 'TSHIRT-PREM-001',
+                'categoryDefault' => 'Clothing > T-Shirts > Premium',
+                'categories' => [
+                    'Clothing',
+                    'Clothing > T-Shirts',
+                    'Clothing > T-Shirts > Premium'
+                ],
+                'variants' => [
+                    [
+                        'id' => 'tshirt-001-s-blue',
+                        'sku' => 'TSHIRT-PREM-001-S-BLUE',
+                        'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-s-blue',
+                        'attributes' => [
+                            'size' => [
+                                'name' => 'size',
+                                'value' => 'S'
+                            ],
+                            'color' => [
+                                'name' => 'color',
+                                'value' => 'Blue'
+                            ]
+                        ]
+                    ],
+                    [
+                        'id' => 'tshirt-001-m-blue',
+                        'sku' => 'TSHIRT-PREM-001-M-BLUE',
+                        'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-m-blue',
+                        'attributes' => [
+                            'size' => [
+                                'name' => 'size',
+                                'value' => 'M'
+                            ],
+                            'color' => [
+                                'name' => 'color',
+                                'value' => 'Blue'
+                            ]
+                        ]
+                    ],
+                    [
+                        'id' => 'tshirt-001-l-red',
+                        'sku' => 'TSHIRT-PREM-001-L-RED',
+                        'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-l-red',
+                        'attributes' => [
+                            'size' => [
+                                'name' => 'size',
+                                'value' => 'L'
+                            ],
+                            'color' => [
+                                'name' => 'color',
+                                'value' => 'Red'
+                            ]
                         ]
                     ]
                 ],
-                [
-                    'id' => 'tshirt-001-m-blue',
-                    'sku' => 'TSHIRT-PREM-001-M-BLUE',
-                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-m-blue',
-                    'attributes' => [
-                        'size' => [
-                            'name' => 'size',
-                            'value' => 'M'
-                        ],
-                        'color' => [
-                            'name' => 'color',
-                            'value' => 'Blue'
-                        ]
-                    ]
+                'imageUrl' => [
+                    'small' => 'https://example.com/images/tshirt-001-small.jpg',
+                    'medium' => 'https://example.com/images/tshirt-001-medium.jpg'
                 ],
-                [
-                    'id' => 'tshirt-001-l-red',
-                    'sku' => 'TSHIRT-PREM-001-L-RED',
-                    'url' => 'https://shop.example.com/products/premium-cotton-tshirt/variant/tshirt-001-l-red',
-                    'attributes' => [
-                        'size' => [
-                            'name' => 'size',
-                            'value' => 'L'
-                        ],
-                        'color' => [
-                            'name' => 'color',
-                            'value' => 'Red'
-                        ]
-                    ]
-                ]
+                'productUrl' => 'https://shop.example.com/products/premium-cotton-tshirt',
+                'descriptionShort' => 'Comfortable premium cotton t-shirt for everyday wear'
             ],
-            'imageUrl' => [
-                'small' => 'https://example.com/images/tshirt-001-small.jpg',
-                'medium' => 'https://example.com/images/tshirt-001-medium.jpg'
-            ],
-            'productUrl' => 'https://shop.example.com/products/premium-cotton-tshirt',
-            'descriptionShort' => 'Comfortable premium cotton t-shirt for everyday wear'
-        ],
-        [
             'id' => 'jeans-002',
             'name' => 'Slim Fit Denim Jeans',
             'brand' => 'DenimCo',

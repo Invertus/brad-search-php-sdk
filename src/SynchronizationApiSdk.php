@@ -38,7 +38,7 @@ class SynchronizationApiSdk
     /**
      * Create an index with field configuration
      */
-    public function createIndex(string $index, ?array $locales = null): void
+    public function createIndex(string $index): void
     {
         $this->validateIndexName($index);
 
@@ -51,10 +51,6 @@ class SynchronizationApiSdk
             'index_name' => $index,
             'fields' => $fields,
         ];
-
-        if ($locales !== null) {
-            $data['locales'] = $locales;
-        }
 
         $this->httpClient->put('api/v1/sync/', $data);
     }
