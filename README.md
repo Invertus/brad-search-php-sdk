@@ -1,6 +1,6 @@
 # Brad Search Synchronization PHP SDK
 
-A comprehensive PHP SDK for synchronizing data with the Brad Search API. This SDK provides type-safe field configuration, strict data validation, and robust error handling
+A comprehensive PHP SDK for synchronizing data with the Brad Search API. This SDK provides type-safe field configuration, strict data validation, and robust error handling.
 
 ## Requirements
 
