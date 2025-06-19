@@ -133,13 +133,6 @@ class SynchronizationApiSdk
         if (empty(trim($index))) {
             throw new ValidationException('Index name cannot be empty');
         }
-
-        // Index name validation (similar to database naming conventions)
-        if (!preg_match('/^[a-z0-9][a-z0-9_-]*[a-z0-9]$|^[a-z0-9]$/', $index)) {
-            throw new ValidationException(
-                'Index name must start and end with alphanumeric characters and can contain only lowercase letters, numbers, hyphens, and underscores'
-            );
-        }
     }
 
     /**
