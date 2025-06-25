@@ -40,6 +40,10 @@ $fieldConfiguration = FieldConfigBuilder::ecommerceFields();
 //     'categories' => FieldConfigBuilder::hierarchy(),
 // ];
 
+// To add custom fields or override existing default ecommerce field config with custom values:
+// $variants = ['material'];
+// #fieldConfiguration = FieldConfigBuilder::addToEcommerceFields($variants);
+
 // Initialize SDK
 $syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);
 ```
