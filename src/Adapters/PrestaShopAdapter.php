@@ -117,8 +117,7 @@ class PrestaShopAdapter
     {
         $transformedAttributes = [];
 
-        foreach ($attributes as $attributeKey => $attributeData) {
-            $attributeName = strtolower($attributeKey); // Normalize to lowercase
+        foreach ($attributes as $attributeName => $attributeData) {
             $attributeValue = $this->extractDefaultLocaleValue($attributeData['localizedValues'] ?? []);
             
             if ($attributeValue !== null) {
