@@ -9,6 +9,7 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Models\FieldConfig;
 use BradSearch\SyncSdk\Validators\DataValidator;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class SynchronizationApiSdk
 {
@@ -51,6 +52,10 @@ class SynchronizationApiSdk
             'index_name' => $index,
             'fields' => $fields,
         ];
+
+        Log::debug('$data lol', [
+            'data' => $data,
+        ]);
 
         $this->httpClient->put('api/v1/sync/', $data);
     }
@@ -162,4 +167,4 @@ class SynchronizationApiSdk
     {
         $this->validator->validateProducts($productsData);
     }
-} 
+}

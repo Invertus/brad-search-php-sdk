@@ -19,7 +19,7 @@ class PrestaShopAdapter
         if (empty($supportedLocales)) {
             throw new ValidationException('At least one locale must be specified');
         }
-        
+
         $this->supportedLocales = $supportedLocales;
         $this->defaultLocale = $supportedLocales[0];
     }
@@ -37,7 +37,7 @@ class PrestaShopAdapter
         }
 
         $transformedProducts = [];
-        
+
         foreach ($prestaShopData['products'] as $product) {
             $transformedProducts[] = $this->transformProduct($product);
         }
@@ -119,7 +119,7 @@ class PrestaShopAdapter
 
         foreach ($attributes as $attributeName => $attributeData) {
             $attributeValue = $this->extractDefaultLocaleValue($attributeData['localizedValues'] ?? []);
-            
+
             if ($attributeValue !== null) {
                 $transformedAttributes[$attributeName] = [
                     'name' => $attributeName,
@@ -137,7 +137,7 @@ class PrestaShopAdapter
     private function extractCategories(array $product): array
     {
         $categories = [];
-        
+
         if (!isset($product['categories'])) {
             return $categories;
         }
@@ -167,7 +167,7 @@ class PrestaShopAdapter
     private function transformImageUrl(array $imageUrl): array
     {
         $result = [];
-        
+
         // Map standard image sizes
         $sizeMapping = [
             'small' => 'small',
@@ -264,4 +264,4 @@ class PrestaShopAdapter
     {
         return $this->defaultLocale;
     }
-} 
+}
