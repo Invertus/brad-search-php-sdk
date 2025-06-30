@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\Adapters;
 
 use BradSearch\SyncSdk\Exceptions\ValidationException;
-use Illuminate\Support\Facades\Log;
 
 class PrestaShopAdapter
 {
