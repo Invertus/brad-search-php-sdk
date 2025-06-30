@@ -75,7 +75,7 @@ class FieldConfigBuilder
      */
     public static function features(array $featureFields = []): FieldConfig
     {
-        return new FieldConfig(FieldType::FEATURES, null, $featureFields);
+        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $featureFields);
     }
 
     /**
