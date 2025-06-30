@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\Adapters;
 
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use Illuminate\Support\Facades\Log;
 
 class PrestaShopAdapter
 {
@@ -82,7 +83,39 @@ class PrestaShopAdapter
             $result['variants'] = $this->transformVariants($product['variants']);
         }
 
+        // Handle features
+        if (isset($product['features']) && is_array($product['features'])) {
+            $result['features'] = $this->transformFeatures($product['features']);
+        }
+
         return $result;
+    }
+
+    private function transformFeatures(array $features): array
+    {
+        $transformedFeatures = [];
+
+        foreach ($features as $feature) {
+            // Extract the feature name (key) from localized names
+            $featureName = $this->extractDefaultLocaleValue($feature['localizedNames'] ?? []);
+            if (!$featureName) {
+                continue;
+            }
+
+            // Extract the feature value from localized values
+            $featureValue = $this->extractDefaultLocaleValue($feature['localizedValues'] ?? []);
+            if (!$featureValue) {
+                continue;
+            }
+
+            // Create the feature structure: {featureName: {name: featureName, value: featureValue}}
+            $transformedFeatures[$featureName] = [
+                'name' => $featureName,
+                'value' => $featureValue
+            ];
+        }
+
+        return $transformedFeatures;
     }
 
     /**
