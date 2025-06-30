@@ -89,4 +89,18 @@ class FieldConfigBuilder
             'descriptionShort' => self::textKeyword(),
         ];
     }
-} 
+
+    /**
+     * Add custom fields or override existing default eCommerce fields with custom values.
+     * Default fields are defined in ecommerceFields() method.
+     *
+     * @param array<string, FieldConfig> $customFields
+     * @return array<string, FieldConfig>
+     */
+    public static function addToEcommerceFields(array $customFields = []): array
+    {
+        $defaultFields = self::ecommerceFields();
+
+        return array_replace($defaultFields, $customFields);
+    }
+}
