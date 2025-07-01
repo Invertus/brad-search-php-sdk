@@ -44,9 +44,10 @@ class SynchronizationApiSdk
     {
         $this->validateIndexName($index);
 
-        $fields = array_map(function ($fieldConfig) {
-            return $fieldConfig->toArray();
-        }, $this->fieldConfiguration);
+        $fields = [];
+        foreach ($this->fieldConfiguration as $fieldName => $fieldConfig) {
+            $fields[$fieldName] = $fieldConfig->toArray();
+        }
 
         $data = [
             'index_name' => $index,
