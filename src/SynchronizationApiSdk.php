@@ -36,21 +36,30 @@ class SynchronizationApiSdk
     }
 
     /**
-     * Create an index with field configuration
+     * Create an index with field configuration and optional alias
+     *
+     * @throws ValidationException
      */
-    public function createIndex(string $index): void
+    public function createIndex(string $index, ?string $alias = null): void
     {
         $this->validateIndexName($index);
 
-        $fields = [];
-        foreach ($this->fieldConfiguration as $fieldName => $fieldConfig) {
-            $fields[$fieldName] = $fieldConfig->toArray();
-        }
+        $fields = array_map(function ($fieldConfig) {
+            return $fieldConfig->toArray();
+        }, $this->fieldConfiguration);
 
         $data = [
             'index_name' => $index,
             'fields' => $fields,
         ];
+
+        // Add alias if provided
+        if ($alias !== null) {
+            $this->validateIndexAlias($alias);
+            $data['aliases'] = [
+                $alias => (object)[]
+            ];
+        }
 
         $this->httpClient->put('api/v1/sync/', $data);
     }
@@ -127,11 +136,62 @@ class SynchronizationApiSdk
 
     /**
      * Validate index name
+     *
+     * @throws ValidationException
      */
     private function validateIndexName(string $index): void
     {
-        if (empty(trim($index))) {
-            throw new ValidationException('Index name cannot be empty');
+        $this->validateIndexOrAliasName($index);
+    }
+
+    /**
+     * Validate alias name
+     *
+     * @throws ValidationException
+     */
+    private function validateIndexAlias(string $alias): void
+    {
+        $this->validateIndexOrAliasName($alias, 'alias');
+    }
+
+    /**
+     * Validate index or alias name
+     *
+     * @param string $name The name to validate
+     * @param string $type Either 'index' or 'alias'
+     * @throws ValidationException if validation fails
+     */
+    private function validateIndexOrAliasName(string $name, string $type = 'index'): void
+    {
+        // Check if empty
+        if (empty(trim($name))) {
+            throw new ValidationException("{$type} name cannot be empty");
+        }
+
+        // Check length (255 bytes max)
+        if (strlen($name) > 255) {
+            throw new ValidationException("{$type} name cannot be longer than 255 characters");
+        }
+
+        // Check if starts with invalid characters
+        if (preg_match('/^[-._+]/', $name)) {
+            throw new ValidationException("{$type} name cannot start with hyphen (-), dot (.), underscore (_), or plus (+)");
+        }
+
+        // Check if contains only valid characters (different patterns for index vs alias)
+        $pattern = $type === 'alias' ? '/^[a-z0-9_-]+$/' : '/^[a-z0-9._-]+$/';
+        $allowedChars = $type === 'alias'
+            ? 'lowercase letters, numbers, hyphens, and underscores'
+            : 'lowercase letters, numbers, dots, hyphens, and underscores';
+
+        if (!preg_match($pattern, $name)) {
+            throw new ValidationException("{$type} name can only contain {$allowedChars}");
+        }
+
+        // Check for reserved names
+        $reservedNames = ['.', '..'];
+        if (in_array($name, $reservedNames)) {
+            throw new ValidationException("{$type} name cannot be a reserved name (. or ..)");
         }
     }
 
