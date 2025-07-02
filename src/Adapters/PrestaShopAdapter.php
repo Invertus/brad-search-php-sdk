@@ -125,47 +125,51 @@ class PrestaShopAdapter
      */
     private function transformVariants(array &$result, array $variants): void
     {
-        $variantsByLocale = [];
+        $transformedVariants = [];
 
         foreach ($variants as $variant) {
             if (!isset($variant['remoteId'])) {
                 continue; // Skip variants without ID
             }
 
-            foreach ($variant['localizedNames'] as $locale => $name) {
-                $variantsByLocale[$locale][] = [
-                    'id' => (string) $variant['remoteId'],
-                    'sku' => $variant['sku'] ?? '',
-                    'url' => $this->extractDefaultLocaleValue($variant['productUrl']['localizedValues'] ?? []),
-                    'attributes' => $this->transformVariantAttributes($variant['attributes'] ?? [], $locale)
-                ];
-            }
+            $transformedVariant = [
+                'id' => (string) $variant['remoteId'],
+                'sku' => $variant['sku'] ?? '',
+                'url' => $this->extractFirstLocaleValue($variant['productUrl']['localizedValues'] ?? []),
+                'attributes' => $this->transformVariantAttributes($variant['attributes'] ?? [])
+            ];
+
+            $transformedVariants[] = $transformedVariant;
         }
 
-        foreach ($variantsByLocale as $locale => $variants) {
-            if ($locale === 'en-US') {
-                $result['variants'] = $variants;
-            } else {
-                $result["variants_{$locale}"] = $variants;
-            }
-        }
+        $result['variants'] = $transformedVariants;
+    }
+
+    private function extractFirstLocaleValue(array $localizedValues): string
+    {
+        return array_values($localizedValues)[0] ?? '';
     }
 
     /**
      * Transform variant attributes to BradSearch format
      */
-    private function transformVariantAttributes(array $attributes, string $locale): array
+    private function transformVariantAttributes(array $attributes): array
     {
         $transformedAttributes = [];
 
         foreach ($attributes as $attributeName => $attributeData) {
-            $attributeValue = $attributeData['localizedValues'][$locale] ?? null;
-
-            if ($attributeValue !== null) {
-                $transformedAttributes[$attributeName] = [
-                    'name' => $attributeName,
-                    'value' => $attributeValue
-                ];
+            foreach ($attributeData['localizedValues'] as $locale => $value) {
+                if ($locale === 'en-US') {
+                    $transformedAttributes[strtolower($attributeName)] = [
+                        'name' => strtolower($attributeName),
+                        'value' => $value
+                    ];
+                } else {
+                    $transformedAttributes[strtolower($attributeName) . '_' . $locale] = [
+                        'name' => strtolower($attributeName),
+                        'value' => $value
+                    ];
+                }
             }
         }
 
@@ -178,6 +182,7 @@ class PrestaShopAdapter
     private function extractCategories(array &$result, array $product): void
     {
         if (!isset($product['categories'])) {
+            $result['categories'] = [];
             return;
         }
 
@@ -232,15 +237,11 @@ class PrestaShopAdapter
             return;
         }
 
-        // Add additional locales with suffixes
-        foreach ($this->supportedLocales as $locale) {
-            if ($locale === 'en-US' && isset($localizedValues['en-US'])) {
-                $result[$fieldName] = $localizedValues['en-US'];
-                continue;
-            }
-
-            if (isset($localizedValues[$locale])) {
-                $result["{$fieldName}_{$locale}"] = $localizedValues[$locale];
+        foreach ($localizedValues as $locale => $value) {
+            if ($locale === 'en-US') {
+                $result[$fieldName] = $value;
+            } else {
+                $result["{$fieldName}_{$locale}"] = $value;
             }
         }
     }
