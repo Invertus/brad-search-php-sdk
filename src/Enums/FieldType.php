@@ -11,6 +11,7 @@ enum FieldType: string
     case KEYWORD = 'keyword';
     case HIERARCHY = 'hierarchy';
     case VARIANTS = 'variants';
+    case NAME_VALUE_LIST = 'name_value_list';
     case IMAGE_URL = 'image_url';
     case URL = 'url';
 } 

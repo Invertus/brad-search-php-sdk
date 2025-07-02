@@ -162,4 +162,4 @@ class SynchronizationApiSdk
     {
         $this->validator->validateProducts($productsData);
     }
-} 
+}

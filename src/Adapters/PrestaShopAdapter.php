@@ -19,7 +19,7 @@ class PrestaShopAdapter
         if (empty($supportedLocales)) {
             throw new ValidationException('At least one locale must be specified');
         }
-        
+
         $this->supportedLocales = $supportedLocales;
         $this->defaultLocale = $supportedLocales[0];
     }
@@ -37,7 +37,7 @@ class PrestaShopAdapter
         }
 
         $transformedProducts = [];
-        
+
         foreach ($prestaShopData['products'] as $product) {
             $transformedProducts[] = $this->transformProduct($product);
         }
@@ -82,7 +82,39 @@ class PrestaShopAdapter
             $result['variants'] = $this->transformVariants($product['variants']);
         }
 
+        // Handle features
+        if (isset($product['features']) && is_array($product['features'])) {
+            $result['features'] = $this->transformFeatures($product['features']);
+        }
+
         return $result;
+    }
+
+    private function transformFeatures(array $features): array
+    {
+        $transformedFeatures = [];
+
+        foreach ($features as $feature) {
+            // Extract the feature name (key) from localized names
+            $featureName = $this->extractDefaultLocaleValue($feature['localizedNames'] ?? []);
+            if (!$featureName) {
+                continue;
+            }
+
+            // Extract the feature value from localized values
+            $featureValue = $this->extractDefaultLocaleValue($feature['localizedValues'] ?? []);
+            if (!$featureValue) {
+                continue;
+            }
+
+            // Create the feature structure: {featureName: {name: featureName, value: featureValue}}
+            $transformedFeatures[$featureName] = [
+                'name' => $featureName,
+                'value' => $featureValue
+            ];
+        }
+
+        return $transformedFeatures;
     }
 
     /**
@@ -119,7 +151,7 @@ class PrestaShopAdapter
 
         foreach ($attributes as $attributeName => $attributeData) {
             $attributeValue = $this->extractDefaultLocaleValue($attributeData['localizedValues'] ?? []);
-            
+
             if ($attributeValue !== null) {
                 $transformedAttributes[$attributeName] = [
                     'name' => $attributeName,
@@ -137,7 +169,7 @@ class PrestaShopAdapter
     private function extractCategories(array $product): array
     {
         $categories = [];
-        
+
         if (!isset($product['categories'])) {
             return $categories;
         }
@@ -167,7 +199,7 @@ class PrestaShopAdapter
     private function transformImageUrl(array $imageUrl): array
     {
         $result = [];
-        
+
         // Map standard image sizes
         $sizeMapping = [
             'small' => 'small',
@@ -264,4 +296,4 @@ class PrestaShopAdapter
     {
         return $this->defaultLocale;
     }
-} 
+}

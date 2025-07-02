@@ -15,8 +15,7 @@ class DataValidator
      */
     public function __construct(
         private readonly array $fieldConfiguration
-    ) {
-    }
+    ) {}
 
     /**
      * Validate a single product against the field configuration
@@ -148,10 +147,6 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            if (!is_string($variant['sku']) || empty(trim($variant['sku']))) {
-                $errors[] = "Field '{$fieldName}' variant at index {$index} 'sku' must be a non-empty string";
-            }
-
             if (!is_string($variant['url']) || !filter_var($variant['url'], FILTER_VALIDATE_URL)) {
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'url' must be a valid URL";
             }
@@ -166,22 +161,22 @@ class DataValidator
                 foreach ($fieldConfig->attributes as $attrName => $attrConfig) {
                     if (isset($variant['attributes'][$attrName])) {
                         $attribute = $variant['attributes'][$attrName];
-                        
+
                         // Validate the attribute structure (must have 'name' and 'value')
                         if (!is_array($attribute)) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must be an object with 'name' and 'value' fields";
                             continue;
                         }
-                        
+
                         if (!isset($attribute['name']) || !isset($attribute['value'])) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must have 'name' and 'value' fields";
                             continue;
                         }
-                        
+
                         if (!is_string($attribute['name']) || $attribute['name'] !== $attrName) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' name field must match the attribute key";
                         }
-                        
+
                         // Validate the attribute value against the field config
                         $attrErrors = $this->validateField(
                             "{$fieldName}.variants[{$index}].attributes.{$attrName}.value",
@@ -250,4 +245,4 @@ class DataValidator
 
         return in_array($extension, $imageExtensions, true);
     }
-} 
+}

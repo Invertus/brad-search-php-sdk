@@ -66,6 +66,18 @@ class FieldConfigBuilder
         return new FieldConfig(FieldType::VARIANTS, null, $attributes);
     }
 
+
+    /**
+     * Create a features field configuration
+     *
+     * @param array<string, FieldConfig> $featureFields
+     * @return FieldConfig
+     */
+    public static function features(array $featureFields = []): FieldConfig
+    {
+        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $featureFields);
+    }
+
     /**
      * Build field configuration for ecommerce products (similar to Go implementation)
      *
@@ -84,6 +96,9 @@ class FieldConfigBuilder
                 'color' => self::keyword(),
                 'size' => self::keyword(),
             ]),
+            'features' => self::features(
+                []
+            ),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),
             'descriptionShort' => self::textKeyword(),
