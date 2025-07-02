@@ -101,8 +101,9 @@ All field types from the Go implementation:
 - `NAME_VALUE_LIST` - List of name-value pairs (e.g., features, specifications)
 - `IMAGE_URL` - Image URLs object with size keys (`small`, `medium`)
 - `URL` - Regular URLs with validation
-- `FLOAT` - Numeric floating-point values (e.g., prices, weights, ratings)
-- `INTEGER` - Integer numeric values (e.g., quantities, counts, IDs)
+- `FLOAT` - Numeric floating-point values
+- `INTEGER` - Integer numeric values
+- `DOUBLE` - Double precision floating-point values
 
 ## Usage Examples
 

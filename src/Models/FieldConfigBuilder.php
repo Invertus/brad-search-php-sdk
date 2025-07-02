@@ -73,6 +73,14 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a double field
+     */
+    public static function double(): FieldConfig
+    {
+        return new FieldConfig(FieldType::DOUBLE);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes

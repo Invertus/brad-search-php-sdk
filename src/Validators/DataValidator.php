@@ -99,6 +99,14 @@ class DataValidator
                 }
                 break;
 
+            case FieldType::DOUBLE:
+                if (!is_numeric($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a numeric value";
+                } elseif (is_infinite((float)$value) || is_nan((float)$value)) {
+                    $errors[] = "Field '{$fieldName}' must be a finite numeric value";
+                }
+                break;
+
             case FieldType::URL:
                 if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";
