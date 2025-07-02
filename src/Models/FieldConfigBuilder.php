@@ -113,7 +113,7 @@ class FieldConfigBuilder
             'id' => self::keyword(),
             'name' => self::textKeyword(),
             'brand' => self::textKeyword(),
-            'price' => self::integer(),
+            'price' => self::double(),
             'formattedPrice' => self::keyword(),
             'categoryDefault' => self::textKeyword(),
             'categories' => self::hierarchy(),
