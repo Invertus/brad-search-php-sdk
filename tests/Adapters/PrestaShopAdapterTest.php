@@ -14,24 +14,7 @@ class PrestaShopAdapterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->adapter = new PrestaShopAdapter(['en-US', 'lt-LT']);
-    }
-
-    public function testConstructorWithEmptyLocales(): void
-    {
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('At least one locale must be specified');
-        new PrestaShopAdapter([]);
-    }
-
-    public function testGetSupportedLocales(): void
-    {
-        $this->assertEquals(['en-US', 'lt-LT'], $this->adapter->getSupportedLocales());
-    }
-
-    public function testGetDefaultLocale(): void
-    {
-        $this->assertEquals('en-US', $this->adapter->getDefaultLocale());
+        $this->adapter = new PrestaShopAdapter();
     }
 
     public function testTransformWithInvalidData(): void
@@ -167,7 +150,6 @@ class PrestaShopAdapterTest extends TestCase
         // Additional locale fields (with suffix)
         $this->assertEquals('Sportiniai batai Multi', $product['name_lt-LT']);
         $this->assertEquals('Springa LT', $product['brand_lt-LT']);
-        $this->assertEquals('http://prestashop/lt/sportiniai-batai.html', $product['productUrl_lt-LT']);
     }
 
     public function testTransformProductWithVariants(): void
@@ -462,7 +444,7 @@ class PrestaShopAdapterTest extends TestCase
 
     public function testSingleLocaleAdapter(): void
     {
-        $adapter = new PrestaShopAdapter(['lt-LT']);
+        $adapter = new PrestaShopAdapter();
         
         $prestaShopData = [
             'products' => [
@@ -482,15 +464,12 @@ class PrestaShopAdapterTest extends TestCase
         $result = $adapter->transform($prestaShopData);
         $product = $result[0];
 
-        // Should use lt-LT as default since it's the only supported locale
-        $this->assertEquals('Lithuanian Name', $product['name']);
-        // Should not have any suffixed fields since there's only one locale
-        $this->assertArrayNotHasKey('name_lt-LT', $product);
+        $this->assertEquals('Lithuanian Name', $product['name_lt-LT']);
     }
 
-    public function testFallbackToFirstAvailableValue(): void
+    public function testMultiLangName(): void
     {
-        $adapter = new PrestaShopAdapter(['fr-FR', 'de-DE']); // Locales not in data
+        $adapter = new PrestaShopAdapter();
         
         $prestaShopData = [
             'products' => [
@@ -512,5 +491,6 @@ class PrestaShopAdapterTest extends TestCase
 
         // Should fallback to first available value (en-US)
         $this->assertEquals('English Name', $product['name']);
+        $this->assertEquals('Lithuanian Name', $product['name_lt-LT']);
     }
 } 
