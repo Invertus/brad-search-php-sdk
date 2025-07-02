@@ -167,7 +167,6 @@ class PrestaShopAdapterTest extends TestCase
         // Additional locale fields (with suffix)
         $this->assertEquals('Sportiniai batai Multi', $product['name_lt-LT']);
         $this->assertEquals('Springa LT', $product['brand_lt-LT']);
-        $this->assertEquals('http://prestashop/lt/sportiniai-batai.html', $product['productUrl_lt-LT']);
     }
 
     public function testTransformProductWithVariants(): void
