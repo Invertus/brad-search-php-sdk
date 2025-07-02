@@ -14,24 +14,7 @@ class PrestaShopAdapterTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->adapter = new PrestaShopAdapter(['en-US', 'lt-LT']);
-    }
-
-    public function testConstructorWithEmptyLocales(): void
-    {
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('At least one locale must be specified');
-        new PrestaShopAdapter([]);
-    }
-
-    public function testGetSupportedLocales(): void
-    {
-        $this->assertEquals(['en-US', 'lt-LT'], $this->adapter->getSupportedLocales());
-    }
-
-    public function testGetDefaultLocale(): void
-    {
-        $this->assertEquals('en-US', $this->adapter->getDefaultLocale());
+        $this->adapter = new PrestaShopAdapter();
     }
 
     public function testTransformWithInvalidData(): void
@@ -461,7 +444,7 @@ class PrestaShopAdapterTest extends TestCase
 
     public function testSingleLocaleAdapter(): void
     {
-        $adapter = new PrestaShopAdapter(['lt-LT']);
+        $adapter = new PrestaShopAdapter();
         
         $prestaShopData = [
             'products' => [
@@ -486,7 +469,7 @@ class PrestaShopAdapterTest extends TestCase
 
     public function testMultiLangName(): void
     {
-        $adapter = new PrestaShopAdapter(['fr-FR', 'de-DE']); // Locales not in data
+        $adapter = new PrestaShopAdapter();
         
         $prestaShopData = [
             'products' => [

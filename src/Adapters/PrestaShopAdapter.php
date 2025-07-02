@@ -8,20 +8,8 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class PrestaShopAdapter
 {
-    private array $supportedLocales;
-    private string $defaultLocale;
-
-    /**
-     * @param array<string> $supportedLocales List of supported locales (first one becomes default)
-     */
-    public function __construct(array $supportedLocales = ['en-US'])
+    public function __construct()
     {
-        if (empty($supportedLocales)) {
-            throw new ValidationException('At least one locale must be specified');
-        }
-
-        $this->supportedLocales = $supportedLocales;
-        $this->defaultLocale = $supportedLocales[0];
     }
 
     /**
@@ -247,31 +235,6 @@ class PrestaShopAdapter
     }
 
     /**
-     * Extract value for the default locale
-     */
-    private function extractDefaultLocaleValue(array $localizedValues): ?string
-    {
-        if (empty($localizedValues)) {
-            return null;
-        }
-
-        // Try to find value for default locale first
-        if (isset($localizedValues[$this->defaultLocale])) {
-            return $localizedValues[$this->defaultLocale];
-        }
-
-        // Try other supported locales
-        foreach ($this->supportedLocales as $locale) {
-            if (isset($localizedValues[$locale])) {
-                return $localizedValues[$locale];
-            }
-        }
-
-        // Fallback to first available value
-        return array_values($localizedValues)[0] ?? null;
-    }
-
-    /**
      * Get required field with validation
      */
     private function getRequiredField(array $data, string $field): string
@@ -281,23 +244,5 @@ class PrestaShopAdapter
         }
 
         return (string) $data[$field];
-    }
-
-    /**
-     * Get supported locales
-     * 
-     * @return array<string>
-     */
-    public function getSupportedLocales(): array
-    {
-        return $this->supportedLocales;
-    }
-
-    /**
-     * Get default locale
-     */
-    public function getDefaultLocale(): string
-    {
-        return $this->defaultLocale;
     }
 }
