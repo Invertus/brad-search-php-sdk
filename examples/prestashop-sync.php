@@ -20,7 +20,7 @@ $config = new SyncConfig(
 );
 
 // Field configuration for ecommerce products
-$fieldConfiguration = FieldConfigBuilder::ecommerceFields();
+$fieldConfiguration = FieldConfigBuilder::ecommerceFields(['en-US', 'lt-LT']);
 
 // Initialize SDK
 $syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);

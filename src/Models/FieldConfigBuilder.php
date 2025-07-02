@@ -83,26 +83,33 @@ class FieldConfigBuilder
      *
      * @return array<string, FieldConfig>
      */
-    public static function ecommerceFields(): array
+    public static function ecommerceFields(array $locales): array
     {
-        return [
+        $localizedFields = [];
+        foreach ($locales as $locale) {
+            if (in_array($locale, ['en-US', 'en'])) {
+                $localizedFields['name'] = self::textKeyword();
+                $localizedFields['brand'] = self::textKeyword();
+                $localizedFields['categoryDefault'] = self::textKeyword();
+                $localizedFields['categories'] = self::textKeyword();
+                $localizedFields['descriptionShort'] = self::textKeyword();
+            } else {
+                $localizedFields["name_{$locale}"] = self::textKeyword();
+                $localizedFields["brand_{$locale}"] = self::textKeyword();
+                $localizedFields["categoryDefault_{$locale}"] = self::textKeyword();
+                $localizedFields["categories_{$locale}"] = self::textKeyword();
+                $localizedFields["descriptionShort_{$locale}"] = self::textKeyword();
+            }
+        }
+
+        $defaultFields = [
             'id' => self::keyword(),
-            'name' => self::textKeyword(),
-            'brand' => self::textKeyword(),
-            'categoryDefault' => self::textKeyword(),
-            'categories' => self::hierarchy(),
             'sku' => self::keyword(),
-            'variants' => self::variants([
-                'color' => self::keyword(),
-                'size' => self::keyword(),
-            ]),
-            'features' => self::features(
-                []
-            ),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),
-            'descriptionShort' => self::textKeyword(),
         ];
+
+        return array_merge($defaultFields, $localizedFields);
     }
 
     /**
@@ -112,10 +119,10 @@ class FieldConfigBuilder
      * @param array<string, FieldConfig> $customFields
      * @return array<string, FieldConfig>
      */
-    public static function addToEcommerceFields(array $customFields = []): array
+    public static function addToEcommerceFields(array $customFields = [], array $locales): array
     {
-        $defaultFields = self::ecommerceFields();
+        $defaultFields = self::ecommerceFields($locales);
 
-        return array_replace($defaultFields, $customFields);
+        return array_merge($defaultFields, $customFields);
     }
 }
