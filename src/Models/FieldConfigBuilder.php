@@ -65,6 +65,14 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create an integer field
+     */
+    public static function integer(): FieldConfig
+    {
+        return new FieldConfig(FieldType::INTEGER);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
@@ -97,7 +105,7 @@ class FieldConfigBuilder
             'id' => self::keyword(),
             'name' => self::textKeyword(),
             'brand' => self::textKeyword(),
-            'price' => self::float(),
+            'price' => self::integer(),
             'formattedPrice' => self::keyword(),
             'categoryDefault' => self::textKeyword(),
             'categories' => self::hierarchy(),

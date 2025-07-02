@@ -102,6 +102,7 @@ All field types from the Go implementation:
 - `IMAGE_URL` - Image URLs object with size keys (`small`, `medium`)
 - `URL` - Regular URLs with validation
 - `FLOAT` - Numeric floating-point values (e.g., prices, weights, ratings)
+- `INTEGER` - Integer numeric values (e.g., quantities, counts, IDs)
 
 ## Usage Examples
 

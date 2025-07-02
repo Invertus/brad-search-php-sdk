@@ -89,6 +89,16 @@ class DataValidator
                 }
                 break;
 
+            case FieldType::INTEGER:
+                if (!is_numeric($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a numeric value";
+                } elseif (!is_int($value) && !ctype_digit((string)$value)) {
+                    $errors[] = "Field '{$fieldName}' must be an integer value";
+                } elseif (is_string($value) && (int)$value != $value) {
+                    $errors[] = "Field '{$fieldName}' must be an integer value";
+                }
+                break;
+
             case FieldType::URL:
                 if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";

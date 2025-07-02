@@ -15,4 +15,5 @@ enum FieldType: string
     case IMAGE_URL = 'image_url';
     case URL = 'url';
     case FLOAT = 'float';
+    case INTEGER = 'integer';
 }
