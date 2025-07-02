@@ -57,6 +57,14 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a float field
+     */
+    public static function float(): FieldConfig
+    {
+        return new FieldConfig(FieldType::FLOAT);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
@@ -89,6 +97,8 @@ class FieldConfigBuilder
             'id' => self::keyword(),
             'name' => self::textKeyword(),
             'brand' => self::textKeyword(),
+            'price' => self::float(),
+            'formattedPrice' => self::keyword(),
             'categoryDefault' => self::textKeyword(),
             'categories' => self::hierarchy(),
             'sku' => self::keyword(),
