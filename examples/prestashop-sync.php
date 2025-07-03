@@ -20,13 +20,13 @@ $config = new SyncConfig(
 );
 
 // Field configuration for ecommerce products
-$fieldConfiguration = FieldConfigBuilder::ecommerceFields();
+$fieldConfiguration = FieldConfigBuilder::ecommerceFields(['en-US', 'lt-LT']);
 
 // Initialize SDK
 $syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);
 
 // Initialize PrestaShop adapter with supported locales
-$prestaShopAdapter = new PrestaShopAdapter(['en-US', 'lt-LT']);
+$prestaShopAdapter = new PrestaShopAdapter();
 
 // Index name
 $indexName = 'prestashop-products-example';
@@ -282,8 +282,6 @@ try {
 
     // Step 8: Show adapter configuration
     echo "\nPrestaShop Adapter Configuration:\n";
-    echo "Supported Locales: " . implode(', ', $prestaShopAdapter->getSupportedLocales()) . "\n";
-    echo "Default Locale: " . $prestaShopAdapter->getDefaultLocale() . "\n";
 
     echo "\nField Configuration Used:\n";
     $fields = $syncSdk->getFieldConfiguration();
