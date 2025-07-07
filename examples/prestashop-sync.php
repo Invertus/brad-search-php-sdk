@@ -241,6 +241,9 @@ try {
                 //todo: this does not work, fix it in Presta
                 "descriptionShort" => [
                     "1" => ""
+                ],
+                "description" => [
+                    "1" => ""
                 ]
             ]
         ]

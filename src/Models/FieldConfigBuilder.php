@@ -116,12 +116,14 @@ class FieldConfigBuilder
                 $localizedFields['brand'] = self::textKeyword();
                 $localizedFields['categoryDefault'] = self::textKeyword();
                 $localizedFields['categories'] = self::textKeyword();
+                $localizedFields['description'] = self::textKeyword();
                 $localizedFields['descriptionShort'] = self::textKeyword();
             } else {
                 $localizedFields["name_{$locale}"] = self::textKeyword();
                 $localizedFields["brand_{$locale}"] = self::textKeyword();
                 $localizedFields["categoryDefault_{$locale}"] = self::textKeyword();
                 $localizedFields["categories_{$locale}"] = self::textKeyword();
+                $localizedFields["description_{$locale}"] = self::textKeyword();
                 $localizedFields["descriptionShort_{$locale}"] = self::textKeyword();
             }
         }
@@ -137,6 +139,8 @@ class FieldConfigBuilder
             'sku' => self::keyword(),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),
+            'descriptionShort' => self::textKeyword(),
+            'description' => self::textKeyword(),
         ];
 
         return array_merge($defaultFields, $localizedFields);
