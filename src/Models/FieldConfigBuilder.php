@@ -57,6 +57,30 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a float field
+     */
+    public static function float(): FieldConfig
+    {
+        return new FieldConfig(FieldType::FLOAT);
+    }
+
+    /**
+     * Create an integer field
+     */
+    public static function integer(): FieldConfig
+    {
+        return new FieldConfig(FieldType::INTEGER);
+    }
+
+    /**
+     * Create a double field
+     */
+    public static function double(): FieldConfig
+    {
+        return new FieldConfig(FieldType::DOUBLE);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
@@ -104,6 +128,12 @@ class FieldConfigBuilder
 
         $defaultFields = [
             'id' => self::keyword(),
+            'name' => self::textKeyword(),
+            'brand' => self::textKeyword(),
+            'price' => self::double(),
+            'formattedPrice' => self::keyword(),
+            'categoryDefault' => self::textKeyword(),
+            'categories' => self::hierarchy(),
             'sku' => self::keyword(),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),

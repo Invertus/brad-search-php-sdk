@@ -41,6 +41,8 @@ class PrestaShopAdapter
         $result = [
             'id' => $this->getRequiredField($product, 'remoteId'),
             'sku' => $this->getRequiredField($product, 'sku'),
+            'price' => $this->getRequiredField($product, 'price'),
+            'formattedPrice' => $this->getRequiredField($product, 'formattedPrice'),
             'variants' => [],
         ];
 

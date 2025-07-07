@@ -14,4 +14,7 @@ enum FieldType: string
     case NAME_VALUE_LIST = 'name_value_list';
     case IMAGE_URL = 'image_url';
     case URL = 'url';
-} 
+    case FLOAT = 'float';
+    case INTEGER = 'integer';
+    case DOUBLE = 'double';
+}
