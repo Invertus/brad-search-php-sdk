@@ -115,14 +115,14 @@ class FieldConfigBuilder
                 $localizedFields['name'] = self::textKeyword();
                 $localizedFields['brand'] = self::textKeyword();
                 $localizedFields['categoryDefault'] = self::textKeyword();
-                $localizedFields['categories'] = self::textKeyword();
                 $localizedFields['description'] = self::textKeyword();
+                $localizedFields['categories'] = self::hierarchy();
                 $localizedFields['descriptionShort'] = self::textKeyword();
             } else {
                 $localizedFields["name_{$locale}"] = self::textKeyword();
                 $localizedFields["brand_{$locale}"] = self::textKeyword();
                 $localizedFields["categoryDefault_{$locale}"] = self::textKeyword();
-                $localizedFields["categories_{$locale}"] = self::textKeyword();
+                $localizedFields["categories_{$locale}"] = self::hierarchy();
                 $localizedFields["description_{$locale}"] = self::textKeyword();
                 $localizedFields["descriptionShort_{$locale}"] = self::textKeyword();
             }
