@@ -62,10 +62,7 @@ class PrestaShopAdapter
 
         // Handle product URL
         if (isset($product['productUrl'])) {
-            foreach ($product['productUrl'] as $url) {
-                $result['productUrl'] = $url;
-                break;
-            }
+            $this->transformProductUrls($result, $product['productUrl']);
         }
 
         // Handle variants - always call this to ensure localized variant fields are created
@@ -102,6 +99,20 @@ class PrestaShopAdapter
                 $result['features'] = $features;
             } else {
                 $result["features_{$locale}"] = $features;
+            }
+        }
+    }
+
+    /**
+     * Transform product URLs to create localized fields
+     */
+    private function transformProductUrls(array &$result, array $productUrls): void
+    {
+        foreach ($productUrls as $locale => $url) {
+            if ($locale === 'en-US') {
+                $result['productUrl'] = $url;
+            } else {
+                $result["productUrl_{$locale}"] = $url;
             }
         }
     }
@@ -197,6 +208,11 @@ class PrestaShopAdapter
                     $locales = array_merge($locales, array_keys($feature['localizedValues']));
                 }
             }
+        }
+
+        // Get locales from productUrl
+        if (isset($product['productUrl']) && is_array($product['productUrl'])) {
+            $locales = array_merge($locales, array_keys($product['productUrl']));
         }
 
         // Remove duplicates and ensure en-US is always included
