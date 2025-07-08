@@ -127,15 +127,16 @@ class PrestaShopAdapter
         // If variants is empty, we still need to create localized variant fields
         // based on locales detected from other product fields
         if (empty($variants)) {
-            $availableLocales = $this->getProductLocales($product);
+            return;
+            // $availableLocales = $this->getProductLocales($product);
 
-            foreach ($availableLocales as $locale) {
-                if ($locale === 'en-US') {
-                    $variantsByLocale['variants'] = [];
-                } else {
-                    $variantsByLocale["variants_{$locale}"] = [];
-                }
-            }
+            // foreach ($availableLocales as $locale) {
+            //     if ($locale === 'en-US') {
+            //         $variantsByLocale['variants'] = [];
+            //     } else {
+            //         $variantsByLocale["variants_{$locale}"] = [];
+            //     }
+            // }
         } else {
             foreach ($variants as $variant) {
                 if (!isset($variant['remoteId'])) {
@@ -171,58 +172,58 @@ class PrestaShopAdapter
     /**
      * Get all available locales from product data
      */
-    private function getProductLocales(array $product): array
-    {
-        $locales = [];
+    // private function getProductLocales(array $product): array
+    // {
+    //     $locales = [];
 
-        // Get locales from product localizedNames
-        if (isset($product['localizedNames']) && is_array($product['localizedNames'])) {
-            $locales = array_merge($locales, array_keys($product['localizedNames']));
-        }
+    //     // Get locales from product localizedNames
+    //     if (isset($product['localizedNames']) && is_array($product['localizedNames'])) {
+    //         $locales = array_merge($locales, array_keys($product['localizedNames']));
+    //     }
 
-        // Get locales from brand localizedNames
-        if (isset($product['brand']['localizedNames']) && is_array($product['brand']['localizedNames'])) {
-            $locales = array_merge($locales, array_keys($product['brand']['localizedNames']));
-        }
+    //     // Get locales from brand localizedNames
+    //     if (isset($product['brand']['localizedNames']) && is_array($product['brand']['localizedNames'])) {
+    //         $locales = array_merge($locales, array_keys($product['brand']['localizedNames']));
+    //     }
 
-        // Get locales from categories
-        if (isset($product['categories']) && is_array($product['categories'])) {
-            foreach ($product['categories'] as $level => $levelCategories) {
-                if (is_array($levelCategories)) {
-                    foreach ($levelCategories as $category) {
-                        if (isset($category['localizedValues']['path']) && is_array($category['localizedValues']['path'])) {
-                            $locales = array_merge($locales, array_keys($category['localizedValues']['path']));
-                        }
-                    }
-                }
-            }
-        }
+    //     // Get locales from categories
+    //     if (isset($product['categories']) && is_array($product['categories'])) {
+    //         foreach ($product['categories'] as $level => $levelCategories) {
+    //             if (is_array($levelCategories)) {
+    //                 foreach ($levelCategories as $category) {
+    //                     if (isset($category['localizedValues']['path']) && is_array($category['localizedValues']['path'])) {
+    //                         $locales = array_merge($locales, array_keys($category['localizedValues']['path']));
+    //                     }
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        // Get locales from features
-        if (isset($product['features']) && is_array($product['features'])) {
-            foreach ($product['features'] as $feature) {
-                if (isset($feature['localizedNames']) && is_array($feature['localizedNames'])) {
-                    $locales = array_merge($locales, array_keys($feature['localizedNames']));
-                }
-                if (isset($feature['localizedValues']) && is_array($feature['localizedValues'])) {
-                    $locales = array_merge($locales, array_keys($feature['localizedValues']));
-                }
-            }
-        }
+    //     // Get locales from features
+    //     if (isset($product['features']) && is_array($product['features'])) {
+    //         foreach ($product['features'] as $feature) {
+    //             if (isset($feature['localizedNames']) && is_array($feature['localizedNames'])) {
+    //                 $locales = array_merge($locales, array_keys($feature['localizedNames']));
+    //             }
+    //             if (isset($feature['localizedValues']) && is_array($feature['localizedValues'])) {
+    //                 $locales = array_merge($locales, array_keys($feature['localizedValues']));
+    //             }
+    //         }
+    //     }
 
-        // Get locales from productUrl
-        if (isset($product['productUrl']) && is_array($product['productUrl'])) {
-            $locales = array_merge($locales, array_keys($product['productUrl']));
-        }
+    //     // Get locales from productUrl
+    //     if (isset($product['productUrl']) && is_array($product['productUrl'])) {
+    //         $locales = array_merge($locales, array_keys($product['productUrl']));
+    //     }
 
-        // Remove duplicates and ensure en-US is always included
-        $locales = array_unique($locales);
-        if (!in_array('en-US', $locales)) {
-            $locales[] = 'en-US';
-        }
+    //     // Remove duplicates and ensure en-US is always included
+    //     $locales = array_unique($locales);
+    //     if (!in_array('en-US', $locales)) {
+    //         $locales[] = 'en-US';
+    //     }
 
-        return $locales;
-    }
+    //     return $locales;
+    // }
 
     private function extractFirstLocaleValue(array $localizedValues): string
     {
