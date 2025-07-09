@@ -38,6 +38,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Sneakers "101H" Springa multi'
                     ],
@@ -106,7 +108,7 @@ class PrestaShopAdapterTest extends TestCase
         ], $product['imageUrl']);
         $this->assertEquals([
             'Men',
-            'Men > Shoes', 
+            'Men > Shoes',
             'Men > Shoes > Sneakers'
         ], $product['categories']);
         $this->assertEquals([], $product['variants']);
@@ -119,6 +121,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Sneakers Multi',
                         'lt-LT' => 'Sportiniai batai Multi'
@@ -150,6 +154,114 @@ class PrestaShopAdapterTest extends TestCase
         // Additional locale fields (with suffix)
         $this->assertEquals('Sportiniai batai Multi', $product['name_lt-LT']);
         $this->assertEquals('Springa LT', $product['brand_lt-LT']);
+        $this->assertEquals('http://prestashop/lt/sportiniai-batai.html', $product['productUrl_lt-LT']);
+    }
+
+    public function testProductUrlTransformationWithMultipleLocales(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'productUrl' => [
+                        'en-US' => 'http://prestashop/en/test-product.html',
+                        'lt-LT' => 'http://prestashop/lt/testas-produktas.html',
+                        'de-DE' => 'http://prestashop/de/test-produkt.html',
+                        'fr-FR' => 'http://prestashop/fr/produit-test.html'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result[0];
+
+        $this->assertEquals('http://prestashop/en/test-product.html', $product['productUrl']);
+
+        $this->assertEquals('http://prestashop/lt/testas-produktas.html', $product['productUrl_lt-LT']);
+        $this->assertEquals('http://prestashop/de/test-produkt.html', $product['productUrl_de-DE']);
+        $this->assertEquals('http://prestashop/fr/produit-test.html', $product['productUrl_fr-FR']);
+
+        $productUrlFields = array_filter(array_keys($product), function ($key) {
+            return strpos($key, 'productUrl') === 0;
+        });
+
+        $expectedFields = ['productUrl', 'productUrl_lt-LT', 'productUrl_de-DE', 'productUrl_fr-FR'];
+        sort($productUrlFields);
+        sort($expectedFields);
+
+        $this->assertEquals($expectedFields, $productUrlFields);
+    }
+
+    public function testProductUrlTransformationWithSingleLocale(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'productUrl' => [
+                        'en-US' => 'http://prestashop/en/test-product.html'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result[0];
+
+        $this->assertEquals('http://prestashop/en/test-product.html', $product['productUrl']);
+
+        $productUrlFields = array_filter(array_keys($product), function ($key) {
+            return strpos($key, 'productUrl') === 0;
+        });
+
+        $this->assertEquals(['productUrl'], array_values($productUrlFields));
+    }
+
+    public function testProductUrlTransformationWithEmptyProductUrl(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    // No productUrl field
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result[0];
+
+        $productUrlFields = array_filter(array_keys($product), function ($key) {
+            return strpos($key, 'productUrl') === 0;
+        });
+
+        $this->assertEquals([], array_values($productUrlFields));
+        $this->assertArrayNotHasKey('productUrl', $product);
     }
 
     public function testTransformProductWithVariants(): void
@@ -159,6 +271,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Sneakers Multi'
                     ],
@@ -222,11 +336,11 @@ class PrestaShopAdapterTest extends TestCase
         $this->assertEquals('M0E20000000EAAK-34', $variant1['sku']);
         $this->assertEquals('http://prestashop/sneakers/1807-26911-sneakers.html', $variant1['url']);
         $this->assertEquals([
-            'size' => [
+            [
                 'name' => 'size',
                 'value' => '34'
             ],
-            'color' => [
+            [
                 'name' => 'color',
                 'value' => 'multi'
             ]
@@ -238,11 +352,11 @@ class PrestaShopAdapterTest extends TestCase
         $this->assertEquals('M0E20000000EAAL', $variant2['sku']);
         $this->assertEquals('http://prestashop/sneakers/1807-26912-sneakers.html', $variant2['url']);
         $this->assertEquals([
-            'size' => [
+            [
                 'name' => 'size',
                 'value' => '34.5'
             ],
-            'color' => [
+            [
                 'name' => 'color',
                 'value' => 'blue'
             ]
@@ -293,6 +407,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -332,6 +448,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -396,6 +514,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -418,6 +538,8 @@ class PrestaShopAdapterTest extends TestCase
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -445,12 +567,14 @@ class PrestaShopAdapterTest extends TestCase
     public function testSingleLocaleAdapter(): void
     {
         $adapter = new PrestaShopAdapter();
-        
+
         $prestaShopData = [
             'products' => [
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'English Name',
                         'lt-LT' => 'Lithuanian Name'
@@ -470,12 +594,14 @@ class PrestaShopAdapterTest extends TestCase
     public function testMultiLangName(): void
     {
         $adapter = new PrestaShopAdapter();
-        
+
         $prestaShopData = [
             'products' => [
                 [
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
                     'localizedNames' => [
                         'en-US' => 'English Name',
                         'lt-LT' => 'Lithuanian Name'
@@ -493,4 +619,4 @@ class PrestaShopAdapterTest extends TestCase
         $this->assertEquals('English Name', $product['name']);
         $this->assertEquals('Lithuanian Name', $product['name_lt-LT']);
     }
-} 
+}
