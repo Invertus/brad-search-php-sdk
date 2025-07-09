@@ -8,9 +8,7 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class PrestaShopAdapter
 {
-    public function __construct()
-    {
-    }
+    public function __construct() {}
 
     /**
      * Transform PrestaShop product data to BradSearch format
@@ -48,6 +46,14 @@ class PrestaShopAdapter
 
         // Handle localized product name
         $this->addLocalizedField($result, 'name', $product['localizedNames'] ?? []);
+
+        if (isset($product['description'])) {
+            $this->addLocalizedField($result, 'description', $product['description']);
+        }
+
+        if (isset($product['descriptionShort'])) {
+            $this->addLocalizedField($result, 'descriptionShort', $product['descriptionShort']);
+        }
 
         // Handle brand
         if (isset($product['brand']['localizedNames'])) {
