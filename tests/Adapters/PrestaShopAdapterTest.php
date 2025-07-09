@@ -53,7 +53,9 @@ class PrestaShopAdapterTest extends TestCase
                         'medium' => 'http://prestashop/5309-medium_default/sneakers.jpg'
                     ],
                     'productUrl' => [
-                        'en-US' => 'http://prestashop/sneakers/1807-sneakers.html'
+                        'localizedValues' => [
+                            'en-US' => 'http://prestashop/sneakers/1807-sneakers.html'
+                        ]
                     ],
                     'categories' => [
                         'lvl2' => [
@@ -134,8 +136,10 @@ class PrestaShopAdapterTest extends TestCase
                         ]
                     ],
                     'productUrl' => [
-                        'en-US' => 'http://prestashop/en/sneakers.html',
-                        'lt-LT' => 'http://prestashop/lt/sportiniai-batai.html'
+                        'localizedValues' => [
+                            'en-US' => 'http://prestashop/en/sneakers.html',
+                            'lt-LT' => 'http://prestashop/lt/sportiniai-batai.html'
+                        ]
                     ],
                     'categories' => [],
                     'variants' => []
@@ -170,10 +174,12 @@ class PrestaShopAdapterTest extends TestCase
                         'en-US' => 'Test Product'
                     ],
                     'productUrl' => [
-                        'en-US' => 'http://prestashop/en/test-product.html',
-                        'lt-LT' => 'http://prestashop/lt/testas-produktas.html',
-                        'de-DE' => 'http://prestashop/de/test-produkt.html',
-                        'fr-FR' => 'http://prestashop/fr/produit-test.html'
+                        'localizedValues' => [
+                            'en-US' => 'http://prestashop/en/test-product.html',
+                            'lt-LT' => 'http://prestashop/lt/testas-produktas.html',
+                            'de-DE' => 'http://prestashop/de/test-produkt.html',
+                            'fr-FR' => 'http://prestashop/fr/produit-test.html'
+                        ]
                     ],
                     'categories' => [],
                     'variants' => []
@@ -214,7 +220,9 @@ class PrestaShopAdapterTest extends TestCase
                         'en-US' => 'Test Product'
                     ],
                     'productUrl' => [
-                        'en-US' => 'http://prestashop/en/test-product.html'
+                        'localizedValues' => [
+                            'en-US' => 'http://prestashop/en/test-product.html'
+                        ]
                     ],
                     'categories' => [],
                     'variants' => []
@@ -256,6 +264,85 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result[0];
 
+        $productUrlFields = array_filter(array_keys($product), function ($key) {
+            return strpos($key, 'productUrl') === 0;
+        });
+
+        $this->assertEquals([], array_values($productUrlFields));
+        $this->assertArrayNotHasKey('productUrl', $product);
+    }
+
+    public function testProductUrlTransformationWithNestedLocalizedValues(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'productUrl' => [
+                        'localizedValues' => [
+                            'lt-LT' => 'http://prestashop.com/lt/product',
+                            'en-US' => 'http://prestashop.com/en/product'
+                        ]
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result[0];
+
+        // Default locale (en-US) should be stored without suffix
+        $this->assertEquals('http://prestashop.com/en/product', $product['productUrl']);
+
+        // Other locales should be stored with locale suffix
+        $this->assertEquals('http://prestashop.com/lt/product', $product['productUrl_lt-LT']);
+
+        // Verify only the expected product URL fields exist
+        $productUrlFields = array_filter(array_keys($product), function ($key) {
+            return strpos($key, 'productUrl') === 0;
+        });
+
+        $expectedFields = ['productUrl', 'productUrl_lt-LT'];
+        sort($productUrlFields);
+        sort($expectedFields);
+
+        $this->assertEquals($expectedFields, $productUrlFields);
+    }
+
+    public function testProductUrlTransformationIgnoresFlatStructure(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'productUrl' => [
+                        'en-US' => 'http://prestashop/en/test-product.html',
+                        'lt-LT' => 'http://prestashop/lt/testas-produktas.html'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result[0];
+
+        // No productUrl fields should exist since flat structure is ignored
         $productUrlFields = array_filter(array_keys($product), function ($key) {
             return strpos($key, 'productUrl') === 0;
         });

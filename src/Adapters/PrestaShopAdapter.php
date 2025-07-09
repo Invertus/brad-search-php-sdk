@@ -108,7 +108,11 @@ class PrestaShopAdapter
      */
     private function transformProductUrls(array &$result, array $productUrls): void
     {
-        foreach ($productUrls as $locale => $url) {
+        if (!isset($productUrls['localizedValues']) || !is_array($productUrls['localizedValues'])) {
+            return;
+        }
+
+        foreach ($productUrls['localizedValues'] as $locale => $url) {
             if ($locale === 'en-US') {
                 $result['productUrl'] = $url;
             } else {
