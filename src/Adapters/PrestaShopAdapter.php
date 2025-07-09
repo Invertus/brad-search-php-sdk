@@ -65,8 +65,7 @@ class PrestaShopAdapter
             $this->transformProductUrls($result, $product['productUrl']);
         }
 
-        // Handle variants - always call this to ensure localized variant fields are created
-        $this->transformVariants($result, $product['variants'] ?? [], $product);
+        $this->transformVariants($result, $product['variants'] ?? []);
 
         // Handle features
         if (isset($product['features']) && is_array($product['features'])) {
@@ -121,110 +120,40 @@ class PrestaShopAdapter
     /**
      * Transform PrestaShop variants to BradSearch format
      */
-    private function transformVariants(array &$result, array $variants, array $product): void
+    private function transformVariants(array &$result, array $variants): void
     {
-        $variantsByLocale = [];
-
-        // If variants is empty, we still need to create localized variant fields
-        // based on locales detected from other product fields
         if (empty($variants)) {
             return;
-            // $availableLocales = $this->getProductLocales($product);
+        }
+        $variantsByLocale = [];
 
-            // foreach ($availableLocales as $locale) {
-            //     if ($locale === 'en-US') {
-            //         $variantsByLocale['variants'] = [];
-            //     } else {
-            //         $variantsByLocale["variants_{$locale}"] = [];
-            //     }
-            // }
-        } else {
-            foreach ($variants as $variant) {
-                if (!isset($variant['remoteId'])) {
-                    continue; // Skip variants without ID
-                }
+        foreach ($variants as $variant) {
+            if (!isset($variant['remoteId'])) {
+                continue;
+            }
 
-                // Get all locales from attributes and URLs
-                $locales = $this->getAllLocalesFromVariant($variant);
+            $locales = $this->getAllLocalesFromVariant($variant);
 
-                foreach ($locales as $locale) {
-                    $transformedVariant = [
-                        'id' => (string) $variant['remoteId'],
-                        'sku' => $variant['sku'] ?? '',
-                        'url' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
-                        'attributes' => $this->transformVariantAttributesForLocale($variant['attributes'] ?? [], $locale)
-                    ];
+            foreach ($locales as $locale) {
+                $transformedVariant = [
+                    'id' => (string) $variant['remoteId'],
+                    'sku' => $variant['sku'] ?? '',
+                    'url' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
+                    'attributes' => $this->transformVariantAttributesForLocale($variant['attributes'] ?? [], $locale)
+                ];
 
-                    if ($locale === 'en-US') {
-                        $variantsByLocale['variants'][] = $transformedVariant;
-                    } else {
-                        $variantsByLocale["variants_{$locale}"][] = $transformedVariant;
-                    }
+                if ($locale === 'en-US') {
+                    $variantsByLocale['variants'][] = $transformedVariant;
+                } else {
+                    $variantsByLocale["variants_{$locale}"][] = $transformedVariant;
                 }
             }
-        }
 
-        // Add all variant arrays to result
-        foreach ($variantsByLocale as $key => $variants) {
-            $result[$key] = $variants;
+            foreach ($variantsByLocale as $key => $variants) {
+                $result[$key] = $variants;
+            }
         }
     }
-
-    /**
-     * Get all available locales from product data
-     */
-    // private function getProductLocales(array $product): array
-    // {
-    //     $locales = [];
-
-    //     // Get locales from product localizedNames
-    //     if (isset($product['localizedNames']) && is_array($product['localizedNames'])) {
-    //         $locales = array_merge($locales, array_keys($product['localizedNames']));
-    //     }
-
-    //     // Get locales from brand localizedNames
-    //     if (isset($product['brand']['localizedNames']) && is_array($product['brand']['localizedNames'])) {
-    //         $locales = array_merge($locales, array_keys($product['brand']['localizedNames']));
-    //     }
-
-    //     // Get locales from categories
-    //     if (isset($product['categories']) && is_array($product['categories'])) {
-    //         foreach ($product['categories'] as $level => $levelCategories) {
-    //             if (is_array($levelCategories)) {
-    //                 foreach ($levelCategories as $category) {
-    //                     if (isset($category['localizedValues']['path']) && is_array($category['localizedValues']['path'])) {
-    //                         $locales = array_merge($locales, array_keys($category['localizedValues']['path']));
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-
-    //     // Get locales from features
-    //     if (isset($product['features']) && is_array($product['features'])) {
-    //         foreach ($product['features'] as $feature) {
-    //             if (isset($feature['localizedNames']) && is_array($feature['localizedNames'])) {
-    //                 $locales = array_merge($locales, array_keys($feature['localizedNames']));
-    //             }
-    //             if (isset($feature['localizedValues']) && is_array($feature['localizedValues'])) {
-    //                 $locales = array_merge($locales, array_keys($feature['localizedValues']));
-    //             }
-    //         }
-    //     }
-
-    //     // Get locales from productUrl
-    //     if (isset($product['productUrl']) && is_array($product['productUrl'])) {
-    //         $locales = array_merge($locales, array_keys($product['productUrl']));
-    //     }
-
-    //     // Remove duplicates and ensure en-US is always included
-    //     $locales = array_unique($locales);
-    //     if (!in_array('en-US', $locales)) {
-    //         $locales[] = 'en-US';
-    //     }
-
-    //     return $locales;
-    // }
 
     private function extractFirstLocaleValue(array $localizedValues): string
     {
