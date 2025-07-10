@@ -77,7 +77,6 @@ class PrestaShopAdapter
 
         $this->transformFeatures($result, (array)$product['features'] ?? []);
 
-
         return $result;
     }
 
@@ -86,11 +85,24 @@ class PrestaShopAdapter
         $featuresByLocale = [];
 
         foreach ($features as $feature) {
-            if (!isset($feature['localizedNames']) || !isset($feature['localizedValues'])) {
+            if (!is_array($feature) || !isset($feature['localizedNames']) || !isset($feature['localizedValues'])) {
+                continue;
+            }
+
+            if (!is_array($feature['localizedNames']) || !is_array($feature['localizedValues'])) {
                 continue;
             }
 
             foreach ($feature['localizedNames'] as $locale => $name) {
+                if (
+                    $locale === null || $name === null || $name === '' ||
+                    !isset($feature['localizedValues'][$locale]) ||
+                    $feature['localizedValues'][$locale] === null ||
+                    $feature['localizedValues'][$locale] === ''
+                ) {
+                    continue;
+                }
+
                 $featuresByLocale[$locale][] = [
                     'name' => $name,
                     'value' => $feature['localizedValues'][$locale]
