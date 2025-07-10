@@ -142,13 +142,21 @@ class PrestaShopAdapter
         $variantsByLocale = [];
 
         foreach ($variants as $variant) {
-            if (!isset($variant['remoteId'])) {
+            if (!is_array($variant) || !isset($variant['remoteId']) || $variant['remoteId'] === null) {
                 continue;
             }
 
             $locales = $this->getAllLocalesFromVariant($variant);
 
+            if (empty($locales)) {
+                continue;
+            }
+
             foreach ($locales as $locale) {
+                if ($locale === null || !is_string($locale) || $locale === '') {
+                    continue;
+                }
+
                 $transformedVariant = [
                     'id' => (string) $variant['remoteId'],
                     'sku' => $variant['sku'] ?? '',
@@ -162,10 +170,11 @@ class PrestaShopAdapter
                     $variantsByLocale["variants_{$locale}"][] = $transformedVariant;
                 }
             }
+        }
 
-            foreach ($variantsByLocale as $key => $variants) {
-                $result[$key] = $variants;
-            }
+
+        foreach ($variantsByLocale as $key => $variants) {
+            $result[$key] = $variants;
         }
     }
 
@@ -182,14 +191,14 @@ class PrestaShopAdapter
         $locales = [];
 
         // Get locales from product URLs
-        if (isset($variant['productUrl']['localizedValues'])) {
+        if (isset($variant['productUrl']['localizedValues']) && is_array($variant['productUrl']['localizedValues'])) {
             $locales = array_merge($locales, array_keys($variant['productUrl']['localizedValues']));
         }
 
         // Get locales from attributes
-        if (isset($variant['attributes'])) {
+        if (isset($variant['attributes']) && is_array($variant['attributes'])) {
             foreach ($variant['attributes'] as $attributeData) {
-                if (isset($attributeData['localizedValues'])) {
+                if (is_array($attributeData) && isset($attributeData['localizedValues']) && is_array($attributeData['localizedValues'])) {
                     $locales = array_merge($locales, array_keys($attributeData['localizedValues']));
                 }
             }
@@ -214,12 +223,20 @@ class PrestaShopAdapter
         $transformedAttributes = [];
 
         foreach ($attributes as $attributeName => $attributeData) {
-            if (isset($attributeData['localizedValues'][$locale])) {
-                $transformedAttributes[] = [
-                    'name' => strtolower($attributeName),
-                    'value' => $attributeData['localizedValues'][$locale]
-                ];
+            if (
+                !is_string($attributeName) || $attributeName === '' ||
+                !is_array($attributeData) ||
+                !isset($attributeData['localizedValues'][$locale]) ||
+                $attributeData['localizedValues'][$locale] === null ||
+                $attributeData['localizedValues'][$locale] === ''
+            ) {
+                continue;
             }
+
+            $transformedAttributes[] = [
+                'name' => strtolower($attributeName),
+                'value' => $attributeData['localizedValues'][$locale]
+            ];
         }
 
         return $transformedAttributes;
