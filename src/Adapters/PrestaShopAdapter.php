@@ -73,19 +73,16 @@ class PrestaShopAdapter
             $this->transformProductUrls($result, $product['productUrl']);
         }
 
-        $this->transformVariants($result, $product['variants'] ?? []);
+        $this->transformVariants($result, (array)$product['variants'] ?? []);
 
-        // Handle features
-        if (isset($product['features']) && is_array($product['features'])) {
-            $this->transformFeatures($result, $product['features']);
-        }
+        $this->transformFeatures($result, (array)$product['features'] ?? []);
+
 
         return $result;
     }
 
     private function transformFeatures(array &$result, array $features): void
     {
-        $transformedFeatures = [];
         $featuresByLocale = [];
 
         foreach ($features as $feature) {
@@ -130,9 +127,6 @@ class PrestaShopAdapter
      */
     private function transformVariants(array &$result, array $variants): void
     {
-        if (empty($variants)) {
-            return;
-        }
         $variantsByLocale = [];
 
         foreach ($variants as $variant) {
