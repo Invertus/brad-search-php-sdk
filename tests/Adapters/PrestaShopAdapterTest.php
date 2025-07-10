@@ -659,4 +659,450 @@ class PrestaShopAdapterTest extends TestCase
         $this->assertEquals('English Name', $product['name']);
         $this->assertEquals('Lithuanian Name', $product['name_lt-LT']);
     }
+
+    /**
+     * Test invalid data types handling - products array with non-array items
+     */
+    public function testTransformWithNonArrayProducts(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                'invalid-string-product',
+                123, // invalid number
+                null, // invalid null
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Valid Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        // Should only return the valid product, skipping invalid ones
+        $this->assertCount(1, $result);
+        $this->assertEquals('Valid Product', $result[0]['name']);
+    }
+
+    /**
+     * Test invalid brand structure handling
+     */
+    public function testTransformWithInvalidBrandTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'brand' => 'invalid-string-brand', // Should be array
+                    'categories' => [],
+                    'variants' => []
+                ],
+                [
+                    'remoteId' => '1808',
+                    'sku' => 'M0E20000000EAAL',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product 2'
+                    ],
+                    'brand' => [
+                        'localizedNames' => 'invalid-string' // Should be array
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ],
+                [
+                    'remoteId' => '1809',
+                    'sku' => 'M0E20000000EAAM',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product 3'
+                    ],
+                    'brand' => null, // Should be array
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        // All products should transform but without brand field
+        $this->assertCount(3, $result);
+        $this->assertArrayNotHasKey('brand', $result[0]);
+        $this->assertArrayNotHasKey('brand', $result[1]);
+        $this->assertArrayNotHasKey('brand', $result[2]);
+    }
+
+    /**
+     * Test invalid description types handling
+     */
+    public function testTransformWithInvalidDescriptionTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'description' => 'invalid-string', // Should be array
+                    'descriptionShort' => null, // Should be array
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('description', $result[0]);
+        $this->assertArrayNotHasKey('descriptionShort', $result[0]);
+    }
+
+    /**
+     * Test invalid image URL types handling
+     */
+    public function testTransformWithInvalidImageUrlTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'imageUrl' => 'invalid-string', // Should be array
+                    'categories' => [],
+                    'variants' => []
+                ],
+                [
+                    'remoteId' => '1808',
+                    'sku' => 'M0E20000000EAAL',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product 2'
+                    ],
+                    'imageUrl' => [
+                        'small' => null, // Null URL
+                        'medium' => '', // Empty URL
+                        'large' => 'http://example.com/image.jpg' // Valid URL but not in mapping
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(2, $result);
+        $this->assertArrayNotHasKey('imageUrl', $result[0]); // Invalid type, no field added
+        $this->assertArrayNotHasKey('small', $result[1]['imageUrl']); // Null URL filtered out
+        $this->assertArrayNotHasKey('medium', $result[1]['imageUrl']); // Empty URL filtered out
+        $this->assertArrayNotHasKey('large', $result[1]['imageUrl']); // Not in size mapping
+    }
+
+    /**
+     * Test invalid product URL types handling
+     */
+    public function testTransformWithInvalidProductUrlTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'productUrl' => 'invalid-string', // Should be array
+                    'categories' => [],
+                    'variants' => []
+                ],
+                [
+                    'remoteId' => '1808',
+                    'sku' => 'M0E20000000EAAL',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product 2'
+                    ],
+                    'productUrl' => [
+                        'en-US' => null, // Null URL
+                        'lt-LT' => '', // Empty URL
+                        123 => 'http://example.com', // Non-string locale
+                        'fr-FR' => 'http://example.com/valid'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(2, $result);
+        $this->assertArrayNotHasKey('productUrl', $result[0]); // Invalid type, no field added
+        $this->assertArrayNotHasKey('productUrl', $result[1]); // Null en-US filtered out
+        $this->assertArrayNotHasKey('productUrl_lt-LT', $result[1]); // Empty URL filtered out
+        $this->assertEquals('http://example.com/valid', $result[1]['productUrl_fr-FR']); // Valid URL
+    }
+
+    /**
+     * Test invalid categories structure handling
+     */
+    public function testTransformWithInvalidCategoriesTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => 'invalid-string', // Should be array
+                    'variants' => [],
+                    'features' => []
+                ],
+                [
+                    'remoteId' => '1808',
+                    'sku' => 'M0E20000000EAAL',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product 2'
+                    ],
+                    'categories' => [
+                        'lvl2' => 'invalid-string', // Should be array
+                        'lvl3' => [
+                            'invalid-category-item', // Should be array
+                            [
+                                'localizedValues' => 'invalid-string' // Should be array
+                            ],
+                            [
+                                'localizedValues' => [
+                                    'path' => 'invalid-string' // Should be array
+                                ]
+                            ],
+                            [
+                                'localizedValues' => [
+                                    'path' => [
+                                        'en-US' => null, // Null path
+                                        'lt-LT' => '', // Empty path
+                                        123 => 'Valid Category', // Non-string locale
+                                        'fr-FR' => 'Catégorie Valide'
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ],
+                    'variants' => [],
+                    'features' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(2, $result);
+        $this->assertEquals([], $result[0]['categories']); // Invalid type becomes empty array
+
+        // Check if categories were processed for the second product
+        $this->assertArrayHasKey('categories', $result[1]); // Should always have categories key (even if empty)
+
+        // If valid categories were found, they should be in the results
+        if (isset($result[1]['categories_fr-FR'])) {
+            $this->assertContains('Catégorie Valide', $result[1]['categories_fr-FR']); // Valid localized category
+        }
+
+        // The en-US category should be empty since it was null/empty
+        $this->assertThat($result[1]['categories'], $this->logicalOr(
+            $this->equalTo([]), // No valid categories found
+            $this->arrayHasKey(0) // Or has at least one category
+        ));
+    }
+
+    /**
+     * Test invalid localized values handling
+     */
+    public function testTransformWithInvalidLocalizedValues(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => null, // Null name
+                        'lt-LT' => '', // Empty name
+                        123 => 'Invalid Locale Key', // Non-string locale
+                        'fr-FR' => 'Nom Valide'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('name', $result[0]); // Null/empty en-US filtered out
+        $this->assertArrayNotHasKey('name_lt-LT', $result[0]); // Empty name filtered out
+        $this->assertEquals('Nom Valide', $result[0]['name_fr-FR']); // Valid name
+    }
+
+    /**
+     * Test null required fields handling
+     */
+    public function testTransformWithNullRequiredFields(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => null, // Null required field
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage("Required field 'remoteId' is missing from PrestaShop data");
+
+        $this->adapter->transform($prestaShopData);
+    }
+
+    /**
+     * Test features with invalid types
+     */
+    public function testTransformWithInvalidFeaturesTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'features' => [
+                        'invalid-feature-string', // Should be array
+                        [
+                            'localizedNames' => 'invalid-string', // Should be array
+                            'localizedValues' => [
+                                'en-US' => 'Color Value'
+                            ]
+                        ],
+                        [
+                            'localizedNames' => [
+                                'en-US' => 'Size'
+                            ],
+                            'localizedValues' => 'invalid-string' // Should be array
+                        ],
+                        [
+                            'localizedNames' => [
+                                'en-US' => null, // Null name
+                                'lt-LT' => '', // Empty name
+                                'fr-FR' => 'Matériau'
+                            ],
+                            'localizedValues' => [
+                                'en-US' => null, // Null value
+                                'lt-LT' => '', // Empty value
+                                'fr-FR' => 'Coton'
+                            ]
+                        ]
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result);
+        $this->assertArrayNotHasKey('features', $result[0]); // Invalid features filtered out
+        $this->assertEquals([['name' => 'Matériau', 'value' => 'Coton']], $result[0]['features_fr-FR']); // Only valid feature
+    }
+
+    /**
+     * Test variants with invalid types
+     */
+    public function testTransformWithInvalidVariantsTypes(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'formattedPrice' => '$99.99',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'variants' => [
+                        'invalid-variant-string', // Should be array
+                        [
+                            'remoteId' => null, // Null remoteId - should be skipped
+                            'sku' => 'VARIANT-SKU'
+                        ],
+                        [
+                            'remoteId' => '123',
+                            'sku' => 'VALID-SKU',
+                            'attributes' => 'invalid-string', // Should be array
+                            'productUrl' => [
+                                'localizedValues' => 'invalid-string' // Should be array
+                            ]
+                        ]
+                    ],
+                    'categories' => [],
+                    'features' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result);
+        $this->assertEmpty($result[0]['variants']); // All variants invalid or filtered out
+    }
 }

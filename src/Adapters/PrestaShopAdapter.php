@@ -79,9 +79,9 @@ class PrestaShopAdapter
             $this->transformProductUrls($result, $product['productUrl']);
         }
 
-        $this->transformVariants($result, (array)$product['variants'] ?? []);
+        $this->transformVariants($result, (array)($product['variants'] ?? []));
 
-        $this->transformFeatures($result, (array)$product['features'] ?? []);
+        $this->transformFeatures($result, (array)($product['features'] ?? []));
 
         return $result;
     }
@@ -259,8 +259,10 @@ class PrestaShopAdapter
      */
     private function extractCategories(array &$result, array $product): void
     {
+        // Always initialize categories array
+        $result['categories'] = [];
+
         if (!isset($product['categories']) || !is_array($product['categories'])) {
-            $result['categories'] = [];
             return;
         }
 
