@@ -83,11 +83,6 @@ readonly class FieldConfig
      */
     private function validate(): void
     {
-        // Variants type should have attributes
-        if ($this->type === FieldType::VARIANTS && $this->attributes === null) {
-            throw new InvalidFieldConfigException('Variants field type must have attributes defined');
-        }
-
         // Validate property and attribute names
         $this->validateFieldNames($this->properties, 'properties');
         $this->validateFieldNames($this->attributes, 'attributes');
@@ -108,4 +103,4 @@ readonly class FieldConfig
             }
         }
     }
-} 
+}

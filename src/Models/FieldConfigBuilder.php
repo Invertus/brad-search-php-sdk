@@ -85,7 +85,7 @@ class FieldConfigBuilder
      *
      * @param array<string, FieldConfig> $attributes
      */
-    public static function variants(array $attributes): FieldConfig
+    public static function variants(?array $attributes = null): FieldConfig
     {
         return new FieldConfig(FieldType::VARIANTS, null, $attributes);
     }
@@ -97,9 +97,9 @@ class FieldConfigBuilder
      * @param array<string, FieldConfig> $featureFields
      * @return FieldConfig
      */
-    public static function features(array $featureFields = []): FieldConfig
+    public static function features(?array $attributes = null): FieldConfig
     {
-        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $featureFields);
+        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $attributes);
     }
 
     /**
