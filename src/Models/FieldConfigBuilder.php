@@ -11,9 +11,9 @@ class FieldConfigBuilder
     /**
      * Create a text keyword field
      */
-    public static function textKeyword(): FieldConfig
+    public static function textKeyword(bool $embeddable = false): FieldConfig
     {
-        return new FieldConfig(FieldType::TEXT_KEYWORD);
+        return new FieldConfig(FieldType::TEXT_KEYWORD, null, null, $embeddable);
     }
 
     /**
@@ -35,9 +35,9 @@ class FieldConfigBuilder
     /**
      * Create a hierarchy field
      */
-    public static function hierarchy(): FieldConfig
+    public static function hierarchy(bool $embeddable = false): FieldConfig
     {
-        return new FieldConfig(FieldType::HIERARCHY);
+        return new FieldConfig(FieldType::HIERARCHY, null, null, $embeddable);
     }
 
     /**
@@ -112,37 +112,37 @@ class FieldConfigBuilder
         $localizedFields = [];
         foreach ($locales as $locale) {
             if (in_array($locale, ['en-US', 'en'])) {
-                $localizedFields['name'] = self::textKeyword();
-                $localizedFields['brand'] = self::textKeyword();
+                $localizedFields['name'] = self::textKeyword(true);
+                $localizedFields['brand'] = self::textKeyword(true);
                 $localizedFields['categoryDefault'] = self::textKeyword();
-                $localizedFields['description'] = self::textKeyword();
-                $localizedFields['categories'] = self::hierarchy();
+                $localizedFields['description'] = self::textKeyword(true);
+                $localizedFields['categories'] = self::hierarchy(true);
                 $localizedFields['descriptionShort'] = self::textKeyword();
                 $localizedFields['productUrl'] = self::url();
             } else {
-                $localizedFields["name_{$locale}"] = self::textKeyword();
-                $localizedFields["brand_{$locale}"] = self::textKeyword();
+                $localizedFields["name_{$locale}"] = self::textKeyword(true);
+                $localizedFields["brand_{$locale}"] = self::textKeyword(true);
                 $localizedFields["categoryDefault_{$locale}"] = self::textKeyword();
-                $localizedFields["categories_{$locale}"] = self::hierarchy();
-                $localizedFields["description_{$locale}"] = self::textKeyword();
+                $localizedFields["categories_{$locale}"] = self::hierarchy(true);
                 $localizedFields["descriptionShort_{$locale}"] = self::textKeyword();
+                $localizedFields["description_{$locale}"] = self::textKeyword(true);
                 $localizedFields["productUrl_{$locale}"] = self::url();
             }
         }
 
         $defaultFields = [
             'id' => self::keyword(),
-            'name' => self::textKeyword(),
-            'brand' => self::textKeyword(),
+            'name' => self::textKeyword(true),
+            'brand' => self::textKeyword(true),
             'price' => self::double(),
             'formattedPrice' => self::keyword(),
             'categoryDefault' => self::textKeyword(),
-            'categories' => self::hierarchy(),
+            'categories' => self::hierarchy(true),
             'sku' => self::keyword(),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),
             'descriptionShort' => self::textKeyword(),
-            'description' => self::textKeyword(),
+            'description' => self::textKeyword(true),
         ];
 
         return array_merge($defaultFields, $localizedFields);

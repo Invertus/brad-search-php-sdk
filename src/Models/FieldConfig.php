@@ -16,7 +16,8 @@ readonly class FieldConfig
     public function __construct(
         public FieldType $type,
         public ?array $properties = null,
-        public ?array $attributes = null
+        public ?array $attributes = null,
+        public ?bool $embeddable = false
     ) {
         $this->validate();
     }
@@ -74,7 +75,8 @@ readonly class FieldConfig
                 $this->attributes
             );
         }
-
+        $data['embeddable'] = $this->embeddable;
+        
         return $data;
     }
 
