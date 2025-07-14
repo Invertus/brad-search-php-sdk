@@ -11,25 +11,25 @@ class FieldConfigBuilder
     /**
      * Create a text keyword field
      */
-    public static function textKeyword(): FieldConfig
+    public static function textKeyword(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::TEXT_KEYWORD);
+        return new FieldConfig(FieldType::TEXT_KEYWORD, null, null, $subfields);
     }
 
     /**
      * Create a text field
      */
-    public static function text(): FieldConfig
+    public static function text(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::TEXT);
+        return new FieldConfig(FieldType::TEXT, null, null, $subfields);
     }
 
     /**
      * Create a keyword field
      */
-    public static function keyword(): FieldConfig
+    public static function keyword(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::KEYWORD);
+        return new FieldConfig(FieldType::KEYWORD, null, null, $subfields);
     }
 
     /**
@@ -85,7 +85,7 @@ class FieldConfigBuilder
      *
      * @param array<string, FieldConfig> $attributes
      */
-    public static function variants(array $attributes): FieldConfig
+    public static function variants(?array $attributes = null): FieldConfig
     {
         return new FieldConfig(FieldType::VARIANTS, null, $attributes);
     }
@@ -97,9 +97,9 @@ class FieldConfigBuilder
      * @param array<string, FieldConfig> $featureFields
      * @return FieldConfig
      */
-    public static function features(array $featureFields = []): FieldConfig
+    public static function features(?array $attributes = null): FieldConfig
     {
-        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $featureFields);
+        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $attributes);
     }
 
     /**
