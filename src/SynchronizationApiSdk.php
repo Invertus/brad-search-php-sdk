@@ -111,6 +111,16 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
+            'embeddable_fields' => [
+                'name',
+                'name_lt-LT',
+                'brand',
+                'brand_lt-LT',
+                'description',
+                'description_lt-LT',
+                'categories',
+                'categories_lt-LT',
+            ],
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
