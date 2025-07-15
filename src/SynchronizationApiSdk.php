@@ -107,7 +107,7 @@ class SynchronizationApiSdk
             'subfields' => [
                 'sku' => [
                     'split_by' => '/',
-                    'max_count' => 2,
+                    'max_count' => 5,
                     'in_variants' => true,
                 ],
             ],
