@@ -104,6 +104,13 @@ class SynchronizationApiSdk
             'index_name' => $index,
             'products' => $filteredProducts,
             'count' => count($filteredProducts),
+            'subfields' => [
+                'sku' => [
+                    'split_by' => '/',
+                    'max_count' => 2,
+                    'in_variants' => true,
+                ],
+            ],
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
