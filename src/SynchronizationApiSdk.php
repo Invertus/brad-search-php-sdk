@@ -111,7 +111,7 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
-            'embeddable_fields' => [
+            'embeddablefields' => [
                 'name',
                 'name_lt-LT',
                 'brand',
