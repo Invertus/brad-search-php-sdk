@@ -69,6 +69,8 @@ class PrestaShopAdapter
         // Handle categories (flatten all levels)
         $this->extractCategories($result, $product);
 
+        $this->extractCategoryDefault($result, $product);
+
         // Handle image URLs
         if (isset($product['imageUrl']) && is_array($product['imageUrl'])) {
             $result['imageUrl'] = $this->transformImageUrl($product['imageUrl']);
@@ -259,45 +261,74 @@ class PrestaShopAdapter
      */
     private function extractCategories(array &$result, array $product): void
     {
+        $fieldName = 'categories';
         // Always initialize categories array
-        $result['categories'] = [];
+        $result[$fieldName] = [];
 
-        if (!isset($product['categories']) || !is_array($product['categories'])) {
+        if (!isset($product[$fieldName]) || !is_array($product[$fieldName])) {
             return;
         }
 
         // Process all category levels (lvl2, lvl3, lvl4, etc.)
-        foreach ($product['categories'] as $level => $levelCategories) {
+        foreach ($product[$fieldName] as $level => $levelCategories) {
             if (!is_array($levelCategories)) {
                 continue;
             }
 
             foreach ($levelCategories as $category) {
-                if (
-                    !is_array($category) ||
-                    !isset($category['localizedValues']) ||
-                    !is_array($category['localizedValues']) ||
-                    !isset($category['localizedValues']['path']) ||
-                    !is_array($category['localizedValues']['path'])
-                ) {
-                    continue;
-                }
-
-                foreach ($category['localizedValues']['path'] as $locale => $path) {
-                    if (
-                        !is_string($locale) || $locale === '' ||
-                        $path === null || $path === ''
-                    ) {
-                        continue;
-                    }
-
-                    if ($locale === 'en-US') {
-                        $result['categories'][] = $path;
-                    } else {
-                        $result["categories_{$locale}"][] = $path;
-                    }
-                }
+                $this->extractCategory($category, $fieldName, $result);
             }
+        }
+    }
+
+    private function extractCategory(array $category, string $fieldName, array &$result): void
+    {
+        if (
+            !is_array($category) ||
+            !isset($category['localizedValues']) ||
+            !is_array($category['localizedValues']) ||
+            !isset($category['localizedValues']['path']) ||
+            !is_array($category['localizedValues']['path'])
+        ) {
+            return;
+        }
+
+        foreach ($category['localizedValues']['path'] as $locale => $path) {
+            if (
+                !is_string($locale) || $locale === '' ||
+                $path === null || $path === ''
+            ) {
+                continue;
+            }
+
+            $key = $fieldName . ($locale === 'en-US' ? '' : '_' . $locale);
+
+            switch ($fieldName) {
+                case 'categories':
+                    $result[$key][] = $path;
+                    break;
+                case 'categoryDefault':
+                    $result[$key] = $path;
+            }
+        }
+    }
+
+    private function extractCategoryDefault(array &$result, array $product): void
+    {
+        $categoryFieldName = 'categoryDefault';
+        // Always initialize categories array
+        $result[$categoryFieldName] = [];
+
+        if (!isset($product[$categoryFieldName]) || !is_array($product[$categoryFieldName])) {
+            return;
+        }
+
+        if (!is_array($categoryFieldName)) {
+            continue;
+        }
+
+        foreach ($levelCategories as $category) {
+            $this->extractCategory($category, $fieldName, $result);
         }
     }
 
