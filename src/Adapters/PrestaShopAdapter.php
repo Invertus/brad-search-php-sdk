@@ -324,12 +324,10 @@ class PrestaShopAdapter
         }
 
         if (!is_array($categoryFieldName)) {
-            continue;
+            return;
         }
 
-        foreach ($levelCategories as $category) {
-            $this->extractCategory($category, $fieldName, $result);
-        }
+        $this->extractCategory($$product[$categoryFieldName], $categoryFieldName, $result);
     }
 
     /**
