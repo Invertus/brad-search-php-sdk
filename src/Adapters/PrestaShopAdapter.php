@@ -323,11 +323,7 @@ class PrestaShopAdapter
             return;
         }
 
-        if (!is_array($categoryFieldName)) {
-            return;
-        }
-
-        $this->extractCategory($$product[$categoryFieldName], $categoryFieldName, $result);
+        $this->extractCategory($product[$categoryFieldName], $categoryFieldName, $result);
     }
 
     /**
