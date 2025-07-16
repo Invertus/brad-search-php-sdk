@@ -316,8 +316,7 @@ class PrestaShopAdapter
     private function extractCategoryDefault(array &$result, array $product): void
     {
         $categoryFieldName = 'categoryDefault';
-        // Always initialize categories array
-        $result[$categoryFieldName] = [];
+        $result[$categoryFieldName] = '';
 
         if (!isset($product[$categoryFieldName]) || !is_array($product[$categoryFieldName])) {
             return;
