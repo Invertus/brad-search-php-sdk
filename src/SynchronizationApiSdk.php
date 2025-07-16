@@ -119,7 +119,7 @@ class SynchronizationApiSdk
                 'description',
                 'description_lt-LT',
                 'categoryDefault_lt-LT', 
-                'categoryDefault'
+                'categoryDefault',
             ],
         ];
 
