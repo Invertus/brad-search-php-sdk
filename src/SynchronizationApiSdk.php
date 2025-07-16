@@ -189,6 +189,38 @@ class SynchronizationApiSdk
     }
 
     /**
+     * Delete multiple products in an existing index
+     *
+     * @param array<array> $productsIds
+     * @throws ValidationException
+     */
+    public function deleteProductsBulk(string $index, array $productsIds): void
+    {
+        $this->validateIndexName($index);
+
+        if (empty($productsIds)) {
+            return;
+        }
+
+        $this->sendDeleteBatch($index, $productsIds);
+    }
+
+    /**
+     * Send a batch of product deletes to the API
+     *
+     * @param array<array> $productsIds
+     */
+    private function sendDeleteBatch(string $index, array $productsIds): void
+    {
+        $data = [
+            'index_name' => $index,
+            'product_ids' => $productsIds,
+        ];
+
+        $this->httpClient->post('api/v1/sync/delete-products', $data);
+    }
+
+    /**
      * Filter product data to only include configured fields
      */
     private function filterProductFields(array $product): array
