@@ -15,8 +15,7 @@ class DataValidator
      */
     public function __construct(
         private readonly array $fieldConfiguration
-    ) {
-    }
+    ) {}
 
     /**
      * Validate a single product against the field configuration
@@ -82,6 +81,32 @@ class DataValidator
                 }
                 break;
 
+            case FieldType::FLOAT:
+                if (!is_numeric($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a numeric value";
+                } elseif (is_infinite((float)$value) || is_nan((float)$value)) {
+                    $errors[] = "Field '{$fieldName}' must be a finite numeric value";
+                }
+                break;
+
+            case FieldType::INTEGER:
+                if (!is_numeric($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a numeric value";
+                } elseif (!is_int($value) && !ctype_digit((string)$value)) {
+                    $errors[] = "Field '{$fieldName}' must be an integer value";
+                } elseif (is_string($value) && (int)$value != $value) {
+                    $errors[] = "Field '{$fieldName}' must be an integer value";
+                }
+                break;
+
+            case FieldType::DOUBLE:
+                if (!is_numeric($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a numeric value";
+                } elseif (is_infinite((float)$value) || is_nan((float)$value)) {
+                    $errors[] = "Field '{$fieldName}' must be a finite numeric value";
+                }
+                break;
+
             case FieldType::URL:
                 if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";
@@ -116,6 +141,14 @@ class DataValidator
                     $errors = array_merge($errors, $this->validateVariants($fieldName, $value, $fieldConfig));
                 }
                 break;
+
+            case FieldType::NAME_VALUE_LIST:
+                if (!is_array($value)) {
+                    $errors[] = "Field '{$fieldName}' must be an array for name-value list type";
+                } else {
+                    $errors = array_merge($errors, $this->validateNameValueList($fieldName, $value));
+                }
+                break;
         }
 
         return $errors;
@@ -148,10 +181,6 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            if (!is_string($variant['sku']) || empty(trim($variant['sku']))) {
-                $errors[] = "Field '{$fieldName}' variant at index {$index} 'sku' must be a non-empty string";
-            }
-
             if (!is_string($variant['url']) || !filter_var($variant['url'], FILTER_VALIDATE_URL)) {
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'url' must be a valid URL";
             }
@@ -166,22 +195,22 @@ class DataValidator
                 foreach ($fieldConfig->attributes as $attrName => $attrConfig) {
                     if (isset($variant['attributes'][$attrName])) {
                         $attribute = $variant['attributes'][$attrName];
-                        
+
                         // Validate the attribute structure (must have 'name' and 'value')
                         if (!is_array($attribute)) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must be an object with 'name' and 'value' fields";
                             continue;
                         }
-                        
+
                         if (!isset($attribute['name']) || !isset($attribute['value'])) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must have 'name' and 'value' fields";
                             continue;
                         }
-                        
+
                         if (!is_string($attribute['name']) || $attribute['name'] !== $attrName) {
                             $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' name field must match the attribute key";
                         }
-                        
+
                         // Validate the attribute value against the field config
                         $attrErrors = $this->validateField(
                             "{$fieldName}.variants[{$index}].attributes.{$attrName}.value",
@@ -250,4 +279,36 @@ class DataValidator
 
         return in_array($extension, $imageExtensions, true);
     }
-} 
+
+    /**
+     * Validate name-value list structure
+     *
+     * @return array<string>
+     */
+    private function validateNameValueList(string $fieldName, array $nameValueList): array
+    {
+        $errors = [];
+
+        foreach ($nameValueList as $index => $item) {
+            if (!is_array($item)) {
+                $errors[] = "Field '{$fieldName}' item at index {$index} must be an object with 'name' and 'value' fields";
+                continue;
+            }
+
+            // Validate required fields
+            if (!isset($item['name'])) {
+                $errors[] = "Field '{$fieldName}' item at index {$index} must have a 'name' field";
+            } elseif (!is_string($item['name']) || empty(trim($item['name']))) {
+                $errors[] = "Field '{$fieldName}' item at index {$index} 'name' must be a non-empty string";
+            }
+
+            if (!isset($item['value'])) {
+                $errors[] = "Field '{$fieldName}' item at index {$index} must have a 'value' field";
+            } elseif (!is_string($item['value'])) {
+                $errors[] = "Field '{$fieldName}' item at index {$index} 'value' must be a string";
+            }
+        }
+
+        return $errors;
+    }
+}

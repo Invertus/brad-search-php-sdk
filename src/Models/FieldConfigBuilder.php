@@ -11,25 +11,25 @@ class FieldConfigBuilder
     /**
      * Create a text keyword field
      */
-    public static function textKeyword(): FieldConfig
+    public static function textKeyword(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::TEXT_KEYWORD);
+        return new FieldConfig(FieldType::TEXT_KEYWORD, null, null, $subfields);
     }
 
     /**
      * Create a text field
      */
-    public static function text(): FieldConfig
+    public static function text(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::TEXT);
+        return new FieldConfig(FieldType::TEXT, null, null, $subfields);
     }
 
     /**
      * Create a keyword field
      */
-    public static function keyword(): FieldConfig
+    public static function keyword(?array $subfields = null): FieldConfig
     {
-        return new FieldConfig(FieldType::KEYWORD);
+        return new FieldConfig(FieldType::KEYWORD, null, null, $subfields);
     }
 
     /**
@@ -57,13 +57,49 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a float field
+     */
+    public static function float(): FieldConfig
+    {
+        return new FieldConfig(FieldType::FLOAT);
+    }
+
+    /**
+     * Create an integer field
+     */
+    public static function integer(): FieldConfig
+    {
+        return new FieldConfig(FieldType::INTEGER);
+    }
+
+    /**
+     * Create a double field
+     */
+    public static function double(): FieldConfig
+    {
+        return new FieldConfig(FieldType::DOUBLE);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
      */
-    public static function variants(array $attributes): FieldConfig
+    public static function variants(?array $attributes = null): FieldConfig
     {
         return new FieldConfig(FieldType::VARIANTS, null, $attributes);
+    }
+
+
+    /**
+     * Create a features field configuration
+     *
+     * @param array<string, FieldConfig> $featureFields
+     * @return FieldConfig
+     */
+    public static function features(?array $attributes = null): FieldConfig
+    {
+        return new FieldConfig(FieldType::NAME_VALUE_LIST, null, $attributes);
     }
 
     /**
@@ -71,23 +107,45 @@ class FieldConfigBuilder
      *
      * @return array<string, FieldConfig>
      */
-    public static function ecommerceFields(): array
+    public static function ecommerceFields(array $locales): array
     {
-        return [
+        $localizedFields = [];
+        foreach ($locales as $locale) {
+            if (in_array($locale, ['en-US', 'en'])) {
+                $localizedFields['name'] = self::textKeyword();
+                $localizedFields['brand'] = self::textKeyword();
+                $localizedFields['categoryDefault'] = self::textKeyword();
+                $localizedFields['description'] = self::textKeyword();
+                $localizedFields['categories'] = self::hierarchy();
+                $localizedFields['descriptionShort'] = self::textKeyword();
+                $localizedFields['productUrl'] = self::url();
+            } else {
+                $localizedFields["name_{$locale}"] = self::textKeyword();
+                $localizedFields["brand_{$locale}"] = self::textKeyword();
+                $localizedFields["categoryDefault_{$locale}"] = self::textKeyword();
+                $localizedFields["categories_{$locale}"] = self::hierarchy();
+                $localizedFields["description_{$locale}"] = self::textKeyword();
+                $localizedFields["descriptionShort_{$locale}"] = self::textKeyword();
+                $localizedFields["productUrl_{$locale}"] = self::url();
+            }
+        }
+
+        $defaultFields = [
             'id' => self::keyword(),
             'name' => self::textKeyword(),
             'brand' => self::textKeyword(),
+            'price' => self::double(),
+            'formattedPrice' => self::keyword(),
             'categoryDefault' => self::textKeyword(),
             'categories' => self::hierarchy(),
             'sku' => self::keyword(),
-            'variants' => self::variants([
-                'color' => self::keyword(),
-                'size' => self::keyword(),
-            ]),
             'imageUrl' => self::imageUrl(),
             'productUrl' => self::url(),
             'descriptionShort' => self::textKeyword(),
+            'description' => self::textKeyword(),
         ];
+
+        return array_merge($defaultFields, $localizedFields);
     }
 
     /**
@@ -97,10 +155,10 @@ class FieldConfigBuilder
      * @param array<string, FieldConfig> $customFields
      * @return array<string, FieldConfig>
      */
-    public static function addToEcommerceFields(array $customFields = []): array
+    public static function addToEcommerceFields(array $customFields = [], array $locales): array
     {
-        $defaultFields = self::ecommerceFields();
+        $defaultFields = self::ecommerceFields($locales);
 
-        return array_replace($defaultFields, $customFields);
+        return array_merge($defaultFields, $customFields);
     }
 }

@@ -63,7 +63,7 @@ SDK/php/
 ### 3. Data Validation
 
 - **Strict validation** against field configuration
-- **Type checking** for all field types (text, keyword, hierarchy, variants, URLs, etc.)
+- **Type checking** for all field types (text, keyword, hierarchy, variants, URLs, name-value lists, floats, etc.)
 - **Comprehensive error reporting** with detailed validation messages
 - **Variant validation** with attribute checking
 
@@ -98,8 +98,12 @@ All field types from the Go implementation:
 - `KEYWORD` - Exact keyword matching
 - `HIERARCHY` - Hierarchical categories
 - `VARIANTS` - Product variants with attributes
+- `NAME_VALUE_LIST` - List of name-value pairs (e.g., features, specifications)
 - `IMAGE_URL` - Image URLs object with size keys (`small`, `medium`)
 - `URL` - Regular URLs with validation
+- `FLOAT` - Numeric floating-point values
+- `INTEGER` - Integer numeric values
+- `DOUBLE` - Double precision floating-point values
 
 ## Usage Examples
 

@@ -8,21 +8,7 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class PrestaShopAdapter
 {
-    private array $supportedLocales;
-    private string $defaultLocale;
-
-    /**
-     * @param array<string> $supportedLocales List of supported locales (first one becomes default)
-     */
-    public function __construct(array $supportedLocales = ['en-US'])
-    {
-        if (empty($supportedLocales)) {
-            throw new ValidationException('At least one locale must be specified');
-        }
-        
-        $this->supportedLocales = $supportedLocales;
-        $this->defaultLocale = $supportedLocales[0];
-    }
+    public function __construct() {}
 
     /**
      * Transform PrestaShop product data to BradSearch format
@@ -37,8 +23,11 @@ class PrestaShopAdapter
         }
 
         $transformedProducts = [];
-        
+
         foreach ($prestaShopData['products'] as $product) {
+            if (!is_array($product)) {
+                continue;
+            }
             $transformedProducts[] = $this->transformProduct($product);
         }
 
@@ -53,93 +42,228 @@ class PrestaShopAdapter
         $result = [
             'id' => $this->getRequiredField($product, 'remoteId'),
             'sku' => $this->getRequiredField($product, 'sku'),
+            'price' => $this->getRequiredField($product, 'price'),
+            'formattedPrice' => $this->getRequiredField($product, 'formattedPrice'),
             'variants' => [],
         ];
 
         // Handle localized product name
         $this->addLocalizedField($result, 'name', $product['localizedNames'] ?? []);
 
+        if (isset($product['description']) && is_array($product['description'])) {
+            $this->addLocalizedField($result, 'description', $product['description']);
+        }
+
+        if (isset($product['descriptionShort']) && is_array($product['descriptionShort'])) {
+            $this->addLocalizedField($result, 'descriptionShort', $product['descriptionShort']);
+        }
+
         // Handle brand
-        if (isset($product['brand']['localizedNames'])) {
+        if (
+            isset($product['brand']) && is_array($product['brand']) &&
+            isset($product['brand']['localizedNames']) && is_array($product['brand']['localizedNames'])
+        ) {
             $this->addLocalizedField($result, 'brand', $product['brand']['localizedNames']);
         }
 
         // Handle categories (flatten all levels)
-        $result['categories'] = $this->extractCategories($product);
+        $this->extractCategories($result, $product);
 
         // Handle image URLs
-        if (isset($product['imageUrl'])) {
+        if (isset($product['imageUrl']) && is_array($product['imageUrl'])) {
             $result['imageUrl'] = $this->transformImageUrl($product['imageUrl']);
         }
 
         // Handle product URL
-        if (isset($product['productUrl'])) {
-            $this->addLocalizedField($result, 'productUrl', $product['productUrl']);
+        if (isset($product['productUrl']) && is_array($product['productUrl'])) {
+            $this->transformProductUrls($result, $product['productUrl']);
         }
 
-        // Handle variants
-        if (isset($product['variants']) && is_array($product['variants'])) {
-            $result['variants'] = $this->transformVariants($product['variants']);
-        }
+        $this->transformVariants($result, (array)($product['variants'] ?? []));
+
+        $this->transformFeatures($result, (array)($product['features'] ?? []));
 
         return $result;
+    }
+
+    private function transformFeatures(array &$result, array $features): void
+    {
+        $featuresByLocale = [];
+
+        foreach ($features as $feature) {
+            if (!is_array($feature) || !isset($feature['localizedNames']) || !isset($feature['localizedValues'])) {
+                continue;
+            }
+
+            if (!is_array($feature['localizedNames']) || !is_array($feature['localizedValues'])) {
+                continue;
+            }
+
+            foreach ($feature['localizedNames'] as $locale => $name) {
+                if (
+                    $locale === null || $name === null || $name === '' ||
+                    !isset($feature['localizedValues'][$locale]) ||
+                    $feature['localizedValues'][$locale] === null ||
+                    $feature['localizedValues'][$locale] === ''
+                ) {
+                    continue;
+                }
+
+                $featuresByLocale[$locale][] = [
+                    'name' => $name,
+                    'value' => $feature['localizedValues'][$locale]
+                ];
+            }
+        }
+
+        foreach ($featuresByLocale as $locale => $features) {
+            if ($locale === 'en-US') {
+                $result['features'] = $features;
+            } else {
+                $result["features_{$locale}"] = $features;
+            }
+        }
+    }
+
+    /**
+     * Transform product URLs to create localized fields
+     */
+    private function transformProductUrls(array &$result, array $productUrls): void
+    {
+        // Root level product URLs have flat structure: {"en-US": "url", "lt-LT": "url"}
+        foreach ($productUrls as $locale => $url) {
+            if (!is_string($locale) || $locale === '' || $url === null || $url === '') {
+                continue;
+            }
+
+            if ($locale === 'en-US') {
+                $result['productUrl'] = $url;
+            } else {
+                $result["productUrl_{$locale}"] = $url;
+            }
+        }
     }
 
     /**
      * Transform PrestaShop variants to BradSearch format
      */
-    private function transformVariants(array $variants): array
+    private function transformVariants(array &$result, array $variants): void
     {
-        $transformedVariants = [];
+        $variantsByLocale = [];
 
         foreach ($variants as $variant) {
-            if (!isset($variant['remoteId'])) {
-                continue; // Skip variants without ID
+            if (!is_array($variant) || !isset($variant['remoteId']) || $variant['remoteId'] === null) {
+                continue;
             }
 
-            $transformedVariant = [
-                'id' => (string) $variant['remoteId'],
-                'sku' => $variant['sku'] ?? '',
-                'url' => $this->extractDefaultLocaleValue($variant['productUrl']['localizedValues'] ?? []),
-                'attributes' => $this->transformVariantAttributes($variant['attributes'] ?? [])
-            ];
+            $locales = $this->getAllLocalesFromVariant($variant);
 
-            $transformedVariants[] = $transformedVariant;
+            if (empty($locales)) {
+                continue;
+            }
+
+            foreach ($locales as $locale) {
+                if ($locale === null || !is_string($locale) || $locale === '') {
+                    continue;
+                }
+
+                $transformedVariant = [
+                    'id' => (string) $variant['remoteId'],
+                    'sku' => $variant['sku'] ?? '',
+                    'url' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
+                    'attributes' => $this->transformVariantAttributesForLocale($variant['attributes'] ?? [], $locale)
+                ];
+
+                if ($locale === 'en-US') {
+                    $variantsByLocale['variants'][] = $transformedVariant;
+                } else {
+                    $variantsByLocale["variants_{$locale}"][] = $transformedVariant;
+                }
+            }
         }
 
-        return $transformedVariants;
+
+        foreach ($variantsByLocale as $key => $variants) {
+            $result[$key] = $variants;
+        }
+    }
+
+    private function extractFirstLocaleValue(array $localizedValues): string
+    {
+        return array_values($localizedValues)[0] ?? '';
     }
 
     /**
-     * Transform variant attributes to BradSearch format
+     * Get all locales available in a variant (from attributes and URLs)
      */
-    private function transformVariantAttributes(array $attributes): array
+    private function getAllLocalesFromVariant(array $variant): array
+    {
+        $locales = [];
+
+        // Get locales from product URLs
+        if (isset($variant['productUrl']['localizedValues']) && is_array($variant['productUrl']['localizedValues'])) {
+            $locales = array_merge($locales, array_keys($variant['productUrl']['localizedValues']));
+        }
+
+        // Get locales from attributes
+        if (isset($variant['attributes']) && is_array($variant['attributes'])) {
+            foreach ($variant['attributes'] as $attributeData) {
+                if (is_array($attributeData) && isset($attributeData['localizedValues']) && is_array($attributeData['localizedValues'])) {
+                    $locales = array_merge($locales, array_keys($attributeData['localizedValues']));
+                }
+            }
+        }
+
+        return array_unique($locales);
+    }
+
+    /**
+     * Get URL for a specific locale
+     */
+    private function getLocaleSpecificUrl(array $localizedValues, string $locale): string
+    {
+        return $localizedValues[$locale] ?? $this->extractFirstLocaleValue($localizedValues);
+    }
+
+    /**
+     * Transform variant attributes for a specific locale only
+     */
+    private function transformVariantAttributesForLocale(array $attributes, string $locale): array
     {
         $transformedAttributes = [];
 
         foreach ($attributes as $attributeName => $attributeData) {
-            $attributeValue = $this->extractDefaultLocaleValue($attributeData['localizedValues'] ?? []);
-            
-            if ($attributeValue !== null) {
-                $transformedAttributes[$attributeName] = [
-                    'name' => $attributeName,
-                    'value' => $attributeValue
-                ];
+            if (
+                !is_string($attributeName) || $attributeName === '' ||
+                !is_array($attributeData) ||
+                !isset($attributeData['localizedValues'][$locale]) ||
+                $attributeData['localizedValues'][$locale] === null ||
+                $attributeData['localizedValues'][$locale] === ''
+            ) {
+                continue;
             }
+
+            $transformedAttributes[] = [
+                'name' => strtolower($attributeName),
+                'value' => $attributeData['localizedValues'][$locale]
+            ];
         }
 
         return $transformedAttributes;
     }
 
+
+
     /**
      * Extract categories from all levels and flatten them
      */
-    private function extractCategories(array $product): array
+    private function extractCategories(array &$result, array $product): void
     {
-        $categories = [];
-        
-        if (!isset($product['categories'])) {
-            return $categories;
+        // Always initialize categories array
+        $result['categories'] = [];
+
+        if (!isset($product['categories']) || !is_array($product['categories'])) {
+            return;
         }
 
         // Process all category levels (lvl2, lvl3, lvl4, etc.)
@@ -149,16 +273,32 @@ class PrestaShopAdapter
             }
 
             foreach ($levelCategories as $category) {
-                if (isset($category['localizedValues']['path'])) {
-                    $path = $this->extractDefaultLocaleValue($category['localizedValues']['path']);
-                    if ($path && !in_array($path, $categories, true)) {
-                        $categories[] = $path;
+                if (
+                    !is_array($category) ||
+                    !isset($category['localizedValues']) ||
+                    !is_array($category['localizedValues']) ||
+                    !isset($category['localizedValues']['path']) ||
+                    !is_array($category['localizedValues']['path'])
+                ) {
+                    continue;
+                }
+
+                foreach ($category['localizedValues']['path'] as $locale => $path) {
+                    if (
+                        !is_string($locale) || $locale === '' ||
+                        $path === null || $path === ''
+                    ) {
+                        continue;
+                    }
+
+                    if ($locale === 'en-US') {
+                        $result['categories'][] = $path;
+                    } else {
+                        $result["categories_{$locale}"][] = $path;
                     }
                 }
             }
         }
-
-        return $categories;
     }
 
     /**
@@ -167,7 +307,7 @@ class PrestaShopAdapter
     private function transformImageUrl(array $imageUrl): array
     {
         $result = [];
-        
+
         // Map standard image sizes
         $sizeMapping = [
             'small' => 'small',
@@ -175,7 +315,11 @@ class PrestaShopAdapter
         ];
 
         foreach ($sizeMapping as $bradSearchSize => $prestaShopSize) {
-            if (isset($imageUrl[$prestaShopSize])) {
+            if (
+                isset($imageUrl[$prestaShopSize]) &&
+                $imageUrl[$prestaShopSize] !== null &&
+                $imageUrl[$prestaShopSize] !== ''
+            ) {
                 $result[$bradSearchSize] = $imageUrl[$prestaShopSize];
             }
         }
@@ -192,47 +336,20 @@ class PrestaShopAdapter
             return;
         }
 
-        // Extract default locale value (first supported locale found)
-        $defaultValue = $this->extractDefaultLocaleValue($localizedValues);
-        if ($defaultValue !== null) {
-            $result[$fieldName] = $defaultValue;
-        }
-
-        // Add additional locales with suffixes
-        foreach ($this->supportedLocales as $index => $locale) {
-            if ($index === 0) {
-                continue; // Skip default locale (already added above)
+        foreach ($localizedValues as $locale => $value) {
+            if (
+                !is_string($locale) || $locale === '' ||
+                $value === null || $value === ''
+            ) {
+                continue;
             }
 
-            if (isset($localizedValues[$locale])) {
-                $result["{$fieldName}_{$locale}"] = $localizedValues[$locale];
+            if ($locale === 'en-US') {
+                $result[$fieldName] = $value;
+            } else {
+                $result["{$fieldName}_{$locale}"] = $value;
             }
         }
-    }
-
-    /**
-     * Extract value for the default locale
-     */
-    private function extractDefaultLocaleValue(array $localizedValues): ?string
-    {
-        if (empty($localizedValues)) {
-            return null;
-        }
-
-        // Try to find value for default locale first
-        if (isset($localizedValues[$this->defaultLocale])) {
-            return $localizedValues[$this->defaultLocale];
-        }
-
-        // Try other supported locales
-        foreach ($this->supportedLocales as $locale) {
-            if (isset($localizedValues[$locale])) {
-                return $localizedValues[$locale];
-            }
-        }
-
-        // Fallback to first available value
-        return array_values($localizedValues)[0] ?? null;
     }
 
     /**
@@ -240,28 +357,10 @@ class PrestaShopAdapter
      */
     private function getRequiredField(array $data, string $field): string
     {
-        if (!isset($data[$field])) {
+        if (!isset($data[$field]) || $data[$field] === null) {
             throw new ValidationException("Required field '{$field}' is missing from PrestaShop data");
         }
 
         return (string) $data[$field];
     }
-
-    /**
-     * Get supported locales
-     * 
-     * @return array<string>
-     */
-    public function getSupportedLocales(): array
-    {
-        return $this->supportedLocales;
-    }
-
-    /**
-     * Get default locale
-     */
-    public function getDefaultLocale(): string
-    {
-        return $this->defaultLocale;
-    }
-} 
+}
