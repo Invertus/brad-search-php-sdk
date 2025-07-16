@@ -118,8 +118,8 @@ class SynchronizationApiSdk
                 'brand_lt-LT',
                 'description',
                 'description_lt-LT',
-                'categories',
-                'categories_lt-LT',
+                'categoryDefault_lt-LT', 
+                'categoryDefault'
             ],
         ];
 
