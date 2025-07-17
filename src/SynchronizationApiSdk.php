@@ -66,6 +66,27 @@ class SynchronizationApiSdk
     }
 
     /**
+     * Copy source index to target index
+     * @throws ValidationException
+     */
+    public function copyIndex(string $sourceIndex, string $targetIndex, string $alias): void
+    {
+        $this->validateIndexName($sourceIndex);
+        $this->validateIndexName($targetIndex);
+
+        // First, create the target index with proper field configuration
+        $this->createIndex($targetIndex, $alias);
+
+        // Then perform the reindex operation using the Go service format
+        $data = [
+            'source_index' => $sourceIndex,
+            'target_index' => $targetIndex
+        ];
+
+        $this->httpClient->post('api/v1/sync/reindex', $data);
+    }
+
+    /**
      * Synchronize a single product
      */
     public function sync(string $index, array $productData): void
@@ -114,9 +135,99 @@ class SynchronizationApiSdk
             'index_name' => $index,
             'products' => $filteredProducts,
             'count' => count($filteredProducts),
+            'subfields' => [
+                'sku' => [
+                    'split_by' => ['/', '.'],
+                    'max_count' => 7,
+                    'in_variants' => true,
+                ],
+            ],
+            'embeddablefields' => [
+                'name',
+                'name_lt-LT',
+                'brand',
+                'brand_lt-LT',
+                'description',
+                'description_lt-LT',
+                'categoryDefault_lt-LT', 
+                'categoryDefault',
+            ],
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
+    }
+
+    /**
+     * Update multiple products in an existing index
+     *
+     * @param array<array> $productsData
+     * @throws ValidationException
+     */
+    public function updateProductsBulk(string $index, array $productsData): void
+    {
+        $this->validateIndexName($index);
+
+        if (empty($productsData)) {
+            return;
+        }
+
+        // Validate all products before sending
+        $this->validator->validateProducts($productsData);
+
+        $this->sendUpdateBatch($index, $productsData);
+    }
+
+    /**
+     * Send a batch of product updates to the API
+     *
+     * @param array<array> $products
+     */
+    private function sendUpdateBatch(string $index, array $products): void
+    {
+        // Filter products to only include fields that are defined in the configuration
+        $filteredProducts = array_map(
+            fn(array $product) => $this->filterProductFields($product),
+            $products
+        );
+
+        $data = [
+            'index_name' => $index,
+            'products' => $filteredProducts,
+        ];
+
+        $this->httpClient->post('api/v1/sync/update-products', $data);
+    }
+
+    /**
+     * Delete multiple products in an existing index
+     *
+     * @param array<array> $productsIds
+     * @throws ValidationException
+     */
+    public function deleteProductsBulk(string $index, array $productsIds): void
+    {
+        $this->validateIndexName($index);
+
+        if (empty($productsIds)) {
+            return;
+        }
+
+        $this->sendDeleteBatch($index, $productsIds);
+    }
+
+    /**
+     * Send a batch of product deletes to the API
+     *
+     * @param array<array> $productsIds
+     */
+    private function sendDeleteBatch(string $index, array $productsIds): void
+    {
+        $data = [
+            'index_name' => $index,
+            'product_ids' => $productsIds,
+        ];
+
+        $this->httpClient->post('api/v1/sync/delete-products', $data);
     }
 
     /**
@@ -223,4 +334,4 @@ class SynchronizationApiSdk
     {
         $this->validator->validateProducts($productsData);
     }
-} 
+}

@@ -12,11 +12,13 @@ readonly class FieldConfig
     /**
      * @param array<string, FieldConfig>|null $properties
      * @param array<string, FieldConfig>|null $attributes
+     * @param array<string, FieldConfig|mixed>|null $subfields Can contain FieldConfig objects OR raw config values for dynamic field creation
      */
     public function __construct(
         public FieldType $type,
         public ?array $properties = null,
-        public ?array $attributes = null
+        public ?array $attributes = null,
+        public ?array $subfields = null,
     ) {
         $this->validate();
     }
@@ -51,7 +53,19 @@ readonly class FieldConfig
             }
         }
 
-        return new self($type, $properties, $attributes);
+        $subfields = null;
+        if (isset($data['subfields']) && is_array($data['subfields'])) {
+            $subfields = [];
+            foreach ($data['subfields'] as $key => $subfield) {
+                if (is_array($subfield) && isset($subfield['type'])) {
+                    $subfields[$key] = self::fromArray($subfield);
+                } else {
+                    $subfields[$key] = $subfield;
+                }
+            }
+        }
+
+        return new self($type, $properties, $attributes, $subfields);
     }
 
     /**
@@ -75,26 +89,37 @@ readonly class FieldConfig
             );
         }
 
+        if ($this->subfields !== null) {
+            $data['subfields'] = [];
+            foreach ($this->subfields as $key => $value) {
+                if ($value instanceof FieldConfig) {
+                    // Standard FieldConfig object
+                    $data['subfields'][$key] = $value->toArray();
+                } else {
+                    // Raw config value for dynamic field creation
+                    $data['subfields'][$key] = $value;
+                }
+            }
+        }
+
         return $data;
     }
+
+
 
     /**
      * Validate the field configuration
      */
     private function validate(): void
     {
-        // Variants type should have attributes
-        if ($this->type === FieldType::VARIANTS && $this->attributes === null) {
-            throw new InvalidFieldConfigException('Variants field type must have attributes defined');
-        }
-
         // Validate property and attribute names
         $this->validateFieldNames($this->properties, 'properties');
         $this->validateFieldNames($this->attributes, 'attributes');
+        $this->validateFieldNames($this->subfields, 'subfields');
     }
 
     /**
-     * @param array<string, FieldConfig>|null $fields
+     * @param array<string, FieldConfig|mixed>|null $fields
      */
     private function validateFieldNames(?array $fields, string $type): void
     {
@@ -108,4 +133,4 @@ readonly class FieldConfig
             }
         }
     }
-} 
+}
