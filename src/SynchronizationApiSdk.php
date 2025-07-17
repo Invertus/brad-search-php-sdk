@@ -137,10 +137,20 @@ class SynchronizationApiSdk
             'count' => count($filteredProducts),
             'subfields' => [
                 'sku' => [
-                    'split_by' => '/',
-                    'max_count' => 2,
+                    'split_by' => ['/', '.'],
+                    'max_count' => 7,
                     'in_variants' => true,
                 ],
+            ],
+            'embeddablefields' => [
+                'name',
+                'name_lt-LT',
+                'brand',
+                'brand_lt-LT',
+                'description',
+                'description_lt-LT',
+                'categoryDefault_lt-LT', 
+                'categoryDefault',
             ],
         ];
 
