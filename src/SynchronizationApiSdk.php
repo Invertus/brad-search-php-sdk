@@ -106,8 +106,8 @@ class SynchronizationApiSdk
             'count' => count($filteredProducts),
             'subfields' => [
                 'sku' => [
-                    'split_by' => '/',
-                    'max_count' => 2,
+                    'split_by' => ['/', '.'],
+                    'max_count' => 7,
                     'in_variants' => true,
                 ],
             ],
