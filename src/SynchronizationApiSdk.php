@@ -111,6 +111,7 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
+            //todo: consider reintroducing via settings outsie from SDK
             // 'embeddablefields' => [
             //     'name',
             //     'name_lt-LT',
