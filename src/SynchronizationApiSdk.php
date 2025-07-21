@@ -111,16 +111,17 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
-            'embeddablefields' => [
-                'name',
-                'name_lt-LT',
-                'brand',
-                'brand_lt-LT',
-                'description',
-                'description_lt-LT',
-                'categoryDefault_lt-LT', 
-                'categoryDefault',
-            ],
+            //todo: consider reintroducing via settings outsie from SDK
+            // 'embeddablefields' => [
+            //     'name',
+            //     'name_lt-LT',
+            //     'brand',
+            //     'brand_lt-LT',
+            //     'description',
+            //     'description_lt-LT',
+            //     'categoryDefault_lt-LT', 
+            //     'categoryDefault',
+            // ],
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
