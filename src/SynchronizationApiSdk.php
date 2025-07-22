@@ -112,18 +112,7 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
-            'embeddablefields' => [
-                'name' => FieldType::TEXT_KEYWORD,
-                'name_lt-LT' => FieldType::TEXT_KEYWORD,
-                'brand' => FieldType::TEXT_KEYWORD,
-                'brand_lt-LT' => FieldType::TEXT_KEYWORD,
-                // 'description',
-                // 'description_lt-LT',
-                'categoryDefault_lt-LT' => FieldType::TEXT_KEYWORD,
-                'categoryDefault' => FieldType::TEXT_KEYWORD,
-                'features' => FieldType::NAME_VALUE_LIST,
-                'features_lt-LT' => FieldType::NAME_VALUE_LIST,
-            ],
+            'embeddablefields' => $this->buildEmbeddableFields(),
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
@@ -182,5 +171,34 @@ class SynchronizationApiSdk
     {
         $this->validator->validateProducts($productsData);
     }
-}
 
+    /**
+     * Build embeddable fields configuration with localized fields
+     */
+    private function buildEmbeddableFields(): array
+    {
+        // TODO: hardcoded for now
+        $locales = ['en-US', 'lt-LT'];
+
+        $baseFields = [
+            'name' => FieldType::TEXT_KEYWORD,
+            'brand' => FieldType::TEXT_KEYWORD,
+            'categoryDefault' => FieldType::TEXT_KEYWORD,
+            'features' => FieldType::NAME_VALUE_LIST,
+        ];
+
+        $embeddableFields = [];
+
+        foreach ($baseFields as $fieldName => $fieldType) {
+            foreach ($locales as $locale) {
+                if ($locale === 'en-US') {
+                    $embeddableFields[$fieldName] = $fieldType;
+                } else {
+                    $embeddableFields["{$fieldName}_{$locale}"] = $fieldType;
+                }
+            }
+        }
+
+        return $embeddableFields;
+    }
+}
