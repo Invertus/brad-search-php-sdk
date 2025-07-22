@@ -124,24 +124,6 @@ class SynchronizationApiSdk
                 'features' => FieldType::NAME_VALUE_LIST,
                 'features_lt-LT' => FieldType::NAME_VALUE_LIST,
             ],
-
-            /*
-                    $defaultFields = [
-            'id' => self::keyword(),
-            'name' => self::textKeyword(),
-            'brand' => self::textKeyword(),
-            'price' => self::double(),
-            'formattedPrice' => self::keyword(),
-            'categoryDefault' => self::textKeyword(),
-            'categories' => self::hierarchy(),
-            'sku' => self::keyword(),
-            'imageUrl' => self::imageUrl(),
-            'productUrl' => self::url(),
-            'descriptionShort' => self::textKeyword(),
-            'description' => self::textKeyword(),
-        ];
-        */
-
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
