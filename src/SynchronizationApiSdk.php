@@ -9,6 +9,7 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Models\FieldConfig;
 use BradSearch\SyncSdk\Validators\DataValidator;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use BradSearch\SyncSdk\Enums\FieldType;
 
 class SynchronizationApiSdk
 {
@@ -112,15 +113,35 @@ class SynchronizationApiSdk
                 ],
             ],
             'embeddablefields' => [
-                'name',
-                'name_lt-LT',
-                'brand',
-                'brand_lt-LT',
-                'description',
-                'description_lt-LT',
-                'categoryDefault_lt-LT', 
-                'categoryDefault',
+                'name' => FieldType::TEXT_KEYWORD,
+                'name_lt-LT' => FieldType::TEXT_KEYWORD,
+                'brand' => FieldType::TEXT_KEYWORD,
+                'brand_lt-LT' => FieldType::TEXT_KEYWORD,
+                // 'description',
+                // 'description_lt-LT',
+                'categoryDefault_lt-LT' => FieldType::TEXT_KEYWORD,
+                'categoryDefault' => FieldType::TEXT_KEYWORD,
+                'features' => FieldType::NAME_VALUE_LIST,
+                'features_lt-LT' => FieldType::NAME_VALUE_LIST,
             ],
+
+            /*
+                    $defaultFields = [
+            'id' => self::keyword(),
+            'name' => self::textKeyword(),
+            'brand' => self::textKeyword(),
+            'price' => self::double(),
+            'formattedPrice' => self::keyword(),
+            'categoryDefault' => self::textKeyword(),
+            'categories' => self::hierarchy(),
+            'sku' => self::keyword(),
+            'imageUrl' => self::imageUrl(),
+            'productUrl' => self::url(),
+            'descriptionShort' => self::textKeyword(),
+            'description' => self::textKeyword(),
+        ];
+        */
+
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
@@ -180,3 +201,4 @@ class SynchronizationApiSdk
         $this->validator->validateProducts($productsData);
     }
 }
+
