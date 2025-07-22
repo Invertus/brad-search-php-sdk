@@ -9,6 +9,7 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Models\FieldConfig;
 use BradSearch\SyncSdk\Validators\DataValidator;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use BradSearch\SyncSdk\Enums\FieldType;
 
 class SynchronizationApiSdk
 {
@@ -111,17 +112,7 @@ class SynchronizationApiSdk
                     'in_variants' => true,
                 ],
             ],
-            //todo: consider reintroducing via settings outsie from SDK
-            // 'embeddablefields' => [
-            //     'name',
-            //     'name_lt-LT',
-            //     'brand',
-            //     'brand_lt-LT',
-            //     'description',
-            //     'description_lt-LT',
-            //     'categoryDefault_lt-LT', 
-            //     'categoryDefault',
-            // ],
+            'embeddablefields' => $this->buildEmbeddableFields(),
         ];
 
         $this->httpClient->post('api/v1/sync/', $data);
@@ -179,5 +170,35 @@ class SynchronizationApiSdk
     public function validateProducts(array $productsData): void
     {
         $this->validator->validateProducts($productsData);
+    }
+
+    /**
+     * Build embeddable fields configuration with localized fields
+     */
+    private function buildEmbeddableFields(): array
+    {
+        // TODO: hardcoded for now
+        $locales = ['en-US', 'lt-LT'];
+
+        $baseFields = [
+            'name' => FieldType::TEXT_KEYWORD,
+            'brand' => FieldType::TEXT_KEYWORD,
+            'categoryDefault' => FieldType::TEXT_KEYWORD,
+            'features' => FieldType::NAME_VALUE_LIST,
+        ];
+
+        $embeddableFields = [];
+
+        foreach ($baseFields as $fieldName => $fieldType) {
+            foreach ($locales as $locale) {
+                if ($locale === 'en-US') {
+                    $embeddableFields[$fieldName] = $fieldType;
+                } else {
+                    $embeddableFields["{$fieldName}_{$locale}"] = $fieldType;
+                }
+            }
+        }
+
+        return $embeddableFields;
     }
 }
