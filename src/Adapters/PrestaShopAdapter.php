@@ -368,10 +368,14 @@ class PrestaShopAdapter
                 continue;
             }
 
+            // remove HTML tags from values.
+            // TODO: check if does not remove any useful data?
+            $cleanValue = strip_tags((string) $value);
+
             if ($locale === 'en-US') {
-                $result[$fieldName] = $value;
+                $result[$fieldName] = $cleanValue;
             } else {
-                $result["{$fieldName}_{$locale}"] = $value;
+                $result["{$fieldName}_{$locale}"] = $cleanValue;
             }
         }
     }
