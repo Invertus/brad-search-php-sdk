@@ -29,21 +29,25 @@ class SynchronizationApiSdk
 
     /**
      * Delete an index
+     *
+     * @param string $index
+     * @throws ValidationException
      */
     public function deleteIndex(string $index): void
     {
-        $this->validateIndexName($index);
+        $this->validator->validateIndex($index);
         $this->httpClient->delete("api/v1/sync/{$index}");
     }
 
     /**
-     * Create an index with field configuration and optional alias
+     * Create an index with field configuration
      *
+     * @param string $index
      * @throws ValidationException
      */
-    public function createIndex(string $index, ?string $alias = null): void
+    public function createIndex(string $index): void
     {
-        $this->validateIndexName($index);
+        $this->validator->validateIndex($index);
 
         $fields = [];
         foreach ($this->fieldConfiguration as $fieldName => $fieldConfig) {
@@ -55,28 +59,22 @@ class SynchronizationApiSdk
             'fields' => $fields,
         ];
 
-        // Add alias if provided
-        if ($alias !== null) {
-            $this->validateIndexAlias($alias);
-            $data['aliases'] = [
-                $alias => (object)[]
-            ];
-        }
-
         $this->httpClient->put('api/v1/sync/', $data);
     }
 
     /**
      * Copy source index to target index
+     *
+     * @param string $sourceIndex
+     * @param string $targetIndex
      * @throws ValidationException
      */
-    public function copyIndex(string $sourceIndex, string $targetIndex, string $alias): void
+    public function copyIndex(string $sourceIndex, string $targetIndex): void
     {
-        $this->validateIndexName($sourceIndex);
-        $this->validateIndexName($targetIndex);
+        $this->validator->validateIndex($sourceIndex);
 
         // First, create the target index with proper field configuration
-        $this->createIndex($targetIndex, $alias);
+        $this->createIndex($targetIndex);
 
         // Then perform the reindex operation using the Go service format
         $data = [
@@ -89,9 +87,15 @@ class SynchronizationApiSdk
 
     /**
      * Synchronize a single product
+     *
+     * @param string $index
+     * @param array $productData
+     * @throws ValidationException
      */
     public function sync(string $index, array $productData): void
     {
+        $this->validator->validateIndex($index);
+
         $this->syncBulk($index, [$productData]);
     }
 
@@ -102,8 +106,6 @@ class SynchronizationApiSdk
      */
     public function syncBulk(string $index, array $productsData, int $batchSize = 100): void
     {
-        $this->validateIndexName($index);
-
         if (empty($productsData)) {
             return;
         }
@@ -157,7 +159,7 @@ class SynchronizationApiSdk
      */
     public function updateProductsBulk(string $index, array $productsData): void
     {
-        $this->validateIndexName($index);
+        $this->validator->validateIndex($index);
 
         if (empty($productsData)) {
             return;
@@ -198,7 +200,7 @@ class SynchronizationApiSdk
      */
     public function deleteProductsBulk(string $index, array $productsIds): void
     {
-        $this->validateIndexName($index);
+        $this->validator->validateIndex($index);
 
         if (empty($productsIds)) {
             return;
@@ -236,67 +238,6 @@ class SynchronizationApiSdk
         }
 
         return $filtered;
-    }
-
-    /**
-     * Validate index name
-     *
-     * @throws ValidationException
-     */
-    private function validateIndexName(string $index): void
-    {
-        $this->validateIndexOrAliasName($index);
-    }
-
-    /**
-     * Validate alias name
-     *
-     * @throws ValidationException
-     */
-    private function validateIndexAlias(string $alias): void
-    {
-        $this->validateIndexOrAliasName($alias, 'alias');
-    }
-
-    /**
-     * Validate index or alias name
-     *
-     * @param string $name The name to validate
-     * @param string $type Either 'index' or 'alias'
-     * @throws ValidationException if validation fails
-     */
-    private function validateIndexOrAliasName(string $name, string $type = 'index'): void
-    {
-        // Check if empty
-        if (empty(trim($name))) {
-            throw new ValidationException("{$type} name cannot be empty");
-        }
-
-        // Check length (255 bytes max)
-        if (strlen($name) > 255) {
-            throw new ValidationException("{$type} name cannot be longer than 255 characters");
-        }
-
-        // Check if starts with invalid characters
-        if (preg_match('/^[-._+]/', $name)) {
-            throw new ValidationException("{$type} name cannot start with hyphen (-), dot (.), underscore (_), or plus (+)");
-        }
-
-        // Check if contains only valid characters (different patterns for index vs alias)
-        $pattern = $type === 'alias' ? '/^[a-z0-9_-]+$/' : '/^[a-z0-9._-]+$/';
-        $allowedChars = $type === 'alias'
-            ? 'lowercase letters, numbers, hyphens, and underscores'
-            : 'lowercase letters, numbers, dots, hyphens, and underscores';
-
-        if (!preg_match($pattern, $name)) {
-            throw new ValidationException("{$type} name can only contain {$allowedChars}");
-        }
-
-        // Check for reserved names
-        $reservedNames = ['.', '..'];
-        if (in_array($name, $reservedNames)) {
-            throw new ValidationException("{$type} name cannot be a reserved name (. or ..)");
-        }
     }
 
     /**
