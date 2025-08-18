@@ -66,6 +66,44 @@ class DataValidator
     }
 
     /**
+     * Validate index name
+     *
+     * @param string $index
+     * @throws ValidationException
+     */
+    public function validateIndex(string $index): void
+    {
+        // Check if empty
+        if (empty(trim($index))) {
+            throw new ValidationException("Index name cannot be empty");
+        }
+
+        // Check length (255 bytes max)
+        if (strlen($index) > 255) {
+            throw new ValidationException("Index name cannot be longer than 255 characters");
+        }
+
+        // Check if starts with invalid characters
+        if (preg_match('/^[-._+]/', $index)) {
+            throw new ValidationException("Index name cannot start with hyphen (-), dot (.), underscore (_), or plus (+)");
+        }
+
+        // Check if contains only valid characters
+        $pattern = '/^[a-z0-9._-]+$/';
+        $allowedChars = 'lowercase letters, numbers, dots, hyphens, and underscores';
+
+        if (!preg_match($pattern, $index)) {
+            throw new ValidationException("Index name can only contain {$allowedChars}");
+        }
+
+        // Check for reserved names
+        $reservedNames = ['.', '..'];
+        if (in_array($index, $reservedNames)) {
+            throw new ValidationException("Index name cannot be a reserved name (. or ..)");
+        }
+    }
+
+    /**
      * @return array<string>
      */
     private function validateField(string $fieldName, mixed $value, FieldConfig $fieldConfig): array
