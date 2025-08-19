@@ -44,6 +44,8 @@ class PrestaShopAdapter
             'sku' => $this->getRequiredField($product, 'sku'),
             'price' => $this->getRequiredField($product, 'price'),
             'formattedPrice' => $this->getRequiredField($product, 'formattedPrice'),
+            'inStock' => $product['inStock'] ?? null,
+            'isNew' => $product['isNew'] ?? null,
             'variants' => [],
         ];
 
