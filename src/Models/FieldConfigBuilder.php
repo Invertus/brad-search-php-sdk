@@ -81,6 +81,14 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a boolean field
+     */
+    public static function boolean(): FieldConfig
+    {
+        return new FieldConfig(FieldType::BOOLEAN);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
@@ -143,6 +151,8 @@ class FieldConfigBuilder
             'productUrl' => self::url(),
             'descriptionShort' => self::textKeyword(),
             'description' => self::textKeyword(),
+            'inStock' => self::boolean(),
+            'isNew' => self::boolean(),
         ];
 
         return array_merge($defaultFields, $localizedFields);

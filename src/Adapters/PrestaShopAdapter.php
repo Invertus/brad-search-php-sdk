@@ -44,6 +44,8 @@ class PrestaShopAdapter
             'sku' => $this->getRequiredField($product, 'sku'),
             'price' => $this->getRequiredField($product, 'price'),
             'formattedPrice' => $this->getRequiredField($product, 'formattedPrice'),
+            'inStock' => $this->validateBooleanField($product['inStock'] ?? null),
+            'isNew' => $this->validateBooleanField($product['isNew'] ?? null),
             'variants' => [],
         ];
 
@@ -390,5 +392,22 @@ class PrestaShopAdapter
         }
 
         return (string) $data[$field];
+    }
+
+    /**
+     * Validate and convert a field value to a proper boolean or null
+     * 
+     * @param mixed $value The value to validate
+     * @return bool|null Returns true/false for valid boolean values, null for invalid/missing values
+     */
+    private function validateBooleanField($value): ?bool
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $result = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+        
+        return $result;
     }
 }
