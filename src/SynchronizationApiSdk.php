@@ -152,47 +152,6 @@ class SynchronizationApiSdk
     }
 
     /**
-     * Update multiple products in an existing index
-     *
-     * @param array<array> $productsData
-     * @throws ValidationException
-     */
-    public function updateProductsBulk(string $index, array $productsData): void
-    {
-        $this->validator->validateIndex($index);
-
-        if (empty($productsData)) {
-            return;
-        }
-
-        // Validate all products before sending
-        $this->validator->validateProducts($productsData);
-
-        $this->sendUpdateBatch($index, $productsData);
-    }
-
-    /**
-     * Send a batch of product updates to the API
-     *
-     * @param array<array> $products
-     */
-    private function sendUpdateBatch(string $index, array $products): void
-    {
-        // Filter products to only include fields that are defined in the configuration
-        $filteredProducts = array_map(
-            fn(array $product) => $this->filterProductFields($product),
-            $products
-        );
-
-        $data = [
-            'index_name' => $index,
-            'products' => $filteredProducts,
-        ];
-
-        $this->httpClient->post('api/v1/sync/update-products', $data);
-    }
-
-    /**
      * Delete multiple products in an existing index
      *
      * @param array<array> $productsIds
