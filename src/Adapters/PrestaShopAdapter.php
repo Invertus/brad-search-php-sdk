@@ -24,14 +24,29 @@ class PrestaShopAdapter
 
         $transformedProducts = [];
 
-        foreach ($prestaShopData['products'] as $product) {
+        $errors = [];
+
+        foreach ($prestaShopData['products'] as $index => $product) {
             if (!is_array($product)) {
                 continue;
             }
-            $transformedProducts[] = $this->transformProduct($product);
+            try {
+                $transformedProducts[] = $this->transformProduct($product);
+            } catch (\Exception $e) {
+                $errors[] = [
+                    'type' => 'transformation_error',
+                    'product_index' => $index,
+                    'product_id' => $product['id'] ?? '',
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ];
+            }
         }
 
-        return $transformedProducts;
+        return [
+            'products' => $transformedProducts,
+            'errors' => $errors
+        ];
     }
 
     /**
@@ -407,7 +422,7 @@ class PrestaShopAdapter
         }
 
         $result = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
-        
+
         return $result;
     }
 }
