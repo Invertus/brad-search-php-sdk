@@ -293,6 +293,9 @@ class PrestaShopAdapter
             }
 
             foreach ($levelCategories as $category) {
+                if (!is_array($category)) {
+                    continue;
+                }
                 $this->extractCategory($category, $fieldName, $result);
             }
         }
