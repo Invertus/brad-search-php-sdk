@@ -36,7 +36,7 @@ class PrestaShopAdapter
                 $errors[] = [
                     'type' => 'transformation_error',
                     'product_index' => $index,
-                    'product_id' => $product['id'] ?? '',
+                    'product_id' => $product['remoteId'] ?? '',
                     'message' => $e->getMessage(),
                     'exception' => get_class($e),
                 ];
