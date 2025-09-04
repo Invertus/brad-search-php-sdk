@@ -50,7 +50,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Sneakers "101H" Springa multi'
                     ],
@@ -134,7 +136,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Sneakers Multi',
                         'lt-LT' => 'Sportiniai batai Multi'
@@ -177,7 +181,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -221,7 +227,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -254,7 +262,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -284,7 +294,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -324,7 +336,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Sneakers Multi'
                     ],
@@ -466,7 +480,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -507,7 +523,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -573,7 +591,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -597,7 +617,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -632,7 +654,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'English Name',
                         'lt-LT' => 'Lithuanian Name'
@@ -659,7 +683,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'English Name',
                         'lt-LT' => 'Lithuanian Name'
@@ -692,7 +718,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Valid Product'
                     ],
@@ -720,7 +748,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -732,7 +762,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1808',
                     'sku' => 'M0E20000000EAAL',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product 2'
                     ],
@@ -746,7 +778,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1809',
                     'sku' => 'M0E20000000EAAM',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product 3'
                     ],
