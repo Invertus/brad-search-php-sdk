@@ -17,6 +17,17 @@ class PrestaShopAdapterTest extends TestCase
         $this->adapter = new PrestaShopAdapter();
     }
 
+    /**
+     * Helper method to extract product from new result structure
+     */
+    private function getProductFromResult(array $result, int $index = 0): array
+    {
+        $this->assertArrayHasKey('products', $result);
+        $this->assertArrayHasKey('errors', $result);
+        $this->assertArrayHasKey($index, $result['products']);
+        return $result['products'][$index];
+    }
+
     public function testTransformWithInvalidData(): void
     {
         $this->expectException(ValidationException::class);
@@ -94,8 +105,9 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(1, $result);
-        $product = $result[0];
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals('1807', $product['id']);
         $this->assertEquals('M0E20000000EAAK', $product['sku']);
@@ -144,7 +156,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         // Default locale fields (no suffix)
         $this->assertEquals('Sneakers Multi', $product['name']);
@@ -182,7 +194,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals('http://prestashop/en/test-product.html', $product['productUrl']);
 
@@ -223,7 +235,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals('http://prestashop/en/test-product.html', $product['productUrl']);
 
@@ -254,7 +266,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $productUrlFields = array_filter(array_keys($product), function ($key) {
             return strpos($key, 'productUrl') === 0;
@@ -287,7 +299,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         // Flat structure should now work correctly for root level products
         $this->assertEquals('http://prestashop/en/test-product.html', $product['productUrl']);
@@ -366,7 +378,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertCount(2, $product['variants']);
 
@@ -416,9 +428,12 @@ class PrestaShopAdapterTest extends TestCase
             ]
         ];
 
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage("Required field 'remoteId' is missing from PrestaShop data");
-        $this->adapter->transform($prestaShopData);
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertEquals('transformation_error', $result['errors'][0]['type']);
+        $this->assertEquals("Required field 'remoteId' is missing from PrestaShop data", $result['errors'][0]['message']);
     }
 
     public function testTransformProductWithMissingSku(): void
@@ -435,9 +450,12 @@ class PrestaShopAdapterTest extends TestCase
             ]
         ];
 
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage("Required field 'sku' is missing from PrestaShop data");
-        $this->adapter->transform($prestaShopData);
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertEquals('transformation_error', $result['errors'][0]['type']);
+        $this->assertEquals("Required field 'sku' is missing from PrestaShop data", $result['errors'][0]['message']);
     }
 
     public function testTransformVariantWithoutRemoteId(): void
@@ -474,7 +492,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         // Should only have one variant (the one with remoteId)
         $this->assertCount(1, $product['variants']);
@@ -535,7 +553,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $expectedCategories = [
             'Root',
@@ -566,7 +584,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals([], $product['categories']);
     }
@@ -595,7 +613,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $this->adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals([
             'small' => 'http://prestashop/image-small.jpg',
@@ -626,7 +644,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         $this->assertEquals('Lithuanian Name', $product['name_lt-LT']);
     }
@@ -653,7 +671,7 @@ class PrestaShopAdapterTest extends TestCase
         ];
 
         $result = $adapter->transform($prestaShopData);
-        $product = $result[0];
+        $product = $this->getProductFromResult($result);
 
         // Should fallback to first available value (en-US)
         $this->assertEquals('English Name', $product['name']);
@@ -687,8 +705,8 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
 
         // Should only return the valid product, skipping invalid ones
-        $this->assertCount(1, $result);
-        $this->assertEquals('Valid Product', $result[0]['name']);
+        $this->assertCount(1, $result["products"]);
+        $this->assertEquals('Valid Product', $this->getProductFromResult($result)['name']);
     }
 
     /**
@@ -742,10 +760,10 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
 
         // All products should transform but without brand field
-        $this->assertCount(3, $result);
-        $this->assertArrayNotHasKey('brand', $result[0]);
-        $this->assertArrayNotHasKey('brand', $result[1]);
-        $this->assertArrayNotHasKey('brand', $result[2]);
+        $this->assertCount(3, $result["products"]);
+        $this->assertArrayNotHasKey('brand', $this->getProductFromResult($result));
+        $this->assertArrayNotHasKey('brand', $result['products'][1]);
+        $this->assertArrayNotHasKey('brand', $result['products'][2]);
     }
 
     /**
@@ -773,9 +791,9 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('description', $result[0]);
-        $this->assertArrayNotHasKey('descriptionShort', $result[0]);
+        $this->assertCount(1, $result["products"]);
+        $this->assertArrayNotHasKey('description', $this->getProductFromResult($result));
+        $this->assertArrayNotHasKey('descriptionShort', $this->getProductFromResult($result));
     }
 
     /**
@@ -818,11 +836,11 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(2, $result);
-        $this->assertArrayNotHasKey('imageUrl', $result[0]); // Invalid type, no field added
-        $this->assertArrayNotHasKey('small', $result[1]['imageUrl']); // Null URL filtered out
-        $this->assertArrayNotHasKey('medium', $result[1]['imageUrl']); // Empty URL filtered out
-        $this->assertArrayNotHasKey('large', $result[1]['imageUrl']); // Not in size mapping
+        $this->assertCount(2, $result["products"]);
+        $this->assertArrayNotHasKey('imageUrl', $this->getProductFromResult($result)); // Invalid type, no field added
+        $this->assertArrayNotHasKey('small', $result['products'][1]['imageUrl']); // Null URL filtered out
+        $this->assertArrayNotHasKey('medium', $result['products'][1]['imageUrl']); // Empty URL filtered out
+        $this->assertArrayNotHasKey('large', $result['products'][1]['imageUrl']); // Not in size mapping
     }
 
     /**
@@ -866,11 +884,11 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(2, $result);
-        $this->assertArrayNotHasKey('productUrl', $result[0]); // Invalid type, no field added
-        $this->assertArrayNotHasKey('productUrl', $result[1]); // Null en-US filtered out
-        $this->assertArrayNotHasKey('productUrl_lt-LT', $result[1]); // Empty URL filtered out
-        $this->assertEquals('http://example.com/valid', $result[1]['productUrl_fr-FR']); // Valid URL
+        $this->assertCount(2, $result["products"]);
+        $this->assertArrayNotHasKey('productUrl', $this->getProductFromResult($result)); // Invalid type, no field added
+        $this->assertArrayNotHasKey('productUrl', $result['products'][1]); // Null en-US filtered out
+        $this->assertArrayNotHasKey('productUrl_lt-LT', $result['products'][1]); // Empty URL filtered out
+        $this->assertEquals('http://example.com/valid', $result['products'][1]['productUrl_fr-FR']); // Valid URL
     }
 
     /**
@@ -932,19 +950,19 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(2, $result);
-        $this->assertEquals([], $result[0]['categories']); // Invalid type becomes empty array
+        $this->assertCount(2, $result["products"]);
+        $this->assertEquals([], $this->getProductFromResult($result)['categories']); // Invalid type becomes empty array
 
         // Check if categories were processed for the second product
-        $this->assertArrayHasKey('categories', $result[1]); // Should always have categories key (even if empty)
+        $this->assertArrayHasKey('categories', $result['products'][1]); // Should always have categories key (even if empty)
 
         // If valid categories were found, they should be in the results
-        if (isset($result[1]['categories_fr-FR'])) {
-            $this->assertContains('Catégorie Valide', $result[1]['categories_fr-FR']); // Valid localized category
+        if (isset($result['products'][1]['categories_fr-FR'])) {
+            $this->assertContains('Catégorie Valide', $result['products'][1]['categories_fr-FR']); // Valid localized category
         }
 
         // The en-US category should be empty since it was null/empty
-        $this->assertThat($result[1]['categories'], $this->logicalOr(
+        $this->assertThat($result['products'][1]['categories'], $this->logicalOr(
             $this->equalTo([]), // No valid categories found
             $this->arrayHasKey(0) // Or has at least one category
         ));
@@ -976,10 +994,10 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('name', $result[0]); // Null/empty en-US filtered out
-        $this->assertArrayNotHasKey('name_lt-LT', $result[0]); // Empty name filtered out
-        $this->assertEquals('Nom Valide', $result[0]['name_fr-FR']); // Valid name
+        $this->assertCount(1, $result["products"]);
+        $this->assertArrayNotHasKey('name', $this->getProductFromResult($result)); // Null/empty en-US filtered out
+        $this->assertArrayNotHasKey('name_lt-LT', $this->getProductFromResult($result)); // Empty name filtered out
+        $this->assertEquals('Nom Valide', $this->getProductFromResult($result)['name_fr-FR']); // Valid name
     }
 
     /**
@@ -1003,10 +1021,12 @@ class PrestaShopAdapterTest extends TestCase
             ]
         ];
 
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage("Required field 'remoteId' is missing from PrestaShop data");
+        $result = $this->adapter->transform($prestaShopData);
 
-        $this->adapter->transform($prestaShopData);
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertEquals('transformation_error', $result['errors'][0]['type']);
+        $this->assertEquals("Required field 'remoteId' is missing from PrestaShop data", $result['errors'][0]['message']);
     }
 
     /**
@@ -1059,9 +1079,9 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(1, $result);
-        $this->assertArrayNotHasKey('features', $result[0]); // Invalid features filtered out
-        $this->assertEquals([['name' => 'Matériau', 'value' => 'Coton']], $result[0]['features_fr-FR']); // Only valid feature
+        $this->assertCount(1, $result["products"]);
+        $this->assertArrayNotHasKey('features', $this->getProductFromResult($result)); // Invalid features filtered out
+        $this->assertEquals([['name' => 'Matériau', 'value' => 'Coton']], $this->getProductFromResult($result)['features_fr-FR']); // Only valid feature
     }
 
     /**
@@ -1102,7 +1122,7 @@ class PrestaShopAdapterTest extends TestCase
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(1, $result);
-        $this->assertEmpty($result[0]['variants']); // All variants invalid or filtered out
+        $this->assertCount(1, $result["products"]);
+        $this->assertEmpty($this->getProductFromResult($result)['variants']); // All variants invalid or filtered out
     }
 }
