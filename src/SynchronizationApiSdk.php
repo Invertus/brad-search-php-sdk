@@ -228,6 +228,34 @@ class SynchronizationApiSdk
     }
 
     /**
+     * Update specific fields of multiple products in bulk
+     *
+     * @param string $index
+     * @param array $updates Array of updates in format: [['id' => 'product_id', 'fields' => ['field' => 'value']]]
+     * @return array Response from the API
+     * @throws ValidationException
+     */
+    public function updateProductsBulk(string $index, array $updates): array
+    {
+        $this->validator->validateIndex($index);
+
+        if (empty($updates)) {
+            return [
+                'status' => 'success',
+                'message' => 'No updates provided',
+                'updated_count' => 0,
+            ];
+        }
+
+        $data = [
+            'index_name' => $index,
+            'updates' => $updates,
+        ];
+
+        return $this->httpClient->patch('api/v1/sync/update-products', $data);
+    }
+
+    /**
      * Build embeddable fields configuration with localized fields
      */
     private function buildEmbeddableFields(): array
