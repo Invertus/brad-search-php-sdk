@@ -16,14 +16,18 @@ class SynchronizationApiSdk
     private readonly HttpClient $httpClient;
     private readonly DataValidator $validator;
 
+    private readonly string $apiStartUrl;
+
     /**
      * @param array<string, FieldConfig> $fieldConfiguration
      */
     public function __construct(
         SyncConfig $config,
-        public readonly array $fieldConfiguration
+        public readonly array $fieldConfiguration,
+        private readonly string $endpoint = ''
     ) {
         $this->httpClient = new HttpClient($config);
+        $this->apiStartUrl = 'api/v1/';
         $this->validator = new DataValidator($fieldConfiguration);
     }
 
@@ -36,7 +40,7 @@ class SynchronizationApiSdk
     public function deleteIndex(string $index): void
     {
         $this->validator->validateIndex($index);
-        $this->httpClient->delete("api/v1/sync/{$index}");
+        $this->httpClient->delete("{$this->apiStartUrl}sync/{$index}");
     }
 
     /**
@@ -59,7 +63,10 @@ class SynchronizationApiSdk
             'fields' => $fields,
         ];
 
-        $this->httpClient->put('api/v1/sync/', $data);
+
+        $url = $this->apiStartUrl . (!empty($this->endpoint) ? $this->endpoint . '/' : '') . 'sync/';
+
+        $this->httpClient->put($url, $data);
     }
 
     /**
@@ -82,7 +89,7 @@ class SynchronizationApiSdk
             'target_index' => $targetIndex
         ];
 
-        $this->httpClient->post('api/v1/sync/reindex', $data);
+        $this->httpClient->post("{$this->apiStartUrl}sync/reindex", $data);
     }
 
     /**
