@@ -64,11 +64,7 @@ class SynchronizationApiSdk
         ];
 
 
-        $url = $this->apiStartUrl . 'sync/' . $index;
-        if (!empty($this->endpoint)) {
-            // special case when creating index with custom endpoint
-            $url = $this->apiStartUrl . $this->endpoint . '/sync/' . $index;
-        }
+        $url = $this->apiStartUrl . (!empty($this->endpoint) ? $this->endpoint . '/' : '') . 'sync';
 
         $this->httpClient->put($url, $data);
     }
