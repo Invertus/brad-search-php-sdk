@@ -64,7 +64,7 @@ class SynchronizationApiSdk
         ];
 
 
-        $url = $this->apiStartUrl . (!empty($this->endpoint) ? $this->endpoint . '/' : '') . 'sync';
+        $url = $this->apiStartUrl . (!empty($this->endpoint) ? $this->endpoint . '/' : '') . 'sync/';
 
         $this->httpClient->put($url, $data);
     }
