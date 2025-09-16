@@ -48,6 +48,14 @@ class HttpClient
     }
 
     /**
+     * Make a PATCH request
+     */
+    public function patch(string $endpoint, array $data = []): array
+    {
+        return $this->request('PATCH', $endpoint, $data);
+    }
+
+    /**
      * Make HTTP request
      */
     private function request(string $method, string $endpoint, ?array $data = null): array
