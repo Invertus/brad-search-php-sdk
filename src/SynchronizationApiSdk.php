@@ -60,7 +60,7 @@ class SynchronizationApiSdk
 
         $data = [
             'index_name' => $index,
-            'fields' => empty($this->endpoint) ? $fields : [],
+            'fields' => $fields,
         ];
 
 
