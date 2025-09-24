@@ -7,6 +7,8 @@ namespace BradSearch\SyncSdk;
 use BradSearch\SyncSdk\Client\HttpClient;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Models\FieldConfig;
+use BradSearch\SyncSdk\Models\BulkOperation;
+use BradSearch\SyncSdk\Models\BulkOperationResult;
 use BradSearch\SyncSdk\Validators\DataValidator;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
 use BradSearch\SyncSdk\Enums\FieldType;
@@ -260,6 +262,85 @@ class SynchronizationApiSdk
         ];
 
         return $this->httpClient->patch('api/v1/sync/update-products', $data);
+    }
+
+    /**
+     * Execute multiple bulk operations in a single API call
+     *
+     * @param BulkOperation[] $operations Array of bulk operations to execute
+     * @return BulkOperationResult Result of all operations
+     * @throws ValidationException
+     */
+    public function bulkOperations(array $operations): BulkOperationResult
+    {
+        if (empty($operations)) {
+            throw new ValidationException('No operations provided');
+        }
+
+        // Validate all operations
+        foreach ($operations as $operation) {
+            if (!$operation instanceof BulkOperation) {
+                throw new ValidationException('All operations must be instances of BulkOperation');
+            }
+            $this->validateBulkOperation($operation);
+        }
+
+        $data = [
+            'operations' => array_map(fn(BulkOperation $op) => $op->toArray(), $operations)
+        ];
+
+        $response = $this->httpClient->post("{$this->apiStartUrl}sync/bulk-operations", $data);
+
+        return BulkOperationResult::fromApiResponse($response);
+    }
+
+    /**
+     * Validate a single bulk operation
+     *
+     * @throws ValidationException
+     */
+    protected function validateBulkOperation(BulkOperation $operation): void
+    {
+        $payload = $operation->payload;
+
+        switch ($operation->type) {
+            case \BradSearch\SyncSdk\Enums\BulkOperationType::INDEX_PRODUCTS:
+                if (!isset($payload['index_name']) || !isset($payload['products'])) {
+                    throw new ValidationException('INDEX_PRODUCTS operation requires index_name and products');
+                }
+                $this->validator->validateIndex($payload['index_name']);
+                if (!empty($payload['products'])) {
+                    $this->validator->validateProducts($payload['products']);
+                }
+                break;
+
+            case \BradSearch\SyncSdk\Enums\BulkOperationType::UPDATE_PRODUCTS:
+                if (!isset($payload['index_name']) || !isset($payload['updates'])) {
+                    throw new ValidationException('UPDATE_PRODUCTS operation requires index_name and updates');
+                }
+                $this->validator->validateIndex($payload['index_name']);
+                break;
+
+            case \BradSearch\SyncSdk\Enums\BulkOperationType::DELETE_PRODUCTS:
+                if (!isset($payload['index_name']) || !isset($payload['product_ids'])) {
+                    throw new ValidationException('DELETE_PRODUCTS operation requires index_name and product_ids');
+                }
+                $this->validator->validateIndex($payload['index_name']);
+                if (empty($payload['product_ids']) || !is_array($payload['product_ids'])) {
+                    throw new ValidationException('product_ids must be a non-empty array');
+                }
+                break;
+
+            case \BradSearch\SyncSdk\Enums\BulkOperationType::DELETE_INDEX:
+                if (!isset($payload['index_name'])) {
+                    throw new ValidationException('DELETE_INDEX operation requires index_name');
+                }
+                $this->validator->validateIndex($payload['index_name']);
+                break;
+
+            default:
+                throw new ValidationException('Unsupported operation type: ' . $operation->type->value);
+        }
     }
 
     /**
