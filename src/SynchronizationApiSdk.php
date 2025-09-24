@@ -7,6 +7,9 @@ namespace BradSearch\SyncSdk;
 use BradSearch\SyncSdk\Client\HttpClient;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Models\FieldConfig;
+use BradSearch\SyncSdk\Models\ReindexTaskResponse;
+use BradSearch\SyncSdk\Models\ReindexStatusResponse;
+use BradSearch\SyncSdk\Models\ReindexCancelResponse;
 use BradSearch\SyncSdk\Validators\DataValidator;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
 use BradSearch\SyncSdk\Enums\FieldType;
@@ -70,13 +73,14 @@ class SynchronizationApiSdk
     }
 
     /**
-     * Copy source index to target index
+     * Copy source index to target index (async operation)
      *
      * @param string $sourceIndex
      * @param string $targetIndex
+     * @return ReindexTaskResponse
      * @throws ValidationException
      */
-    public function copyIndex(string $sourceIndex, string $targetIndex): void
+    public function copyIndex(string $sourceIndex, string $targetIndex): ReindexTaskResponse
     {
         $this->validator->validateIndex($sourceIndex);
 
@@ -89,7 +93,8 @@ class SynchronizationApiSdk
             'target_index' => $targetIndex
         ];
 
-        $this->httpClient->post("{$this->apiStartUrl}sync/reindex", $data);
+        $response = $this->httpClient->post("{$this->apiStartUrl}sync/reindex", $data);
+        return ReindexTaskResponse::fromArray($response);
     }
 
     /**
@@ -290,5 +295,29 @@ class SynchronizationApiSdk
         }
 
         return $embeddableFields;
+    }
+
+    /**
+     * Get the status of a reindex task
+     *
+     * @param string $taskId
+     * @return ReindexStatusResponse
+     */
+    public function getReindexStatus(string $taskId): ReindexStatusResponse
+    {
+        $response = $this->httpClient->get("{$this->apiStartUrl}sync/reindex/status/{$taskId}");
+        return ReindexStatusResponse::fromArray($response);
+    }
+
+    /**
+     * Cancel a running reindex task
+     *
+     * @param string $taskId
+     * @return ReindexCancelResponse
+     */
+    public function cancelReindexTask(string $taskId): ReindexCancelResponse
+    {
+        $response = $this->httpClient->delete("{$this->apiStartUrl}sync/reindex/{$taskId}");
+        return ReindexCancelResponse::fromArray($response);
     }
 }

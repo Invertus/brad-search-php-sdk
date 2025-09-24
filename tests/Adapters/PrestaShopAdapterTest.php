@@ -811,7 +811,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -841,7 +843,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -853,7 +857,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1808',
                     'sku' => 'M0E20000000EAAL',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product 2'
                     ],
@@ -888,7 +894,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -900,7 +908,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1808',
                     'sku' => 'M0E20000000EAAL',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product 2'
                     ],
@@ -936,7 +946,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -948,7 +960,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1808',
                     'sku' => 'M0E20000000EAAL',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product 2'
                     ],
@@ -1013,7 +1027,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => null, // Null name
                         'lt-LT' => '', // Empty name
@@ -1074,7 +1090,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -1129,7 +1147,9 @@ class PrestaShopAdapterTest extends TestCase
                     'remoteId' => '1807',
                     'sku' => 'M0E20000000EAAK',
                     'price' => '99.99',
-                    'formattedPrice' => '$99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
                     ],
@@ -1158,5 +1178,41 @@ class PrestaShopAdapterTest extends TestCase
 
         $this->assertCount(1, $result["products"]);
         $this->assertEmpty($this->getProductFromResult($result)['variants']); // All variants invalid or filtered out
+    }
+
+    /**
+     * Test that zero price values are handled correctly and not skipped
+     */
+    public function testTransformWithZeroPriceValues(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'FREE-PRODUCT',
+                    'price' => '0', // Zero price as string
+                    'basePrice' => 0, // Zero price as number
+                    'priceTaxExcluded' => '0.00', // Zero price with decimal
+                    'basePriceTaxExcluded' => 0.0, // Zero price as float
+                    'localizedNames' => [
+                        'en-US' => 'Free Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result['products']);
+        $product = $this->getProductFromResult($result);
+
+        // Verify that all zero price values are correctly handled
+        $this->assertEquals('0', $product['price']);
+        $this->assertEquals('0', $product['basePrice']);
+        $this->assertEquals('0.00', $product['priceTaxExcluded']);
+        $this->assertEquals('0', $product['basePriceTaxExcluded']);
+        $this->assertEquals('Free Product', $product['name']);
     }
 }
