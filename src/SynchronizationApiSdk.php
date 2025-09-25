@@ -111,7 +111,7 @@ class SynchronizationApiSdk
      *
      * @param array<array> $productsData
      */
-    public function syncBulk(string $index, array $productsData, int $batchSize = 100): void
+    public function syncBulk(string $index, array $productsData, int $batchSize = 100, ?string $endpoint = null): void
     {
         if (empty($productsData)) {
             return;
@@ -124,7 +124,7 @@ class SynchronizationApiSdk
         $batches = array_chunk($productsData, $batchSize);
 
         foreach ($batches as $batch) {
-            $this->sendBatch($index, $batch);
+            $this->sendBatch($index, $batch, $endpoint);
         }
     }
 
@@ -133,7 +133,7 @@ class SynchronizationApiSdk
      *
      * @param array<array> $products
      */
-    private function sendBatch(string $index, array $products): void
+    private function sendBatch(string $index, array $products, ?string $endpoint = null): void
     {
         // Filter products to only include fields that are defined in the configuration
         $filteredProducts = array_map(
@@ -154,6 +154,10 @@ class SynchronizationApiSdk
             ],
             'embeddablefields' => $this->buildEmbeddableFields(),
         ];
+
+        if ($endpoint !== null) {
+            $data['endpoint'] = $endpoint;
+        }
 
         $this->httpClient->post('api/v1/sync/', $data);
     }
