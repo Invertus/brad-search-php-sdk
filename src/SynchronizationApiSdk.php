@@ -330,14 +330,6 @@ class SynchronizationApiSdk
                     throw new ValidationException('product_ids must be a non-empty array');
                 }
                 break;
-
-            case \BradSearch\SyncSdk\Enums\BulkOperationType::DELETE_INDEX:
-                if (!isset($payload['index_name'])) {
-                    throw new ValidationException('DELETE_INDEX operation requires index_name');
-                }
-                $this->validator->validateIndex($payload['index_name']);
-                break;
-
             default:
                 throw new ValidationException('Unsupported operation type: ' . $operation->type->value);
         }

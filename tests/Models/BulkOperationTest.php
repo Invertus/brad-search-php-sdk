@@ -81,17 +81,6 @@ class BulkOperationTest extends TestCase
         $this->assertEquals('delete_products', $array['type']);
     }
 
-    public function testDeleteIndexOperation(): void
-    {
-        $operation = BulkOperation::deleteIndex('old-products-index');
-
-        $this->assertEquals(BulkOperationType::DELETE_INDEX, $operation->type);
-        $this->assertEquals('old-products-index', $operation->payload['index_name']);
-
-        $array = $operation->toArray();
-        $this->assertEquals('delete_index', $array['type']);
-    }
-
     public function testIndexProductsWithoutOptionalFields(): void
     {
         $products = [
@@ -170,13 +159,6 @@ class BulkOperationResultTest extends TestCase
                     'message' => 'Operation completed',
                     'count' => 1,
                     'index_name' => 'products-v1'
-                ],
-                [
-                    'type' => 'delete_index',
-                    'status' => 'error',
-                    'message' => 'Index does not exist',
-                    'error' => 'index not found',
-                    'index_name' => 'non-existent-index'
                 ]
             ]
         ];
@@ -195,7 +177,6 @@ class BulkOperationResultTest extends TestCase
         $this->assertCount(1, $result->getSuccessfulResults());
 
         $failedResults = $result->getFailedResults();
-        $this->assertEquals('delete_index', $failedResults[0]['type']);
         $this->assertEquals('error', $failedResults[0]['status']);
 
         $successfulResults = $result->getSuccessfulResults();

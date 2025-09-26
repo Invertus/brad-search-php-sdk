@@ -161,7 +161,6 @@ class SynchronizationApiSdkBulkOperationsTest extends TestCase
             BulkOperation::indexProducts('products-v1', [
                 ['id' => 'prod-123', 'name' => 'Product 1', 'price' => 99.99]
             ]),
-            BulkOperation::deleteIndex('non-existent-index')
         ];
 
         $apiResponse = [
@@ -180,11 +179,10 @@ class SynchronizationApiSdkBulkOperationsTest extends TestCase
                     'index_name' => 'products-v1'
                 ],
                 [
-                    'type' => 'delete_index',
+                    'type' => 'index_products',
                     'status' => 'error',
-                    'message' => 'Index does not exist',
-                    'error' => 'index not found',
-                    'index_name' => 'non-existent-index'
+                    'message' => 'Operation failed',
+                    'index_name' => 'products-v1'
                 ]
             ]
         ];
@@ -276,19 +274,6 @@ class SynchronizationApiSdkBulkOperationsTest extends TestCase
         $sdk->bulkOperations([$operation]);
     }
 
-    public function testBulkOperationValidationDeleteIndex(): void
-    {
-        // Test missing index_name
-        $operation = new BulkOperation(BulkOperationType::DELETE_INDEX, []);
-
-        $this->expectException(ValidationException::class);
-        $this->expectExceptionMessage('DELETE_INDEX operation requires index_name');
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations([$operation]);
-    }
-
     public function testBulkOperationValidationInvalidIndex(): void
     {
         $operation = BulkOperation::indexProducts('', []);
@@ -313,55 +298,6 @@ class SynchronizationApiSdkBulkOperationsTest extends TestCase
         $httpClientMock = $this->createMock(HttpClient::class);
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->bulkOperations([$operation]);
-    }
-
-    public function testDeleteIndexOperation(): void
-    {
-        $operations = [
-            BulkOperation::deleteIndex('old-products-index')
-        ];
-
-        $apiResponse = [
-            'status' => 'success',
-            'message' => 'All 1 operations completed successfully',
-            'total_operations' => 1,
-            'successful_operations' => 1,
-            'failed_operations' => 0,
-            'processing_time_ms' => 456,
-            'results' => [
-                [
-                    'type' => 'delete_index',
-                    'status' => 'success',
-                    'message' => 'Index deleted successfully',
-                    'count' => 1,
-                    'index_name' => 'old-products-index'
-                ]
-            ]
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with('api/v1/sync/bulk-operations', [
-                'operations' => [
-                    [
-                        'type' => 'delete_index',
-                        'payload' => [
-                            'index_name' => 'old-products-index'
-                        ]
-                    ]
-                ]
-            ])
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
-
-        $this->assertTrue($result->isSuccess());
-        $this->assertEquals(1, $result->totalOperations);
-        $this->assertEquals(1, $result->successfulOperations);
-        $this->assertEquals(0, $result->failedOperations);
     }
 
     public function testIndexProductsWithSubfieldsAndEmbeddableFields(): void

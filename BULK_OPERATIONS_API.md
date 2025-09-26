@@ -24,7 +24,6 @@ POST /api/v1/sync/bulk-operations?token={your-jwt-token}
 | `index_products` | Index new products | Bulk product creation |
 | `update_products` | Update existing products | Bulk product updates |
 | `delete_products` | Delete specific products by ID | Selective product removal |
-| `delete_index` | Delete entire indexes | Index cleanup |
 
 ## Request Format
 
@@ -116,17 +115,6 @@ POST /api/v1/sync/bulk-operations?token={your-jwt-token}
   "payload": {
     "index_name": "products-v1",
     "product_ids": ["prod-125", "prod-126", "prod-127"]
-  }
-}
-```
-
-#### 4. Delete Index (`delete_index`)
-
-```json
-{
-  "type": "delete_index",
-  "payload": {
-    "index_name": "old-products-index"
   }
 }
 ```
@@ -280,45 +268,6 @@ curl -X POST "https://api.example.com/api/v1/sync/bulk-operations?token=your-jwt
 }
 ```
 
-### Example 3: Index Deletion
-
-**Request:**
-```bash
-curl -X POST "https://api.example.com/api/v1/sync/bulk-operations?token=your-jwt-token" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "operations": [
-      {
-        "type": "delete_index",
-        "payload": {
-          "index_name": "old-products-index"
-        }
-      }
-    ]
-  }'
-```
-
-**Response (200 OK):**
-```json
-{
-  "status": "success",
-  "message": "All 1 operations completed successfully",
-  "total_operations": 1,
-  "successful_operations": 1,
-  "failed_operations": 0,
-  "processing_time_ms": 456,
-  "results": [
-    {
-      "type": "delete_index",
-      "status": "success",
-      "message": "Index 'old-products-index' deleted successfully",
-      "count": 1,
-      "index_name": "old-products-index"
-    }
-  ]
-}
-```
-
 ## Error Handling Examples
 
 ### Example 4: Partial Failure
@@ -338,12 +287,6 @@ curl -X POST "https://api.example.com/api/v1/sync/bulk-operations?token=your-jwt
             "price": 99.99
           }
         ]
-      }
-    },
-    {
-      "type": "delete_index",
-      "payload": {
-        "index_name": "non-existent-index"
       }
     }
   ]
@@ -366,13 +309,6 @@ curl -X POST "https://api.example.com/api/v1/sync/bulk-operations?token=your-jwt
       "message": "Operation index_products completed successfully",
       "count": 1,
       "index_name": "products-v1"
-    },
-    {
-      "type": "delete_index",
-      "status": "error",
-      "message": "Index 'non-existent-index' does not exist",
-      "error": "index not found",
-      "index_name": "non-existent-index"
     }
   ]
 }

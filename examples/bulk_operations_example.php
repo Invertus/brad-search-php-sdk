@@ -78,9 +78,6 @@ try {
             'prod-126',
             'prod-127'
         ]),
-
-        // 4. Delete an entire index (be careful!)
-        BulkOperation::deleteIndex('old-products-index')
     ];
 
     // Execute all operations in a single API call

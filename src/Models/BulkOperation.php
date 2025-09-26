@@ -54,11 +54,4 @@ class BulkOperation
             'product_ids' => $productIds
         ]);
     }
-
-    public static function deleteIndex(string $indexName): self
-    {
-        return new self(BulkOperationType::DELETE_INDEX, [
-            'index_name' => $indexName
-        ]);
-    }
 }

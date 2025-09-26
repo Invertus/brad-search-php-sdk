@@ -9,5 +9,4 @@ enum BulkOperationType: string
     case INDEX_PRODUCTS = 'index_products';
     case UPDATE_PRODUCTS = 'update_products';
     case DELETE_PRODUCTS = 'delete_products';
-    case DELETE_INDEX = 'delete_index';
 }
