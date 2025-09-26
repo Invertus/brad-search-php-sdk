@@ -155,6 +155,10 @@ class SynchronizationApiSdk
             'embeddablefields' => $this->buildEmbeddableFields(),
         ];
 
+        if (!empty($this->endpoint)) {
+            $data['endpoint'] = $this->endpoint;
+        }
+
         $this->httpClient->post('api/v1/sync/', $data);
     }
 
