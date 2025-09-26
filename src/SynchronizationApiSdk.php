@@ -124,7 +124,7 @@ class SynchronizationApiSdk
         $batches = array_chunk($productsData, $batchSize);
 
         foreach ($batches as $batch) {
-            $this->sendBatch($index, $batch, $this->endpoint);
+            $this->sendBatch($index, $batch);
         }
     }
 
