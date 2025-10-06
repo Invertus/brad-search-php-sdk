@@ -290,6 +290,7 @@ class SynchronizationApiSdk
         }
 
         $data = [
+            'endpoint' => $this->endpoint,
             'operations' => array_map(fn(BulkOperation $op) => $op->toArray(), $operations)
         ];
 
