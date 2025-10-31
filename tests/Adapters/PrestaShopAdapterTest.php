@@ -400,7 +400,7 @@ class PrestaShopAdapterTest extends TestCase
         $variant1 = $product['variants'][0];
         $this->assertEquals('26911', $variant1['id']);
         $this->assertEquals('M0E20000000EAAK-34', $variant1['sku']);
-        $this->assertEquals('http://prestashop/sneakers/1807-26911-sneakers.html', $variant1['url']);
+        $this->assertEquals('http://prestashop/sneakers/1807-26911-sneakers.html', $variant1['productUrl']);
         $this->assertEquals([
             [
                 'name' => 'size',
@@ -416,7 +416,7 @@ class PrestaShopAdapterTest extends TestCase
         $variant2 = $product['variants'][1];
         $this->assertEquals('26912', $variant2['id']);
         $this->assertEquals('M0E20000000EAAL', $variant2['sku']);
-        $this->assertEquals('http://prestashop/sneakers/1807-26912-sneakers.html', $variant2['url']);
+        $this->assertEquals('http://prestashop/sneakers/1807-26912-sneakers.html', $variant2['productUrl']);
         $this->assertEquals([
             [
                 'name' => 'size',
@@ -1188,5 +1188,110 @@ class PrestaShopAdapterTest extends TestCase
 
         $this->assertCount(1, $result["products"]);
         $this->assertEmpty($this->getProductFromResult($result)['variants']); // All variants invalid or filtered out
+    }
+
+    public function testTransformVariantWithPricesAndImageUrl(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '3642',
+                    'sku' => 'V-L558',
+                    'price' => '10.00',
+                    'basePrice' => '12.00',
+                    'priceTaxExcluded' => '8.50',
+                    'basePriceTaxExcluded' => '10.00',
+                    'localizedNames' => [
+                        'en-US' => 'Drip tray'
+                    ],
+                    'categories' => [],
+                    'variants' => [
+                        [
+                            'remoteId' => 1,
+                            'sku' => 'ABCD1',
+                            'price' => 0,
+                            'basePrice' => '0.00',
+                            'priceTaxExcluded' => '0.00',
+                            'basePriceTaxExcluded' => '0.00',
+                            'attributes' => [
+                                'Pusė' => [
+                                    'localizedNames' => [
+                                        'en-US' => 'Side'
+                                    ],
+                                    'localizedValues' => [
+                                        'en-US' => 'right'
+                                    ]
+                                ]
+                            ],
+                            'productUrl' => [
+                                'localizedValues' => [
+                                    'en-US' => 'http://prestashop/en/3642-1-drip-tray.html'
+                                ]
+                            ],
+                            'imageUrl' => [
+                                'small' => 'http://prestashop/13600-square_cart_default/drip-tray.jpg',
+                                'medium' => 'http://prestashop/13600-home_default/drip-tray.jpg'
+                            ]
+                        ],
+                        [
+                            'remoteId' => 2,
+                            'sku' => 'ABCD-333',
+                            'price' => 15.99,
+                            'basePrice' => '18.00',
+                            'priceTaxExcluded' => '13.50',
+                            'basePriceTaxExcluded' => '15.00',
+                            'attributes' => [
+                                'Pusė' => [
+                                    'localizedNames' => [
+                                        'en-US' => 'Side'
+                                    ],
+                                    'localizedValues' => [
+                                        'en-US' => 'left'
+                                    ]
+                                ]
+                            ],
+                            'productUrl' => [
+                                'localizedValues' => [
+                                    'en-US' => 'http://prestashop/en/3642-2-drip-tray.html'
+                                ]
+                            ],
+                            'imageUrl' => [
+                                'small' => 'http://prestashop/13601-square_cart_default/drip-tray.jpg',
+                                'medium' => 'http://prestashop/13601-home_default/drip-tray.jpg'
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertCount(2, $product['variants']);
+
+        // First variant - check prices and imageUrl
+        $variant1 = $product['variants'][0];
+        $this->assertEquals('1', $variant1['id']);
+        $this->assertEquals('ABCD1', $variant1['sku']);
+        $this->assertEquals(0, $variant1['price']);
+        $this->assertEquals('0.00', $variant1['basePrice']);
+        $this->assertEquals('0.00', $variant1['priceTaxExcluded']);
+        $this->assertEquals('0.00', $variant1['basePriceTaxExcluded']);
+        $this->assertArrayHasKey('imageUrl', $variant1);
+        $this->assertEquals('http://prestashop/13600-square_cart_default/drip-tray.jpg', $variant1['imageUrl']['small']);
+        $this->assertEquals('http://prestashop/13600-home_default/drip-tray.jpg', $variant1['imageUrl']['medium']);
+
+        // Second variant - check prices and imageUrl
+        $variant2 = $product['variants'][1];
+        $this->assertEquals('2', $variant2['id']);
+        $this->assertEquals('ABCD-333', $variant2['sku']);
+        $this->assertEquals(15.99, $variant2['price']);
+        $this->assertEquals('18.00', $variant2['basePrice']);
+        $this->assertEquals('13.50', $variant2['priceTaxExcluded']);
+        $this->assertEquals('15.00', $variant2['basePriceTaxExcluded']);
+        $this->assertArrayHasKey('imageUrl', $variant2);
+        $this->assertEquals('http://prestashop/13601-square_cart_default/drip-tray.jpg', $variant2['imageUrl']['small']);
+        $this->assertEquals('http://prestashop/13601-home_default/drip-tray.jpg', $variant2['imageUrl']['medium']);
     }
 }
