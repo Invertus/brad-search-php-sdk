@@ -142,14 +142,14 @@ class ShopifyAdapter
             return $matches[1];
         }
 
-        // Fallback: extract last segment if no numeric match found
+        // Fallback: extract last segment and filter to only numeric characters
         $parts = explode('/', $gid);
         $lastSegment = end($parts);
 
-        // Filter to only numeric characters
+        // Filter to only numeric characters - returns empty string if none found
         $numericId = preg_replace('/[^0-9]/', '', $lastSegment);
 
-        return $numericId !== '' ? $numericId : $lastSegment;
+        return $numericId;
     }
 
     /**
