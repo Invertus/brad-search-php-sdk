@@ -43,11 +43,14 @@ class ShopifyAdapter
         $errors = [];
 
         foreach ($shopifyData['data']['products']['edges'] as $index => $edge) {
-            if (! is_array($edge)) {
-                continue;
-            }
-
-            if (! isset($edge['node']) || ! is_array($edge['node'])) {
+            if (! is_array($edge) || ! isset($edge['node']) || ! is_array($edge['node'])) {
+                $errors[] = [
+                    'type' => 'invalid_structure',
+                    'product_index' => $index,
+                    'product_id' => '',
+                    'message' => 'Skipping product due to malformed edge or node structure.',
+                    'exception' => null,
+                ];
                 continue;
             }
 
@@ -294,8 +297,8 @@ class ShopifyAdapter
         usort($images, fn($a, $b) => $a['width'] <=> $b['width']);
 
         $smallImage = $images[0]['url'];
-        // For medium, pick one from the middle range, or the last if few images
-        $mediumIndex = count($images) > 1 ? (int) floor(count($images) / 2) : 0;
+        // For medium, pick one from the middle range
+        $mediumIndex = (int) floor(count($images) / 2);
         $mediumImage = $images[$mediumIndex]['url'];
 
         return [
@@ -317,13 +320,13 @@ class ShopifyAdapter
 
         foreach ($variantsData['edges'] as $edge) {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
-                continue;
+                throw new ValidationException('Variant has malformed node structure');
             }
 
             $variant = $edge['node'];
 
             if (! isset($variant['id'])) {
-                continue;
+                throw new ValidationException('Variant is missing required ID field');
             }
 
             $transformedVariant = [
