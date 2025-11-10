@@ -179,7 +179,7 @@ foreach ($transformedData['products'] as $product) {
 try {
     // Create index if it doesn't exist
     $indexName = 'shopify-products';
-    $syncSdk->createIndex($indexName, ['en']);
+    $syncSdk->createIndex($indexName, ['en-US']);
     
     // Sync products
     $result = $syncSdk->syncBulk($indexName, $transformedData['products']);

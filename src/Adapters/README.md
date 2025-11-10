@@ -197,7 +197,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `priceRangeV2.maxVariantPrice` | `basePrice` | Maximum variant price |
 | `variants[0].sku` | `sku` | First variant SKU |
 | `variants.*.availableForSale` | `inStock` | Any variant available |
-| `images.edges[0].url` | `imageUrl` | First image URL used for both `small` and `medium` |
+| `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
 | `variants.selectedOptions` | `variants.attributes` | Variant options |
 
 ### Shopify-Specific Transformations

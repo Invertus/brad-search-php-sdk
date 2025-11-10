@@ -77,14 +77,18 @@ class ShopifyAdapter
      */
     private function transformProduct(array $product): array
     {
+        // Extract prices once to avoid duplicate calls
+        $price = $this->extractPrice($product);
+        $basePrice = $this->extractBasePrice($product);
+
         $result = [
             'id' => $this->getRequiredField($product, 'id', true),
             'name' => $this->getRequiredField($product, 'title'),
             'sku' => $this->extractMainSku($product),
-            'price' => $this->extractPrice($product),
-            'basePrice' => $this->extractBasePrice($product),
-            'priceTaxExcluded' => $this->extractPrice($product), // Shopify prices are typically tax-excluded
-            'basePriceTaxExcluded' => $this->extractBasePrice($product),
+            'price' => $price,
+            'basePrice' => $basePrice,
+            'priceTaxExcluded' => $price, // Shopify prices are typically tax-excluded
+            'basePriceTaxExcluded' => $basePrice,
             'inStock' => $this->isInStock($product),
             'isNew' => false, // Shopify doesn't have explicit "new" flag
             'variants' => [],
@@ -129,6 +133,7 @@ class ShopifyAdapter
     /**
      * Extract numeric ID from Shopify GID format
      * Converts "gid://shopify/Product/6843600694995" to "6843600694995"
+     * Returns empty string for malformed GIDs that don't match the expected format
      */
     private function extractNumericId(string $gid): string
     {
@@ -143,19 +148,13 @@ class ShopifyAdapter
         }
 
         // Extract ID from format: gid://shopify/Resource/123456
-        // Use regex to extract only numeric characters from the last segment
+        // Only accept purely numeric IDs - return empty string for malformed GIDs
         if (preg_match('/\/(\d+)$/', $path, $matches)) {
             return $matches[1];
         }
 
-        // Fallback: extract last segment and filter to only numeric characters
-        $parts = explode('/', $path);
-        $lastSegment = end($parts);
-
-        // Filter to only numeric characters - returns empty string if none found
-        $numericId = preg_replace('/[^0-9]/', '', $lastSegment);
-
-        return $numericId;
+        // Malformed GID - return empty string
+        return '';
     }
 
     /**
@@ -267,6 +266,7 @@ class ShopifyAdapter
 
     /**
      * Extract and format images
+     * Intelligently selects images based on dimensions when available
      */
     private function extractImages(array $imagesData): array
     {
@@ -274,23 +274,33 @@ class ShopifyAdapter
             return [];
         }
 
-        $imageUrls = [];
-
+        $images = [];
         foreach ($imagesData['edges'] as $edge) {
             if (isset($edge['node']['url']) && is_string($edge['node']['url'])) {
-                $imageUrls[] = $edge['node']['url'];
+                $images[] = [
+                    'url' => $edge['node']['url'],
+                    'width' => $edge['node']['width'] ?? 0,
+                    'height' => $edge['node']['height'] ?? 0,
+                ];
             }
         }
 
-        // Return first image as both small and medium for consistency
-        if (! empty($imageUrls)) {
-            return [
-                'small' => $imageUrls[0],
-                'medium' => $imageUrls[0],
-            ];
+        if (empty($images)) {
+            return [];
         }
 
-        return [];
+        // Sort images by width to intelligently select small and medium sizes
+        usort($images, fn($a, $b) => $a['width'] <=> $b['width']);
+
+        $smallImage = $images[0]['url'];
+        // For medium, pick one from the middle range, or the last if few images
+        $mediumIndex = count($images) > 1 ? (int) floor(count($images) / 2) : 0;
+        $mediumImage = $images[$mediumIndex]['url'];
+
+        return [
+            'small' => $smallImage,
+            'medium' => $mediumImage,
+        ];
     }
 
     /**
