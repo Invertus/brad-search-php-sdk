@@ -265,27 +265,17 @@ class ShopifyAdapter
      */
     private function extractCategories(array $product): array
     {
-        $categories = [];
-
-        // Add productType as primary category
-        if (
-            isset($product['productType']) &&
-            is_string($product['productType']) &&
-            $product['productType'] !== ''
-        ) {
-            $categories[] = $product['productType'];
+        $rawCategories = [];
+        if (isset($product['productType'])) {
+            $rawCategories[] = $product['productType'];
         }
-
-        // Add tags as additional categories
         if (isset($product['tags']) && is_array($product['tags'])) {
-            foreach ($product['tags'] as $tag) {
-                if (is_string($tag) && $tag !== '') {
-                    $categories[] = $tag;
-                }
-            }
+            $rawCategories = array_merge($rawCategories, $product['tags']);
         }
 
-        return array_unique($categories);
+        $validCategories = array_filter($rawCategories, fn($c) => is_string($c) && $c !== '');
+
+        return array_values(array_unique($validCategories));
     }
 
     /**
@@ -366,10 +356,6 @@ class ShopifyAdapter
      */
     private function transformVariantOptions(array $selectedOptions): array
     {
-        if (! is_array($selectedOptions)) {
-            return [];
-        }
-
         $attributes = [];
 
         foreach ($selectedOptions as $option) {
