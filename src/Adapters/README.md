@@ -198,7 +198,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `variants[0].sku` | `sku` | First variant SKU |
 | `variants.*.availableForSale` | `inStock` | Any variant available |
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
-| `variants.selectedOptions` | `variants.attributes` | Variant options |
+| `variants.selectedOptions` | `variants.attributes` | Attribute names lowercased (e.g., 'Size' → 'size') |
 
 ### Shopify-Specific Transformations
 

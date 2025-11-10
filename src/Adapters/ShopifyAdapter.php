@@ -8,8 +8,6 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class ShopifyAdapter
 {
-    public function __construct() {}
-
     /**
      * Transform Shopify GraphQL product data to BradSearch format
      *
@@ -237,16 +235,9 @@ class ShopifyAdapter
      */
     private function isInStock(array $product): bool
     {
-        if (! isset($product['variants']['edges']) || ! is_array($product['variants']['edges'])) {
-            return false;
-        }
-
         // Check if any variant is available for sale
-        foreach ($product['variants']['edges'] as $edge) {
-            if (
-                isset($edge['node']['availableForSale']) &&
-                $edge['node']['availableForSale'] === true
-            ) {
+        foreach ($product['variants']['edges'] ?? [] as $edge) {
+            if ($this->getNestedValue($edge, ['node', 'availableForSale']) === true) {
                 return true;
             }
         }
