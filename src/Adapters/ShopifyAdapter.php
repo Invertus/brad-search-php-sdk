@@ -137,10 +137,19 @@ class ShopifyAdapter
         }
 
         // Extract ID from format: gid://shopify/Resource/123456
-        $parts = explode('/', $gid);
-        $numericId = end($parts);
+        // Use regex to extract only numeric characters from the last segment
+        if (preg_match('/\/(\d+)$/', $gid, $matches)) {
+            return $matches[1];
+        }
 
-        return (string) $numericId;
+        // Fallback: extract last segment if no numeric match found
+        $parts = explode('/', $gid);
+        $lastSegment = end($parts);
+
+        // Filter to only numeric characters
+        $numericId = preg_replace('/[^0-9]/', '', $lastSegment);
+
+        return $numericId !== '' ? $numericId : $lastSegment;
     }
 
     /**

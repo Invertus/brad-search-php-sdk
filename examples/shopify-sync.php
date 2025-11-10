@@ -23,7 +23,7 @@ $config = new SyncConfig(
 );
 
 // 2. Define field configuration for e-commerce
-$fieldConfiguration = FieldConfigBuilder::ecommerceFields();
+$fieldConfiguration = FieldConfigBuilder::ecommerceFields(['en-US']);
 
 // 3. Initialize SDK
 $syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);
