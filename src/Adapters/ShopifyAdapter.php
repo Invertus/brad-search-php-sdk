@@ -67,13 +67,7 @@ class ShopifyAdapter
             try {
                 $transformedProducts[] = $this->transformProduct($edge['node']);
             } catch (\Throwable $e) {
-                $productId = $edge['node']['id'] ?? '';
-                // Safely get product ID for error logging. If GID is malformed, use the raw GID.
-                try {
-                    $productId = $this->extractNumericId($productId);
-                } catch (ValidationException) {
-                    // Use raw GID if extraction fails. $productId already holds it.
-                }
+                $productId = $this->getNumericIdOrGid($edge['node']['id'] ?? '');
 
                 $errors[] = [
                     'type' => 'transformation_error',
@@ -168,6 +162,22 @@ class ShopifyAdapter
 
         // Malformed GID - throw exception to surface data quality issues
         throw new ValidationException("Malformed Shopify GID: {$gid}");
+    }
+
+    /**
+     * Safely extract numeric ID or return raw GID for error logging
+     * Returns numeric ID if valid, otherwise returns the raw GID unchanged
+     */
+    private function getNumericIdOrGid(string $gid): string
+    {
+        if ($gid === '') {
+            return '';
+        }
+        try {
+            return $this->extractNumericId($gid);
+        } catch (ValidationException) {
+            return $gid;
+        }
     }
 
     /**
