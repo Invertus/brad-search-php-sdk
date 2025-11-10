@@ -176,7 +176,7 @@ class ShopifyAdapter
         $maxCompareAtPrice = '0.00';
         $hasCompareAtPrice = false;
 
-        foreach ($product['variants']['edges'] ?? [] as $edge) {
+        foreach ($this->getNestedValue($product, ['variants', 'edges'], []) as $edge) {
             $price = $this->getNestedValue($edge, ['node', 'compareAtPrice']);
 
             if ($price !== null && bccomp((string) $price, '0', 2) > 0) {
@@ -230,7 +230,7 @@ class ShopifyAdapter
     private function isInStock(array $product): bool
     {
         // Check if any variant is available for sale
-        foreach ($product['variants']['edges'] ?? [] as $edge) {
+        foreach ($this->getNestedValue($product, ['variants', 'edges'], []) as $edge) {
             if ($this->getNestedValue($edge, ['node', 'availableForSale']) === true) {
                 return true;
             }
