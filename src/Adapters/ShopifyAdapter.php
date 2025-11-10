@@ -181,9 +181,7 @@ class ShopifyAdapter
         $hasCompareAtPrice = false;
 
         foreach ($product['variants']['edges'] ?? [] as $edge) {
-            $price = (is_array($edge) && isset($edge['node']) && is_array($edge['node']))
-                ? ($edge['node']['compareAtPrice'] ?? null)
-                : null;
+            $price = $this->getNestedValue($edge, ['node', 'compareAtPrice']);
 
             if ($price !== null && bccomp((string) $price, '0', 2) > 0) {
                 $hasCompareAtPrice = true;
