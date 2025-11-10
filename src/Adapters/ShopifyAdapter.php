@@ -179,11 +179,9 @@ class ShopifyAdapter
         foreach ($this->getNestedValue($product, ['variants', 'edges'], []) as $edge) {
             $price = $this->getNestedValue($edge, ['node', 'compareAtPrice']);
 
-            if ($price !== null && bccomp((string) $price, '0', 2) > 0) {
+            if ($price !== null && bccomp((string) $price, $maxCompareAtPrice, 2) > 0) {
+                $maxCompareAtPrice = (string) $price;
                 $hasCompareAtPrice = true;
-                if (bccomp((string) $price, $maxCompareAtPrice, 2) > 0) {
-                    $maxCompareAtPrice = (string) $price;
-                }
             }
         }
 

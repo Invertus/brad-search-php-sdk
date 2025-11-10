@@ -179,6 +179,7 @@ $shopifyResponse = [
 $transformedData = $adapter->transform($shopifyResponse);
 
 // Use with BradSearch SDK
+// Note: $config and $fieldConfiguration need to be set up first (see main README)
 $syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);
 $syncSdk->syncBulk('my-index', $transformedData['products']);
 ```
@@ -270,6 +271,10 @@ if (!empty($result['errors'])) {
 // Process successful products
 $products = $result['products'];
 ```
+
+### Complete Example
+
+See `examples/shopify-sync.php` for a complete working example.
 
 ## Extending with New Adapters
 
