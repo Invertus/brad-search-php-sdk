@@ -141,19 +141,14 @@ class ShopifyAdapter
             return '';
         }
 
-        // Parse URL to safely extract path component (handles query parameters)
-        $path = parse_url($gid, PHP_URL_PATH);
-        if ($path === false || $path === null) {
-            return '';
-        }
+        // Extract the last component of the GID path
+        $id = basename($gid);
 
-        // Extract ID from format: gid://shopify/Resource/123456
         // Only accept purely numeric IDs - return empty string for malformed GIDs
-        if (preg_match('/\/(\d+)$/', $path, $matches)) {
-            return $matches[1];
+        if (ctype_digit($id)) {
+            return $id;
         }
 
-        // Malformed GID - return empty string
         return '';
     }
 
@@ -177,18 +172,37 @@ class ShopifyAdapter
     }
 
     /**
-     * Extract maximum price as base price (compareAt price would be better, but not in main product)
+     * Extract base price from variants' compareAtPrice
+     * Uses the maximum compareAtPrice across all variants (represents original price before discount)
      * Returns string to match PrestaShopAdapter format
      */
     private function extractBasePrice(array $product): string
     {
+        $maxCompareAtPrice = '0.00';
+        $hasCompareAtPrice = false;
+
+        foreach ($product['variants']['edges'] ?? [] as $edge) {
+            $price = $edge['node']['compareAtPrice'] ?? null;
+            if ($price !== null && bccomp((string) $price, '0', 2) > 0) {
+                $hasCompareAtPrice = true;
+                if (bccomp((string) $price, $maxCompareAtPrice, 2) > 0) {
+                    $maxCompareAtPrice = (string) $price;
+                }
+            }
+        }
+
+        if ($hasCompareAtPrice) {
+            return $maxCompareAtPrice;
+        }
+
+        // Fallback to max variant price from priceRangeV2
         $amount = $this->getNestedValue($product, ['priceRangeV2', 'maxVariantPrice', 'amount']);
 
         if (is_string($amount)) {
             return $amount;
         }
 
-        // Fallback to min price if max not available
+        // Final fallback to min price if max not available
         return $this->extractPrice($product);
     }
 
