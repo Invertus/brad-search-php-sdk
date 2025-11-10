@@ -139,13 +139,9 @@ class ShopifyAdapter
             return '';
         }
 
-        // Extract the last segment from the GID (format: gid://shopify/Resource/123456)
-        $parts = explode('/', $gid);
-        $id = end($parts);
-
-        // Only accept purely numeric IDs - return empty string for malformed GIDs
-        if (ctype_digit($id)) {
-            return $id;
+        // Use preg_match for robust and clear extraction of the numeric ID
+        if (preg_match('#/(\d+)$#', $gid, $matches)) {
+            return $matches[1];
         }
 
         return '';
