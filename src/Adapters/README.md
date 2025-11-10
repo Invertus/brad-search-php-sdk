@@ -147,13 +147,17 @@ See `examples/prestashop-sync.php` for a complete working example.
 
 The `ShopifyAdapter` transforms Shopify GraphQL product data into the standardized BradSearch format.
 
+### Requirements
+
+- **BCMath PHP extension**: Required for precise decimal price comparisons
+
 ### Features
 
 - **GraphQL to BradSearch**: Handles Shopify's GraphQL response structure (edges/nodes)
 - **GID extraction**: Converts Shopify GIDs (`gid://shopify/Product/123`) to numeric IDs
 - **Variant transformation**: Converts `selectedOptions` to BradSearch attributes format
 - **Category extraction**: Combines `productType` and `tags` into categories
-- **Price handling**: Extracts prices from `priceRangeV2` structure
+- **Price handling**: Extracts prices from `priceRangeV2` structure with BCMath precision
 - **Image processing**: Flattens GraphQL image edges to simple URLs
 
 ### Usage

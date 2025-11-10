@@ -8,6 +8,16 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class ShopifyAdapter
 {
+    public function __construct()
+    {
+        if (!function_exists('bccomp')) {
+            throw new \RuntimeException(
+                'ShopifyAdapter requires the bcmath PHP extension for precise price comparisons. ' .
+                'Please install or enable ext-bcmath.'
+            );
+        }
+    }
+
     /**
      * Transform Shopify GraphQL product data to BradSearch format
      *
@@ -134,7 +144,8 @@ class ShopifyAdapter
     /**
      * Extract numeric ID from Shopify GID format
      * Converts "gid://shopify/Product/6843600694995" to "6843600694995"
-     * Returns empty string for malformed GIDs that don't match the expected format
+     * Returns empty string only for empty input
+     * Throws ValidationException for malformed GIDs
      */
     private function extractNumericId(string $gid): string
     {
@@ -147,7 +158,8 @@ class ShopifyAdapter
             return $matches[1];
         }
 
-        return '';
+        // Malformed GID - throw exception to surface data quality issues
+        throw new ValidationException("Malformed Shopify GID: {$gid}");
     }
 
     /**
