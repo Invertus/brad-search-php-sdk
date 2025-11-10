@@ -107,16 +107,16 @@ $shopifyGraphQLResponse = [
                                 [
                                     'node' => [
                                         'id' => 'gid://shopify/ProductImage/29123456789',
-                                        'url' => 'https://cdn.shopify.com/s/files/1/0000/0000/products/shoe-blue.jpg',
+                                        'url' => 'https://cdn.shopify.com/s/files/1/0000/0000/products/shoe-blue-small.jpg',
                                         'altText' => 'Blue Running Shoes',
-                                        'width' => 1200,
-                                        'height' => 1200,
+                                        'width' => 600,
+                                        'height' => 600,
                                     ],
                                 ],
                                 [
                                     'node' => [
                                         'id' => 'gid://shopify/ProductImage/29123456790',
-                                        'url' => 'https://cdn.shopify.com/s/files/1/0000/0000/products/shoe-side.jpg',
+                                        'url' => 'https://cdn.shopify.com/s/files/1/0000/0000/products/shoe-side-large.jpg',
                                         'altText' => 'Running Shoes Side View',
                                         'width' => 1200,
                                         'height' => 1200,

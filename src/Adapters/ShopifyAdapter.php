@@ -67,10 +67,18 @@ class ShopifyAdapter
             try {
                 $transformedProducts[] = $this->transformProduct($edge['node']);
             } catch (\Throwable $e) {
+                $productId = $edge['node']['id'] ?? '';
+                // Safely get product ID for error logging. If GID is malformed, use the raw GID.
+                try {
+                    $productId = $this->extractNumericId($productId);
+                } catch (ValidationException) {
+                    // Use raw GID if extraction fails. $productId already holds it.
+                }
+
                 $errors[] = [
                     'type' => 'transformation_error',
                     'product_index' => $index,
-                    'product_id' => $this->extractNumericId($edge['node']['id'] ?? ''),
+                    'product_id' => $productId,
                     'message' => $e->getMessage(),
                     'exception' => get_class($e),
                 ];
