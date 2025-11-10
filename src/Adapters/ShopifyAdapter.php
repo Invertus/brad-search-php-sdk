@@ -55,7 +55,7 @@ class ShopifyAdapter
 
             try {
                 $transformedProducts[] = $this->transformProduct($edge['node']);
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 $errors[] = [
                     'type' => 'transformation_error',
                     'product_index' => $index,
@@ -141,8 +141,9 @@ class ShopifyAdapter
             return '';
         }
 
-        // Extract the last component of the GID path
-        $id = basename($gid);
+        // Extract the last segment from the GID (format: gid://shopify/Resource/123456)
+        $parts = explode('/', $gid);
+        $id = end($parts);
 
         // Only accept purely numeric IDs - return empty string for malformed GIDs
         if (ctype_digit($id)) {
@@ -182,7 +183,10 @@ class ShopifyAdapter
         $hasCompareAtPrice = false;
 
         foreach ($product['variants']['edges'] ?? [] as $edge) {
-            $price = $edge['node']['compareAtPrice'] ?? null;
+            $price = (is_array($edge) && isset($edge['node']) && is_array($edge['node']))
+                ? ($edge['node']['compareAtPrice'] ?? null)
+                : null;
+
             if ($price !== null && bccomp((string) $price, '0', 2) > 0) {
                 $hasCompareAtPrice = true;
                 if (bccomp((string) $price, $maxCompareAtPrice, 2) > 0) {
