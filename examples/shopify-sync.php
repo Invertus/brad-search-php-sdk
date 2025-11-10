@@ -179,16 +179,12 @@ foreach ($transformedData['products'] as $product) {
 try {
     // Create index if it doesn't exist
     $indexName = 'shopify-products';
-    $syncSdk->createIndex($indexName, ['en-US']);
+    $syncSdk->createIndex($indexName);
     
     // Sync products
-    $result = $syncSdk->syncBulk($indexName, $transformedData['products']);
-    
-    echo "Successfully synced {$result->getSuccessCount()} products\n";
-    
-    if ($result->getFailureCount() > 0) {
-        echo "Failed to sync {$result->getFailureCount()} products\n";
-    }
+    $syncSdk->syncBulk($indexName, $transformedData['products']);
+
+    echo "Successfully submitted " . count($transformedData['products']) . " products for syncing.\n";
 } catch (\Exception $e) {
     echo "Sync error: {$e->getMessage()}\n";
 }
