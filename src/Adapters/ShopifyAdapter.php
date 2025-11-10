@@ -136,14 +136,20 @@ class ShopifyAdapter
             return '';
         }
 
+        // Parse URL to safely extract path component (handles query parameters)
+        $path = parse_url($gid, PHP_URL_PATH);
+        if ($path === false || $path === null) {
+            return '';
+        }
+
         // Extract ID from format: gid://shopify/Resource/123456
         // Use regex to extract only numeric characters from the last segment
-        if (preg_match('/\/(\d+)$/', $gid, $matches)) {
+        if (preg_match('/\/(\d+)$/', $path, $matches)) {
             return $matches[1];
         }
 
         // Fallback: extract last segment and filter to only numeric characters
-        $parts = explode('/', $gid);
+        $parts = explode('/', $path);
         $lastSegment = end($parts);
 
         // Filter to only numeric characters - returns empty string if none found
@@ -157,14 +163,8 @@ class ShopifyAdapter
      */
     private function extractMainSku(array $product): string
     {
-        if (
-            isset($product['variants']['edges'][0]['node']['sku']) &&
-            is_string($product['variants']['edges'][0]['node']['sku'])
-        ) {
-            return $product['variants']['edges'][0]['node']['sku'];
-        }
-
-        return '';
+        $sku = $this->getNestedValue($product, ['variants', 'edges', 0, 'node', 'sku']);
+        return is_string($sku) ? $sku : '';
     }
 
     /**
@@ -173,14 +173,8 @@ class ShopifyAdapter
      */
     private function extractPrice(array $product): string
     {
-        if (
-            isset($product['priceRangeV2']['minVariantPrice']['amount']) &&
-            is_string($product['priceRangeV2']['minVariantPrice']['amount'])
-        ) {
-            return $product['priceRangeV2']['minVariantPrice']['amount'];
-        }
-
-        return '0.00';
+        $amount = $this->getNestedValue($product, ['priceRangeV2', 'minVariantPrice', 'amount']);
+        return is_string($amount) ? $amount : '0.00';
     }
 
     /**
@@ -189,15 +183,36 @@ class ShopifyAdapter
      */
     private function extractBasePrice(array $product): string
     {
-        if (
-            isset($product['priceRangeV2']['maxVariantPrice']['amount']) &&
-            is_string($product['priceRangeV2']['maxVariantPrice']['amount'])
-        ) {
-            return $product['priceRangeV2']['maxVariantPrice']['amount'];
+        $amount = $this->getNestedValue($product, ['priceRangeV2', 'maxVariantPrice', 'amount']);
+
+        if (is_string($amount)) {
+            return $amount;
         }
 
         // Fallback to min price if max not available
         return $this->extractPrice($product);
+    }
+
+    /**
+     * Safely access nested array values
+     *
+     * @param array $data The array to traverse
+     * @param array $keys The keys to traverse (e.g., ['variants', 'edges', 0, 'node', 'sku'])
+     * @param mixed $default Default value if path doesn't exist or is invalid
+     * @return mixed The value at the nested path or default
+     */
+    private function getNestedValue(array $data, array $keys, mixed $default = null): mixed
+    {
+        $current = $data;
+
+        foreach ($keys as $key) {
+            if (!is_array($current) || !array_key_exists($key, $current)) {
+                return $default;
+            }
+            $current = $current[$key];
+        }
+
+        return $current;
     }
 
     /**
@@ -351,8 +366,8 @@ class ShopifyAdapter
      */
     private function getRequiredField(array $data, string $field, bool $extractId = false): string
     {
-        if (! isset($data[$field]) || $data[$field] === null) {
-            throw new ValidationException("Required field '{$field}' is missing from Shopify data");
+        if (! isset($data[$field]) || ! is_scalar($data[$field])) {
+            throw new ValidationException("Required field '{$field}' is missing or not a scalar in Shopify data");
         }
 
         $value = (string) $data[$field];
