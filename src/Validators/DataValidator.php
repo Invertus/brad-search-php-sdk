@@ -40,6 +40,18 @@ class DataValidator
             $errors = array_merge($errors, $fieldErrors);
         }
 
+        // Validate localized variant fields (e.g., variants_lt-LT, variants_lv-LV)
+        if (isset($this->fieldConfiguration['variants'])) {
+            $variantsConfig = $this->fieldConfiguration['variants'];
+            foreach ($product as $fieldName => $value) {
+                // Check if this is a localized variants field that wasn't already validated
+                if (str_starts_with($fieldName, 'variants_') && !isset($this->fieldConfiguration[$fieldName])) {
+                    $fieldErrors = $this->validateField($fieldName, $value, $variantsConfig);
+                    $errors = array_merge($errors, $fieldErrors);
+                }
+            }
+        }
+
         if (!empty($errors)) {
             throw new ValidationException('Product validation failed', $errors);
         }
@@ -205,8 +217,8 @@ class DataValidator
                 continue;
             }
 
-            // Validate required variant fields (based on Go ProductVariant struct)
-            $requiredFields = ['id', 'sku', 'url', 'attributes'];
+            // Validate required variant fields
+            $requiredFields = ['id', 'sku', 'productUrl', 'attributes'];
             foreach ($requiredFields as $requiredField) {
                 if (!isset($variant[$requiredField])) {
                     $errors[] = "Field '{$fieldName}' variant at index {$index} must have '{$requiredField}' field";
@@ -219,8 +231,8 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            if (!is_string($variant['url']) || !filter_var($variant['url'], FILTER_VALIDATE_URL)) {
-                $errors[] = "Field '{$fieldName}' variant at index {$index} 'url' must be a valid URL";
+            if (!is_string($variant['productUrl']) || !filter_var($variant['productUrl'], FILTER_VALIDATE_URL)) {
+                $errors[] = "Field '{$fieldName}' variant at index {$index} 'productUrl' must be a valid URL";
             }
 
             if (!is_array($variant['attributes'])) {
@@ -228,35 +240,32 @@ class DataValidator
                 continue;
             }
 
-            // Validate variant attributes against field config attributes
-            if ($fieldConfig->attributes !== null) {
-                foreach ($fieldConfig->attributes as $attrName => $attrConfig) {
-                    if (isset($variant['attributes'][$attrName])) {
-                        $attribute = $variant['attributes'][$attrName];
+            // Validate variant attributes structure - expecting array of objects with 'name' and 'value'
+            foreach ($variant['attributes'] as $attrIndex => $attribute) {
+                if (!is_array($attribute)) {
+                    $errors[] = "Field '{$fieldName}' variant at index {$index} attribute at index {$attrIndex} must be an object with 'name' and 'value' fields";
+                    continue;
+                }
 
-                        // Validate the attribute structure (must have 'name' and 'value')
-                        if (!is_array($attribute)) {
-                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must be an object with 'name' and 'value' fields";
-                            continue;
-                        }
+                if (!isset($attribute['name']) || !isset($attribute['value'])) {
+                    $errors[] = "Field '{$fieldName}' variant at index {$index} attribute at index {$attrIndex} must have 'name' and 'value' fields";
+                    continue;
+                }
 
-                        if (!isset($attribute['name']) || !isset($attribute['value'])) {
-                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' must have 'name' and 'value' fields";
-                            continue;
-                        }
+                if (!is_string($attribute['name']) || empty($attribute['name'])) {
+                    $errors[] = "Field '{$fieldName}' variant at index {$index} attribute at index {$attrIndex} 'name' must be a non-empty string";
+                    continue;
+                }
 
-                        if (!is_string($attribute['name']) || $attribute['name'] !== $attrName) {
-                            $errors[] = "Field '{$fieldName}' variant at index {$index} attribute '{$attrName}' name field must match the attribute key";
-                        }
-
-                        // Validate the attribute value against the field config
-                        $attrErrors = $this->validateField(
-                            "{$fieldName}.variants[{$index}].attributes.{$attrName}.value",
-                            $attribute['value'],
-                            $attrConfig
-                        );
-                        $errors = array_merge($errors, $attrErrors);
-                    }
+                // Validate the attribute value against the field config if available
+                if ($fieldConfig->attributes !== null && isset($fieldConfig->attributes[$attribute['name']])) {
+                    $attrConfig = $fieldConfig->attributes[$attribute['name']];
+                    $attrErrors = $this->validateField(
+                        "{$fieldName}.variants[{$index}].attributes[{$attrIndex}].value",
+                        $attribute['value'],
+                        $attrConfig
+                    );
+                    $errors = array_merge($errors, $attrErrors);
                 }
             }
         }
