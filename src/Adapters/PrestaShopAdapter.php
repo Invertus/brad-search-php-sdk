@@ -191,9 +191,28 @@ class PrestaShopAdapter
                 $transformedVariant = [
                     'id' => (string) $variant['remoteId'],
                     'sku' => $variant['sku'] ?? '',
-                    'url' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
+                    'productUrl' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
                     'attributes' => $this->transformVariantAttributesForLocale($variant['attributes'] ?? [], $locale)
                 ];
+
+                // Add variant-level prices if available
+                if (isset($variant['price'])) {
+                    $transformedVariant['price'] = $variant['price'];
+                }
+                if (isset($variant['basePrice'])) {
+                    $transformedVariant['basePrice'] = $variant['basePrice'];
+                }
+                if (isset($variant['priceTaxExcluded'])) {
+                    $transformedVariant['priceTaxExcluded'] = $variant['priceTaxExcluded'];
+                }
+                if (isset($variant['basePriceTaxExcluded'])) {
+                    $transformedVariant['basePriceTaxExcluded'] = $variant['basePriceTaxExcluded'];
+                }
+
+                // Add variant-level imageUrl if available
+                if (isset($variant['imageUrl']) && is_array($variant['imageUrl'])) {
+                    $transformedVariant['imageUrl'] = $this->transformImageUrl($variant['imageUrl']);
+                }
 
                 if ($locale === 'en-US') {
                     $variantsByLocale['variants'][] = $transformedVariant;
