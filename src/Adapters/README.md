@@ -143,11 +143,148 @@ The adapter validates input data and throws `ValidationException` for:
 
 See `examples/prestashop-sync.php` for a complete working example.
 
+## Shopify Adapter
+
+The `ShopifyAdapter` transforms Shopify GraphQL product data into the standardized BradSearch format.
+
+### Requirements
+
+- **BCMath PHP extension**: Required for precise decimal price comparisons
+
+### Features
+
+- **GraphQL to BradSearch**: Handles Shopify's GraphQL response structure (edges/nodes)
+- **GID extraction**: Converts Shopify GIDs (`gid://shopify/Product/123`) to numeric IDs
+- **Variant transformation**: Converts `selectedOptions` to BradSearch attributes format
+- **Category extraction**: Combines `productType` and `tags` into categories
+- **Price handling**: Extracts prices from `priceRangeV2` structure with BCMath precision
+- **Image processing**: Flattens GraphQL image edges to simple URLs
+
+### Usage
+
+```php
+use BradSearch\SyncSdk\Adapters\ShopifyAdapter;
+use BradSearch\SyncSdk\SynchronizationApiSdk;
+
+// Initialize adapter
+$adapter = new ShopifyAdapter();
+
+// Transform Shopify GraphQL response
+$shopifyResponse = [
+    'data' => [
+        'products' => [
+            'edges' => [
+                // ... Shopify GraphQL product data
+            ]
+        ]
+    ]
+];
+
+$transformedData = $adapter->transform($shopifyResponse);
+
+// Use with BradSearch SDK
+// Note: $config and $fieldConfiguration need to be set up first (see main README)
+$syncSdk = new SynchronizationApiSdk($config, $fieldConfiguration);
+$syncSdk->syncBulk('my-index', $transformedData['products']);
+```
+
+### Field Mapping
+
+| Shopify Field | BradSearch Field | Notes |
+|---------------|------------------|-------|
+| `id` (GID) | `id` | Numeric ID extracted from GID |
+| `title` | `name` | Product title |
+| `descriptionHtml` | `description` | HTML tags stripped |
+| `vendor` | `brand` | Shopify vendor = brand |
+| `productType` | `categoryDefault` | Primary category |
+| `productType` + `tags` | `categories` | Combined categories |
+| `priceRangeV2.minVariantPrice` | `price` | Minimum variant price |
+| `variants.*.compareAtPrice` | `basePrice` | Maximum compareAtPrice across variants; falls back to maxVariantPrice, then minVariantPrice if unavailable |
+| `variants[0].sku` | `sku` | First variant SKU |
+| `variants.*.availableForSale` | `inStock` | Any variant available |
+| `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
+| `variants.selectedOptions` | `variants.attributes` | Attribute names lowercased (e.g., 'Size' → 'size') |
+
+### Shopify-Specific Transformations
+
+#### GID to Numeric ID
+```php
+// Shopify input
+"id": "gid://shopify/Product/6843600694995"
+
+// BradSearch output
+"id": "6843600694995"
+```
+
+#### Variants with Selected Options
+```php
+// Shopify input
+"variants": {
+    "edges": [
+        {
+            "node": {
+                "id": "gid://shopify/ProductVariant/123",
+                "sku": "SHOE-BLU-42",
+                "selectedOptions": [
+                    {"name": "Size", "value": "42"},
+                    {"name": "Color", "value": "Blue"}
+                ]
+            }
+        }
+    ]
+}
+
+// BradSearch output
+"variants": [
+    {
+        "id": "123",
+        "sku": "SHOE-BLU-42",
+        "attributes": [
+            {"name": "size", "value": "42"},
+            {"name": "color", "value": "Blue"}
+        ]
+    }
+]
+```
+
+#### Categories from ProductType and Tags
+```php
+// Shopify input
+"productType": "Shoes",
+"tags": ["Running", "Athletic", "Men"]
+
+// BradSearch output
+"categoryDefault": "Shoes",
+"categories": ["Shoes", "Running", "Athletic", "Men"]
+```
+
+### Error Handling
+
+The adapter validates input data and returns errors array:
+
+```php
+$result = $adapter->transform($shopifyData);
+
+// Check for transformation errors
+if (!empty($result['errors'])) {
+    foreach ($result['errors'] as $error) {
+        echo "Error on product {$error['product_id']}: {$error['message']}\n";
+    }
+}
+
+// Process successful products
+$products = $result['products'];
+```
+
+### Complete Example
+
+See `examples/shopify-sync.php` for a complete working example.
+
 ## Extending with New Adapters
 
 To create adapters for other e-commerce platforms:
 
-1. Create a new class in this directory (e.g., `ShopifyAdapter.php`)
+1. Create a new class in this directory (e.g., `WooCommerceAdapter.php`)
 2. Implement the transformation logic following the same pattern
 3. Create comprehensive unit tests
 4. Add documentation and examples

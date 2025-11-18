@@ -7,6 +7,7 @@ A comprehensive PHP SDK for synchronizing data with the Brad Search API. This SD
 - PHP 8.4 or higher
 - cURL extension
 - JSON extension
+- BCMath extension (required for ShopifyAdapter price comparisons)
 
 ## Installation
 
