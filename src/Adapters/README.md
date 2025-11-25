@@ -458,6 +458,40 @@ foreach ($result['errors'] as $error) {
 | `MagentoProductQuery` | Static GraphQL query templates |
 | `MagentoPaginatedFetcher` | Automatic pagination with generator support |
 
+## Shared Utilities (AdapterUtils)
+
+The `AdapterUtils` class provides common utility methods that can be reused across all adapters:
+
+```php
+use BradSearch\SyncSdk\Adapters\AdapterUtils;
+
+// Build imageUrl structure with small/medium keys
+$imageUrl = AdapterUtils::buildImageUrl($smallUrl, $mediumUrl);
+
+// Extract URL from nested structure like {url: string, label: string}
+$url = AdapterUtils::extractNestedImageUrl($product, 'image');
+
+// Extract URL directly from a field
+$url = AdapterUtils::extractDirectUrl($product, 'productUrl');
+
+// Safely get nested value from array
+$price = AdapterUtils::getNestedValue($product, ['price_range', 'minimum_price', 'value']);
+
+// Build error entry for transformation errors
+$error = AdapterUtils::buildError('transformation_error', $index, $productId, $message);
+```
+
+### Available Methods
+
+| Method | Description |
+|--------|-------------|
+| `buildImageUrl($small, $medium)` | Build imageUrl with small/medium keys |
+| `extractNestedImageUrl($data, $field)` | Extract URL from `{url, label}` structure |
+| `extractDirectUrl($data, $field)` | Extract URL directly from field |
+| `getNestedValue($data, $keys, $default)` | Safely traverse nested arrays |
+| `toString($value)` | Cast value to string safely |
+| `buildError(...)` | Build standardized error entry |
+
 ## Extending with New Adapters
 
 To create adapters for other e-commerce platforms:

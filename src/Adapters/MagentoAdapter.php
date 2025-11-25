@@ -123,6 +123,7 @@ class MagentoAdapter
      * Performs minimal transformation:
      * - Validates required fields (id, sku, name)
      * - Casts id to string
+     * - Transforms image fields to SDK-compatible format
      * - Passes all other fields through unchanged
      */
     private function transformProduct(array $product): array
@@ -137,6 +138,17 @@ class MagentoAdapter
 
         // Cast id to string to match SDK expectations
         $result['id'] = (string) $product['id'];
+
+        // Transform image fields to SDK-compatible format (small/medium keys)
+        // Magento: small_image.url -> small, image.url -> medium
+        $smallUrl = AdapterUtils::extractNestedImageUrl($product, 'small_image')
+            ?? AdapterUtils::extractNestedImageUrl($product, 'thumbnail');
+        $mediumUrl = AdapterUtils::extractNestedImageUrl($product, 'image');
+
+        $imageUrl = AdapterUtils::buildImageUrl($smallUrl, $mediumUrl);
+        if (!empty($imageUrl)) {
+            $result['imageUrl'] = $imageUrl;
+        }
 
         return $result;
     }

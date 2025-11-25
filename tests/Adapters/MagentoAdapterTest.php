@@ -115,13 +115,101 @@ class MagentoAdapterTest extends TestCase
         $this->assertIsArray($product['categories']);
         $this->assertCount(3, $product['categories']);
 
-        // Check image structures are preserved
+        // Check original image structures are preserved
         $this->assertArrayHasKey('image', $product);
         $this->assertArrayHasKey('url', $product['image']);
 
         // Check media_gallery is preserved
         $this->assertArrayHasKey('media_gallery', $product);
         $this->assertIsArray($product['media_gallery']);
+
+        // Check imageUrl is transformed to SDK format (small/medium keys)
+        $this->assertArrayHasKey('imageUrl', $product);
+        $this->assertArrayHasKey('small', $product['imageUrl']);
+        $this->assertArrayHasKey('medium', $product['imageUrl']);
+        $this->assertSame(
+            'https://lt-stage.verkter.com/media/catalog/product/placeholder/default/verkter_logo_blank_JPG_5.jpg',
+            $product['imageUrl']['small']
+        );
+        $this->assertSame(
+            'https://lt-stage.verkter.com/media/catalog/product/placeholder/default/verkter_logo_blank_JPG_4.jpg',
+            $product['imageUrl']['medium']
+        );
+    }
+
+    public function testTransformImageUrlFromSmallImage(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                            'image' => ['url' => 'https://example.com/main.jpg', 'label' => 'Main'],
+                            'small_image' => ['url' => 'https://example.com/small.jpg', 'label' => 'Small'],
+                            'thumbnail' => ['url' => 'https://example.com/thumb.jpg', 'label' => 'Thumb'],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertSame('https://example.com/small.jpg', $product['imageUrl']['small']);
+        $this->assertSame('https://example.com/main.jpg', $product['imageUrl']['medium']);
+    }
+
+    public function testTransformImageUrlFallsBackToThumbnail(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                            'image' => ['url' => 'https://example.com/main.jpg', 'label' => 'Main'],
+                            'thumbnail' => ['url' => 'https://example.com/thumb.jpg', 'label' => 'Thumb'],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        // Should fallback to thumbnail when small_image is not available
+        $this->assertSame('https://example.com/thumb.jpg', $product['imageUrl']['small']);
+        $this->assertSame('https://example.com/main.jpg', $product['imageUrl']['medium']);
+    }
+
+    public function testTransformWithNoImages(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        // Should not have imageUrl if no images are present
+        $this->assertArrayNotHasKey('imageUrl', $product);
     }
 
     public function testTransformWithMissingRequiredId(): void
