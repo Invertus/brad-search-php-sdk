@@ -66,6 +66,14 @@ class PrestaShopAdapter
             'variants' => [],
         ];
 
+        // Add optional product identifiers
+        if (isset($product['ean13']) && $product['ean13'] !== null && $product['ean13'] !== '') {
+            $result['ean13'] = (string) $product['ean13'];
+        }
+        if (isset($product['mpn']) && $product['mpn'] !== null && $product['mpn'] !== '') {
+            $result['mpn'] = (string) $product['mpn'];
+        }
+
         // Handle localized product name
         $this->addLocalizedField($result, 'name', $product['localizedNames'] ?? []);
 
