@@ -328,7 +328,7 @@ class MagentoAdapter
     }
 
     /**
-     * Extract default/primary category name
+     * Extract default/primary category name (most specific/deepest category)
      */
     private function extractDefaultCategory(array $product): ?string
     {
@@ -336,9 +336,9 @@ class MagentoAdapter
             return null;
         }
 
-        // Find the category with the lowest level (closest to root)
+        // Find the category with the highest level (most specific/deepest)
         $defaultCategory = null;
-        $lowestLevel = PHP_INT_MAX;
+        $highestLevel = -1;
 
         foreach ($product['categories'] as $cat) {
             if (!is_array($cat) || !isset($cat['name'], $cat['level'])) {
@@ -346,8 +346,8 @@ class MagentoAdapter
             }
 
             $level = (int) $cat['level'];
-            if ($level < $lowestLevel) {
-                $lowestLevel = $level;
+            if ($level > $highestLevel) {
+                $highestLevel = $level;
                 $defaultCategory = $cat['name'];
             }
         }

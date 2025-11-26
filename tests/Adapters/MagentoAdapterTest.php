@@ -189,9 +189,9 @@ class MagentoAdapterTest extends TestCase
         // Category 663 has path 1/2/34/663 - 34 and 663 are in our id map
         // Category 1128 has path 1/2/1128 - only 1128 is in our id map
 
-        // Check categoryDefault is the lowest level category
+        // Check categoryDefault is the most specific (deepest) category
         $this->assertArrayHasKey('categoryDefault', $product);
-        $this->assertSame('Grąžtai, kaltai, frezos, antgaliai', $product['categoryDefault']);
+        $this->assertSame('Gręžimo karūnos', $product['categoryDefault']);
     }
 
     public function testTransformCategoryDefaultWithMultipleLevels(): void
@@ -218,8 +218,8 @@ class MagentoAdapterTest extends TestCase
         $result = $this->adapter->transform($magentoData);
         $product = $this->getProductFromResult($result);
 
-        // categoryDefault should be the lowest level (closest to root)
-        $this->assertSame('Root Category', $product['categoryDefault']);
+        // categoryDefault should be the most specific (deepest) category
+        $this->assertSame('Deep Category', $product['categoryDefault']);
 
         // Hierarchical categories should include paths
         $this->assertContains('Root Category', $product['categories']);
