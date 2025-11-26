@@ -31,7 +31,7 @@ query GetProducts($filter: ProductAttributeFilterInput, $pageSize: Int, $current
             id
             sku
             name
-            url_key
+            full_url
             is_in_stock
             allows_backorders
             short_description { html }
@@ -48,24 +48,11 @@ query GetProducts($filter: ProductAttributeFilterInput, $pageSize: Int, $current
                 numeric_value
                 has_unit
             }
-            image { url label }
-            small_image { url label }
-            thumbnail { url label }
-            media_gallery {
-                url
-                label
-                position
-                disabled
-            }
+            image_optimized
             price_range {
                 minimum_price {
-                    regular_price { value currency }
                     final_price { value currency }
-                    discount { amount_off percent_off }
-                }
-                maximum_price {
-                    regular_price { value currency }
-                    final_price { value currency }
+                    final_price_excl_tax { value currency }
                 }
             }
             categories {
@@ -97,17 +84,19 @@ query GetProducts($filter: ProductAttributeFilterInput, $pageSize: Int, $current
             id
             sku
             name
-            url_key
+            full_url
             stock_status
             price_range {
                 minimum_price {
                     final_price { value currency }
+                    final_price_excl_tax { value currency }
                 }
             }
-            image { url }
+            image_optimized
             categories {
                 id
                 name
+                level
                 path
             }
         }

@@ -120,11 +120,10 @@ class MagentoAdapter
     /**
      * Transform a single Magento product to BradSearch format
      *
-     * Performs minimal transformation:
+     * Performs transformation to unified format while preserving original Magento fields:
      * - Validates required fields (id, sku, name)
-     * - Casts id to string
-     * - Transforms image fields to SDK-compatible format
-     * - Passes all other fields through unchanged
+     * - Adds unified fields matching PrestaShop/Shopify adapters
+     * - Passes all original Magento fields through unchanged
      */
     private function transformProduct(array $product): array
     {
@@ -139,18 +138,253 @@ class MagentoAdapter
         // Cast id to string to match SDK expectations
         $result['id'] = (string) $product['id'];
 
-        // Transform image fields to SDK-compatible format (small/medium keys)
-        // Magento: small_image.url -> small, image.url -> medium
-        $smallUrl = AdapterUtils::extractNestedImageUrl($product, 'small_image')
-            ?? AdapterUtils::extractNestedImageUrl($product, 'thumbnail');
-        $mediumUrl = AdapterUtils::extractNestedImageUrl($product, 'image');
+        // Product URL
+        $productUrl = $this->extractProductUrl($product);
+        if ($productUrl !== null) {
+            $result['productUrl'] = $productUrl;
+        }
 
-        $imageUrl = AdapterUtils::buildImageUrl($smallUrl, $mediumUrl);
+        // Description fields (strip HTML)
+        $description = $this->extractDescription($product);
+        if ($description !== null) {
+            $result['description'] = $description;
+        }
+
+        $descriptionShort = $this->extractShortDescription($product);
+        if ($descriptionShort !== null) {
+            $result['descriptionShort'] = $descriptionShort;
+        }
+
+        // Brand from attributes
+        $brand = $this->extractBrand($product);
+        if ($brand !== null) {
+            $result['brand'] = $brand;
+        }
+
+        // Price mapping (simplified - only final prices)
+        $price = $this->extractPrice($product);
+        $priceTaxExcluded = $this->extractPriceTaxExcluded($product);
+        $result['price'] = $price;
+        $result['priceTaxExcluded'] = $priceTaxExcluded;
+        $result['basePrice'] = $price;
+        $result['basePriceTaxExcluded'] = $priceTaxExcluded;
+
+        // Categories - build hierarchical paths
+        $result['categories'] = $this->buildHierarchicalCategories($product);
+        $categoryDefault = $this->extractDefaultCategory($product);
+        if ($categoryDefault !== null) {
+            $result['categoryDefault'] = $categoryDefault;
+        }
+
+        // Stock status
+        $result['inStock'] = $this->extractInStock($product);
+
+        // Image URL from image_optimized
+        $imageUrl = $this->extractImageUrl($product);
         if (!empty($imageUrl)) {
             $result['imageUrl'] = $imageUrl;
         }
 
         return $result;
+    }
+
+    /**
+     * Extract product URL from full_url field
+     */
+    private function extractProductUrl(array $product): ?string
+    {
+        if (isset($product['full_url']) && is_string($product['full_url']) && $product['full_url'] !== '') {
+            return $product['full_url'];
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract and clean description (strip HTML)
+     */
+    private function extractDescription(array $product): ?string
+    {
+        $html = AdapterUtils::getNestedValue($product, ['description', 'html']);
+        if ($html !== null && is_string($html) && $html !== '') {
+            return strip_tags($html);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract and clean short description (strip HTML)
+     */
+    private function extractShortDescription(array $product): ?string
+    {
+        $html = AdapterUtils::getNestedValue($product, ['short_description', 'html']);
+        if ($html !== null && is_string($html) && $html !== '') {
+            return strip_tags($html);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract brand from attributes array where code='manufacturer'
+     */
+    private function extractBrand(array $product): ?string
+    {
+        if (!isset($product['attributes']) || !is_array($product['attributes'])) {
+            return null;
+        }
+
+        foreach ($product['attributes'] as $attr) {
+            if (!is_array($attr)) {
+                continue;
+            }
+
+            if (isset($attr['code']) && $attr['code'] === 'manufacturer') {
+                $value = $attr['value'] ?? $attr['label'] ?? null;
+                if ($value !== null && is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract price (final_price with tax)
+     */
+    private function extractPrice(array $product): string
+    {
+        $value = AdapterUtils::getNestedValue($product, ['price_range', 'minimum_price', 'final_price', 'value']);
+        if ($value !== null && (is_numeric($value) || is_string($value))) {
+            return (string) $value;
+        }
+
+        return '0.00';
+    }
+
+    /**
+     * Extract price tax excluded (final_price_excl_tax)
+     */
+    private function extractPriceTaxExcluded(array $product): string
+    {
+        $value = AdapterUtils::getNestedValue($product, ['price_range', 'minimum_price', 'final_price_excl_tax', 'value']);
+        if ($value !== null && (is_numeric($value) || is_string($value))) {
+            return (string) $value;
+        }
+
+        // Fallback to regular price if tax-excluded not available
+        return $this->extractPrice($product);
+    }
+
+    /**
+     * Build hierarchical category paths with " > " separator
+     *
+     * Transforms Magento category structure into hierarchical string paths
+     * matching the format used by PrestaShop and Shopify adapters.
+     */
+    private function buildHierarchicalCategories(array $product): array
+    {
+        if (!isset($product['categories']) || !is_array($product['categories'])) {
+            return [];
+        }
+
+        // Build ID -> name lookup from available categories
+        $idToName = [];
+        foreach ($product['categories'] as $cat) {
+            if (is_array($cat) && isset($cat['id'], $cat['name'])) {
+                $idToName[(string) $cat['id']] = $cat['name'];
+            }
+        }
+
+        if (empty($idToName)) {
+            return [];
+        }
+
+        // Build hierarchical paths
+        $paths = [];
+        foreach ($product['categories'] as $cat) {
+            if (!is_array($cat) || !isset($cat['path'], $cat['name'])) {
+                continue;
+            }
+
+            $pathIds = explode('/', $cat['path']);
+            $pathNames = [];
+
+            foreach ($pathIds as $id) {
+                // Only include categories we have names for (skips root categories not in response)
+                if (isset($idToName[$id])) {
+                    $pathNames[] = $idToName[$id];
+                }
+            }
+
+            if (!empty($pathNames)) {
+                $paths[] = implode(' > ', $pathNames);
+            }
+        }
+
+        return array_values(array_unique($paths));
+    }
+
+    /**
+     * Extract default/primary category name
+     */
+    private function extractDefaultCategory(array $product): ?string
+    {
+        if (!isset($product['categories']) || !is_array($product['categories'])) {
+            return null;
+        }
+
+        // Find the category with the lowest level (closest to root)
+        $defaultCategory = null;
+        $lowestLevel = PHP_INT_MAX;
+
+        foreach ($product['categories'] as $cat) {
+            if (!is_array($cat) || !isset($cat['name'], $cat['level'])) {
+                continue;
+            }
+
+            $level = (int) $cat['level'];
+            if ($level < $lowestLevel) {
+                $lowestLevel = $level;
+                $defaultCategory = $cat['name'];
+            }
+        }
+
+        return $defaultCategory;
+    }
+
+    /**
+     * Extract stock status
+     */
+    private function extractInStock(array $product): bool
+    {
+        // Check is_in_stock boolean field first
+        if (isset($product['is_in_stock'])) {
+            return (bool) $product['is_in_stock'];
+        }
+
+        // Fall back to stock_status enum
+        if (isset($product['stock_status']) && is_string($product['stock_status'])) {
+            return $product['stock_status'] === 'IN_STOCK';
+        }
+
+        return false;
+    }
+
+    /**
+     * Extract image URL from image_optimized field
+     * Returns both small and medium as the same URL since image_optimized is a single string
+     */
+    private function extractImageUrl(array $product): array
+    {
+        if (isset($product['image_optimized']) && is_string($product['image_optimized']) && $product['image_optimized'] !== '') {
+            $url = $product['image_optimized'];
+            return AdapterUtils::buildImageUrl($url, $url);
+        }
+
+        return [];
     }
 
     /**
