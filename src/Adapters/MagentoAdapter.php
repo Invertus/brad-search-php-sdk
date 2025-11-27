@@ -140,17 +140,21 @@ class MagentoAdapter
 
         // Product URL
         $productUrl = $this->extractProductUrl($product);
+        unset($result['full_url']);
         if ($productUrl !== null) {
             $result['productUrl'] = $productUrl;
         }
 
         // Description fields (strip HTML)
+        // Unset original objects (have { html: "" } structure) before setting clean values
         $description = $this->extractDescription($product);
+        unset($result['description']);
         if ($description !== null) {
             $result['description'] = $description;
         }
 
         $descriptionShort = $this->extractShortDescription($product);
+        unset($result['short_description']);
         if ($descriptionShort !== null) {
             $result['descriptionShort'] = $descriptionShort;
         }
@@ -164,6 +168,7 @@ class MagentoAdapter
         // Price mapping (simplified - only final prices)
         $price = $this->extractPrice($product);
         $priceTaxExcluded = $this->extractPriceTaxExcluded($product);
+        unset($result['price_range']);
         $result['price'] = $price;
         $result['priceTaxExcluded'] = $priceTaxExcluded;
         $result['basePrice'] = $price;
@@ -178,9 +183,12 @@ class MagentoAdapter
 
         // Stock status
         $result['inStock'] = $this->extractInStock($product);
+        unset($result['is_in_stock']);
+        unset($result['stock_status']);
 
         // Image URL from image_optimized
         $imageUrl = $this->extractImageUrl($product);
+        unset($result['image_optimized']);
         if (!empty($imageUrl)) {
             $result['imageUrl'] = $imageUrl;
         }

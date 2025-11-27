@@ -89,34 +89,41 @@ class MagentoAdapterTest extends TestCase
         $result = $this->adapter->transform($magentoData);
         $product = $this->getProductFromResult($result);
 
-        // Check that original Magento fields are preserved
-        $this->assertArrayHasKey('full_url', $product);
-        $this->assertSame('https://lt-stage.verkter.com/grezimo-karuna-bahco-bi-metal-98x38-mm', $product['full_url']);
-
-        $this->assertArrayHasKey('is_in_stock', $product);
-        $this->assertTrue($product['is_in_stock']);
-
+        // Check that non-extracted Magento fields are preserved
         $this->assertArrayHasKey('allows_backorders', $product);
         $this->assertTrue($product['allows_backorders']);
 
-        // Check attributes array is preserved
+        // Check attributes array is preserved (used for brand extraction but not removed)
         $this->assertArrayHasKey('attributes', $product);
         $this->assertIsArray($product['attributes']);
         $this->assertCount(12, $product['attributes']);
         $this->assertSame('manufacturer', $product['attributes'][0]['code']);
 
-        // Check price_range structure is preserved
-        $this->assertArrayHasKey('price_range', $product);
-        $this->assertArrayHasKey('minimum_price', $product['price_range']);
-        $this->assertSame(18.5, $product['price_range']['minimum_price']['final_price']['value']);
-
-        // Check original categories array is preserved
+        // Check original categories array is preserved (transformed but not removed)
         $this->assertArrayHasKey('categories', $product);
         $this->assertIsArray($product['categories']);
-        $this->assertCount(3, $product['categories']);
+    }
 
-        // Check image_optimized is preserved
-        $this->assertArrayHasKey('image_optimized', $product);
+    public function testTransformRemovesExtractedFields(): void
+    {
+        $magentoData = $this->getSampleMagentoResponse();
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        // Check that extracted fields are removed (replaced by unified fields)
+        $this->assertArrayNotHasKey('full_url', $product);
+        $this->assertArrayNotHasKey('is_in_stock', $product);
+        $this->assertArrayNotHasKey('stock_status', $product);
+        $this->assertArrayNotHasKey('price_range', $product);
+        $this->assertArrayNotHasKey('image_optimized', $product);
+        $this->assertArrayNotHasKey('short_description', $product);
+
+        // But unified fields should exist
+        $this->assertArrayHasKey('productUrl', $product);
+        $this->assertArrayHasKey('inStock', $product);
+        $this->assertArrayHasKey('price', $product);
+        $this->assertArrayHasKey('imageUrl', $product);
     }
 
     public function testTransformUnifiedFields(): void
@@ -651,6 +658,67 @@ class MagentoAdapterTest extends TestCase
         $this->assertSame('3', $result['products'][1]['id']);
         $this->assertSame(1, $result['errors'][0]['product_index']);
         $this->assertSame('2', $result['errors'][0]['product_id']);
+    }
+
+    public function testTransformRemovesOriginalDescriptionObjectStructure(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                            'description' => ['html' => '<p>Full description</p>'],
+                            'short_description' => ['html' => '<p>Short desc</p>'],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        // Original short_description object should be removed (not passed through)
+        $this->assertArrayNotHasKey('short_description', $product);
+
+        // Extracted description should be set as clean text string (not object)
+        $this->assertArrayHasKey('description', $product);
+        $this->assertIsString($product['description']);
+        $this->assertSame('Full description', $product['description']);
+
+        // Extracted descriptionShort should be set as clean text string
+        $this->assertArrayHasKey('descriptionShort', $product);
+        $this->assertIsString($product['descriptionShort']);
+        $this->assertSame('Short desc', $product['descriptionShort']);
+    }
+
+    public function testTransformRemovesOriginalDescriptionEvenWhenEmpty(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                            'description' => ['html' => ''],
+                            'short_description' => ['html' => ''],
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        // Original objects should be removed even when empty
+        $this->assertArrayNotHasKey('short_description', $product);
+        $this->assertArrayNotHasKey('description', $product);
     }
 
     private function getSampleMagentoResponse(): array
