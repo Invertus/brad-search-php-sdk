@@ -280,6 +280,218 @@ $products = $result['products'];
 
 See `examples/shopify-sync.php` for a complete working example.
 
+## Magento Adapter
+
+The `MagentoAdapter` transforms Magento GraphQL product data into the BradSearch format with minimal transformation - it passes data through as-is while validating required fields.
+
+### Features
+
+- **Minimal transformation**: Validates required fields (id, sku, name) and passes all other data unchanged
+- **GraphQL response handling**: Handles Magento's `data.products.items` structure
+- **Pagination support**: Extract pagination info separately via `extractPaginationInfo()`
+- **Helper utilities**: Optional GraphQL client, query builder, and paginated fetcher
+
+### Basic Usage (Transform Only)
+
+```php
+use BradSearch\SyncSdk\Adapters\MagentoAdapter;
+
+$adapter = new MagentoAdapter();
+
+// Transform pre-fetched Magento GraphQL response
+$magentoResponse = [
+    'data' => [
+        'products' => [
+            'items' => [
+                // ... Magento product data
+            ]
+        ]
+    ]
+];
+
+$result = $adapter->transform($magentoResponse);
+
+// Handle errors
+if (!empty($result['errors'])) {
+    foreach ($result['errors'] as $error) {
+        echo "Error on product {$error['product_id']}: {$error['message']}\n";
+    }
+}
+
+// Use with BradSearch SDK
+$syncSdk->syncBulk('my-index', $result['products']);
+```
+
+### Full Usage with Helper Utilities
+
+```php
+use BradSearch\SyncSdk\Adapters\MagentoAdapter;
+use BradSearch\SyncSdk\Magento\MagentoConfig;
+use BradSearch\SyncSdk\Magento\MagentoGraphQLClient;
+use BradSearch\SyncSdk\Magento\MagentoPaginatedFetcher;
+
+// 1. Configure Magento connection
+$config = new MagentoConfig(
+    graphqlUrl: 'https://magento.example.com/graphql',
+    bearerToken: 'your-integration-token', // Optional
+    defaultPageSize: 100,
+);
+
+// 2. Create helper instances
+$client = new MagentoGraphQLClient($config);
+$adapter = new MagentoAdapter();
+$fetcher = new MagentoPaginatedFetcher($client, $adapter);
+
+// 3. Fetch all products with automatic pagination
+foreach ($fetcher->fetchAll(['category_id' => ['eq' => '2']]) as $batch) {
+    echo "Page {$batch['page']}/{$batch['total_pages']} ({$batch['total_count']} total)\n";
+    $syncSdk->syncBulk('my-index', $batch['products']);
+}
+```
+
+### Using the Query Builder
+
+```php
+use BradSearch\SyncSdk\Magento\MagentoQueryBuilder;
+
+$builder = new MagentoQueryBuilder();
+
+// Fluent filter API
+$builder
+    ->filterByCategory(42)
+    ->filterBySku(['SKU-1', 'SKU-2'])
+    ->pageSize(50)
+    ->page(1);
+
+// Or pass any Magento filter structure directly
+$builder->filter([
+    'price' => ['from' => '10', 'to' => '100'],
+    'name' => ['like' => '%shirt%'],
+    'category_id' => ['in' => ['2', '3', '4']],
+]);
+
+// Get query and variables for GraphQL request
+$query = $builder->getQuery();
+$variables = $builder->getVariables();
+```
+
+### Custom GraphQL Query
+
+```php
+use BradSearch\SyncSdk\Magento\MagentoProductQuery;
+
+// Use the default query template
+$query = MagentoProductQuery::DEFAULT_QUERY;
+
+// Or use minimal query for faster fetching
+$query = MagentoProductQuery::MINIMAL_QUERY;
+
+// Or set a custom query
+$builder = new MagentoQueryBuilder();
+$builder->setQuery($customQuery);
+```
+
+### Field Mapping
+
+The MagentoAdapter performs **minimal transformation**:
+
+| Magento Field | BradSearch Field | Notes |
+|---------------|------------------|-------|
+| `id` | `id` | Cast to string, required |
+| `sku` | `sku` | Required |
+| `name` | `name` | Required |
+| All other fields | Pass through as-is | No transformation |
+
+All nested structures (attributes, categories, price_range, media_gallery, etc.) are preserved exactly as received from Magento.
+
+### Pagination Info
+
+```php
+$pagination = $adapter->extractPaginationInfo($magentoResponse);
+
+// Returns:
+// [
+//     'total_count' => 78574,
+//     'current_page' => 1,
+//     'page_size' => 100,
+//     'total_pages' => 786,
+// ]
+```
+
+### Supported Magento Filters
+
+The query builder supports any Magento filter condition:
+
+| Condition | Example | Description |
+|-----------|---------|-------------|
+| `eq` | `['category_id' => ['eq' => '2']]` | Equal to |
+| `neq` | `['status' => ['neq' => 'disabled']]` | Not equal to |
+| `in` | `['sku' => ['in' => ['A', 'B']]]` | In list |
+| `nin` | `['sku' => ['nin' => ['X', 'Y']]]` | Not in list |
+| `like` | `['name' => ['like' => '%shirt%']]` | Pattern match |
+| `from`/`to` | `['price' => ['from' => '10', 'to' => '100']]` | Range |
+| `gt`/`lt` | `['qty' => ['gt' => '0']]` | Greater/less than |
+
+### Error Handling
+
+```php
+$result = $adapter->transform($magentoData);
+
+// Errors are collected, not thrown (processing continues)
+foreach ($result['errors'] as $error) {
+    // $error contains:
+    // - type: 'transformation_error' or 'invalid_structure'
+    // - product_index: Position in items array
+    // - product_id: Product ID if available
+    // - message: Error description
+    // - exception: Exception class name
+}
+```
+
+### Helper Classes
+
+| Class | Purpose |
+|-------|---------|
+| `MagentoConfig` | Connection configuration (URL, token, timeout, SSL) |
+| `MagentoGraphQLClient` | cURL-based GraphQL HTTP client |
+| `MagentoQueryBuilder` | Fluent filter and pagination builder |
+| `MagentoProductQuery` | Static GraphQL query templates |
+| `MagentoPaginatedFetcher` | Automatic pagination with generator support |
+
+## Shared Utilities (AdapterUtils)
+
+The `AdapterUtils` class provides common utility methods that can be reused across all adapters:
+
+```php
+use BradSearch\SyncSdk\Adapters\AdapterUtils;
+
+// Build imageUrl structure with small/medium keys
+$imageUrl = AdapterUtils::buildImageUrl($smallUrl, $mediumUrl);
+
+// Extract URL from nested structure like {url: string, label: string}
+$url = AdapterUtils::extractNestedImageUrl($product, 'image');
+
+// Extract URL directly from a field
+$url = AdapterUtils::extractDirectUrl($product, 'productUrl');
+
+// Safely get nested value from array
+$price = AdapterUtils::getNestedValue($product, ['price_range', 'minimum_price', 'value']);
+
+// Build error entry for transformation errors
+$error = AdapterUtils::buildError('transformation_error', $index, $productId, $message);
+```
+
+### Available Methods
+
+| Method | Description |
+|--------|-------------|
+| `buildImageUrl($small, $medium)` | Build imageUrl with small/medium keys |
+| `extractNestedImageUrl($data, $field)` | Extract URL from `{url, label}` structure |
+| `extractDirectUrl($data, $field)` | Extract URL directly from field |
+| `getNestedValue($data, $keys, $default)` | Safely traverse nested arrays |
+| `toString($value)` | Cast value to string safely |
+| `buildError(...)` | Build standardized error entry |
+
 ## Extending with New Adapters
 
 To create adapters for other e-commerce platforms:

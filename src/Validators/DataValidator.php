@@ -127,7 +127,7 @@ class DataValidator
             case FieldType::TEXT_KEYWORD:
             case FieldType::KEYWORD:
                 if (!is_string($value)) {
-                    $errors[] = "Field '{$fieldName}' must be a string";
+                    $errors[] = "Field '{$fieldName}' must be a string but got " . gettype($value);
                 }
                 break;
 
