@@ -37,6 +37,7 @@ query GetProducts($filter: ProductAttributeFilterInput, $pageSize: Int, $current
             short_description { html }
             description { html }
             attributes {
+                attribute_id
                 code
                 label
                 value
