@@ -375,21 +375,50 @@ $query = $builder->getQuery();
 $variables = $builder->getVariables();
 ```
 
-### Custom GraphQL Query
+### GraphQL Query Templates
+
+The `MagentoProductQuery` class provides static methods to generate GraphQL queries with shared item body definitions, ensuring consistency across different query types.
 
 ```php
 use BradSearch\SyncSdk\Magento\MagentoProductQuery;
 
-// Use the default query template
-$query = MagentoProductQuery::DEFAULT_QUERY;
+// Default paginated query with full item fields
+$query = MagentoProductQuery::getDefaultQuery();
+$variables = [
+    'filter' => ['category_id' => ['eq' => '2']],
+    'pageSize' => 100,
+    'currentPage' => 1
+];
 
-// Or use minimal query for faster fetching
-$query = MagentoProductQuery::MINIMAL_QUERY;
+// Query by specific product IDs (uses same item fields as default)
+$query = MagentoProductQuery::getByIdsQuery();
+$variables = ['ids' => ['325465', '1924192', '1924190']];
 
-// Or set a custom query
+// Minimal query for faster fetching on large catalogs
+$query = MagentoProductQuery::getMinimalQuery();
+
+// Incremental sync query (id, sku, updated_at only)
+$query = MagentoProductQuery::getIncrementalQuery();
+
+// Use with query builder
 $builder = new MagentoQueryBuilder();
 $builder->setQuery($customQuery);
 ```
+
+#### Available Query Methods
+
+| Method | Variables | Item Fields | Use Case |
+|--------|-----------|-------------|----------|
+| `getDefaultQuery()` | `$filter`, `$pageSize`, `$currentPage` | Full (all fields) | Standard product sync |
+| `getByIdsQuery()` | `$ids: [String!]` | Full (all fields) | Fetch specific products by ID |
+| `getMinimalQuery()` | `$filter`, `$pageSize`, `$currentPage` | Minimal (basic fields) | Fast sync for large catalogs |
+| `getIncrementalQuery()` | `$filter`, `$pageSize`, `$currentPage` | Incremental (id, sku, updated_at) | Check for updates |
+
+#### Item Body Types
+
+- **Full**: All product fields including attributes, descriptions, categories, prices, stock status
+- **Minimal**: Basic fields only (id, sku, name, url, stock, price, image, categories)
+- **Incremental**: Sync-only fields (id, sku, updated_at)
 
 ### Field Mapping
 
@@ -455,7 +484,7 @@ foreach ($result['errors'] as $error) {
 | `MagentoConfig` | Connection configuration (URL, token, timeout, SSL) |
 | `MagentoGraphQLClient` | cURL-based GraphQL HTTP client |
 | `MagentoQueryBuilder` | Fluent filter and pagination builder |
-| `MagentoProductQuery` | Static GraphQL query templates |
+| `MagentoProductQuery` | GraphQL query builder with shared item bodies |
 | `MagentoPaginatedFetcher` | Automatic pagination with generator support |
 
 ## Shared Utilities (AdapterUtils)
