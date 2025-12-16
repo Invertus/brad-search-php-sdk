@@ -112,6 +112,8 @@ class PrestaShopAdapter
 
         $this->transformFeatures($result, (array)($product['features'] ?? []));
 
+        $this->transformTags($result, $product['tags'] ?? []);
+
         return $result;
     }
 
@@ -150,6 +152,38 @@ class PrestaShopAdapter
                 $result['features'] = $features;
             } else {
                 $result["features_{$locale}"] = $features;
+            }
+        }
+    }
+
+    /**
+     * Transform tags to create localized fields
+     */
+    private function transformTags(array &$result, mixed $tags): void
+    {
+        if (!is_array($tags) || empty($tags)) {
+            return;
+        }
+
+        foreach ($tags as $locale => $tagList) {
+            if (
+                !is_string($locale) || $locale === '' ||
+                !is_array($tagList) || empty($tagList)
+            ) {
+                continue;
+            }
+
+            // Filter out empty/null values from the tag list
+            $filteredTags = array_values(array_filter($tagList, fn($tag) => is_string($tag) && $tag !== ''));
+
+            if (empty($filteredTags)) {
+                continue;
+            }
+
+            if ($locale === 'en-US') {
+                $result['tags'] = $filteredTags;
+            } else {
+                $result["tags_{$locale}"] = $filteredTags;
             }
         }
     }
