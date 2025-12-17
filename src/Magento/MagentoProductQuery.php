@@ -34,7 +34,11 @@ namespace BradSearch\SyncSdk\Magento;
  * @example Query by product IDs
  * ```php
  * $query = MagentoProductQuery::getByIdsQuery();
- * $variables = ['ids' => ['325465', '1924192', '1924190']];
+ * $variables = [
+ *     'ids' => ['325465', '1924192', '1924190'],
+ *     'pageSize' => 100,
+ *     'currentPage' => 1
+ * ];
  * ```
  */
 final class MagentoProductQuery
@@ -151,6 +155,8 @@ GRAPHQL;
      *
      * Variables:
      * - $ids: [String!] (e.g., ["325465", "1924192", "1924190"])
+     * - $pageSize: Int (e.g., 100)
+     * - $currentPage: Int (e.g., 1)
      */
     public static function getByIdsQuery(): string
     {
@@ -208,10 +214,13 @@ GRAPHQL;
      */
     private static function buildByIdsQuery(string $itemsBody): string
     {
+        $pageInfo = self::PAGE_INFO;
+
         return <<<GRAPHQL
-query GetProductsByIds(\$ids: [String!]) {
-    products(filter: { entity_id: { in: \$ids } }) {
+query GetProductsByIds(\$ids: [String!], \$pageSize: Int, \$currentPage: Int) {
+    products(filter: { entity_id: { in: \$ids } }, pageSize: \$pageSize, currentPage: \$currentPage) {
         total_count
+{$pageInfo}
         items {
 {$itemsBody}
         }
