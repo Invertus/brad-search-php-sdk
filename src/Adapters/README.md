@@ -392,7 +392,11 @@ $variables = [
 
 // Query by specific product IDs (uses same item fields as default)
 $query = MagentoProductQuery::getByIdsQuery();
-$variables = ['ids' => ['325465', '1924192', '1924190']];
+$variables = [
+    'ids' => ['325465', '1924192', '1924190'],
+    'pageSize' => 100,
+    'currentPage' => 1
+];
 
 // Minimal query for faster fetching on large catalogs
 $query = MagentoProductQuery::getMinimalQuery();
@@ -410,7 +414,7 @@ $builder->setQuery($customQuery);
 | Method | Variables | Item Fields | Use Case |
 |--------|-----------|-------------|----------|
 | `getDefaultQuery()` | `$filter`, `$pageSize`, `$currentPage` | Full (all fields) | Standard product sync |
-| `getByIdsQuery()` | `$ids: [String!]` | Full (all fields) | Fetch specific products by ID |
+| `getByIdsQuery()` | `$ids: [String!]`, `$pageSize`, `$currentPage` | Full (all fields) | Fetch specific products by ID |
 | `getMinimalQuery()` | `$filter`, `$pageSize`, `$currentPage` | Minimal (basic fields) | Fast sync for large catalogs |
 | `getIncrementalQuery()` | `$filter`, `$pageSize`, `$currentPage` | Incremental (id, sku, updated_at) | Check for updates |
 
