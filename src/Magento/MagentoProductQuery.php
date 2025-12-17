@@ -65,6 +65,7 @@ final class MagentoProductQuery
                 position
                 is_searchable
                 is_filterable
+                is_visible
                 unit
                 numeric_value
                 has_unit
