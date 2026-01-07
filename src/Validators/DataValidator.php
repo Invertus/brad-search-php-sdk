@@ -158,8 +158,6 @@ class DataValidator
                 break;
 
             case FieldType::URL:
-                // Just verify it looks like a URL without strict validation
-                // filter_var is too strict for international URLs
                 if (!is_string($value) || !preg_match('/^https?:\/\/.+/', $value)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";
                 }
@@ -233,8 +231,6 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            // Just verify it looks like a URL without strict validation
-            // filter_var is too strict for international URLs
             if (!is_string($variant['productUrl']) || !preg_match('/^https?:\/\/.+/', $variant['productUrl'])) {
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'productUrl' must be a valid URL";
             }
@@ -305,8 +301,6 @@ class DataValidator
                 $validSizesFound = true;
             }
 
-            // Just verify it looks like a URL without strict validation
-            // filter_var is too strict for international URLs
             if (!is_string($url) || !preg_match('/^https?:\/\/.+/', $url)) {
                 $errors[] = "Field '{$fieldName}[{$size}]' must be a valid image URL";
             }
