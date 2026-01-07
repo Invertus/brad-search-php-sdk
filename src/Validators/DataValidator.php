@@ -158,7 +158,9 @@ class DataValidator
                 break;
 
             case FieldType::URL:
-                if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
+                // Just verify it looks like a URL without strict validation
+                // filter_var is too strict for international URLs
+                if (!is_string($value) || !preg_match('/^https?:\/\/.+/', $value)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";
                 }
                 break;
@@ -231,7 +233,9 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            if (!is_string($variant['productUrl']) || !filter_var($variant['productUrl'], FILTER_VALIDATE_URL)) {
+            // Just verify it looks like a URL without strict validation
+            // filter_var is too strict for international URLs
+            if (!is_string($variant['productUrl']) || !preg_match('/^https?:\/\/.+/', $variant['productUrl'])) {
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'productUrl' must be a valid URL";
             }
 
@@ -301,7 +305,9 @@ class DataValidator
                 $validSizesFound = true;
             }
 
-            if (!is_string($url) || !$this->isValidImageUrl($url)) {
+            // Just verify it looks like a URL without strict validation
+            // filter_var is too strict for international URLs
+            if (!is_string($url) || !preg_match('/^https?:\/\/.+/', $url)) {
                 $errors[] = "Field '{$fieldName}[{$size}]' must be a valid image URL";
             }
         }
@@ -312,19 +318,6 @@ class DataValidator
         }
 
         return $errors;
-    }
-
-    private function isValidImageUrl(string $url): bool
-    {
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
-            return false;
-        }
-
-        // Basic check for image file extensions
-        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
-        $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
-
-        return in_array($extension, $imageExtensions, true);
     }
 
     /**
