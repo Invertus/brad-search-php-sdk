@@ -158,7 +158,7 @@ class DataValidator
                 break;
 
             case FieldType::URL:
-                if (!is_string($value) || !filter_var($value, FILTER_VALIDATE_URL)) {
+                if (!is_string($value) || !preg_match('/^https?:\/\/.+/', $value)) {
                     $errors[] = "Field '{$fieldName}' must be a valid URL";
                 }
                 break;
@@ -231,7 +231,7 @@ class DataValidator
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'id' must be a non-empty string";
             }
 
-            if (!is_string($variant['productUrl']) || !filter_var($variant['productUrl'], FILTER_VALIDATE_URL)) {
+            if (!is_string($variant['productUrl']) || !preg_match('/^https?:\/\/.+/', $variant['productUrl'])) {
                 $errors[] = "Field '{$fieldName}' variant at index {$index} 'productUrl' must be a valid URL";
             }
 
@@ -316,11 +316,10 @@ class DataValidator
 
     private function isValidImageUrl(string $url): bool
     {
-        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        if (!preg_match('/^https?:\/\/.+/', $url)) {
             return false;
         }
 
-        // Basic check for image file extensions
         $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
         $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
 
