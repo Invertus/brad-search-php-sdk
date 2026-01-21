@@ -37,6 +37,13 @@ class SyncV2SdkTest extends TestCase
                     ['fields' => $fields]
                 );
             }
+
+            public function getIndexInfo(): array
+            {
+                return $this->mockedHttpClient->get(
+                    $this->getBaseApiPath() . 'index/info'
+                );
+            }
         };
     }
 
@@ -185,5 +192,81 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->createIndex($fields);
+    }
+
+    public function testGetIndexInfoSuccess(): void
+    {
+        $apiResponse = [
+            'alias_name' => 'app_550e8400',
+            'active_version' => 2,
+            'active_index' => 'app_550e8400_v2',
+            'all_versions' => [1, 2],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/applications/' . self::APP_ID . '/index/info')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->getIndexInfo();
+
+        $this->assertIsArray($result);
+        $this->assertEquals('app_550e8400', $result['alias_name']);
+        $this->assertEquals(2, $result['active_version']);
+        $this->assertEquals('app_550e8400_v2', $result['active_index']);
+        $this->assertEquals([1, 2], $result['all_versions']);
+    }
+
+    public function testGetIndexInfoReturnsRawApiResponse(): void
+    {
+        $apiResponse = [
+            'alias_name' => 'app_550e8400',
+            'active_version' => 1,
+            'active_index' => 'app_550e8400_v1',
+            'all_versions' => [1],
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->getIndexInfo();
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testGetIndexInfoAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with($this->stringContains(self::APP_ID))
+            ->willReturn(['alias_name' => 'test']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getIndexInfo();
+    }
+
+    public function testGetIndexInfoUsesCorrectEndpoint(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with($this->stringEndsWith('/index/info'))
+            ->willReturn(['alias_name' => 'test']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getIndexInfo();
     }
 }
