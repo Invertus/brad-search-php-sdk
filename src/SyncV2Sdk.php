@@ -151,4 +151,16 @@ class SyncV2Sdk
             $config
         );
     }
+
+    /**
+     * Delete query configuration.
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function deleteConfiguration(): array
+    {
+        return $this->httpClient->delete(
+            $this->baseApiPath . 'configuration'
+        );
+    }
 }
