@@ -79,4 +79,20 @@ class SyncV2Sdk
             $this->baseApiPath . 'index/versions'
         );
     }
+
+    /**
+     * Activate a specific index version for zero-downtime migrations and rollbacks.
+     *
+     * @param int $version The version number to activate
+     *
+     * @return array<string, mixed> Raw API response containing previous_version,
+     *                              new_version, alias_name
+     */
+    public function activateIndexVersion(int $version): array
+    {
+        return $this->httpClient->post(
+            $this->baseApiPath . 'index/activate',
+            ['version' => $version]
+        );
+    }
 }

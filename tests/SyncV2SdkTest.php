@@ -51,6 +51,14 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'index/versions'
                 );
             }
+
+            public function activateIndexVersion(int $version): array
+            {
+                return $this->mockedHttpClient->post(
+                    $this->getBaseApiPath() . 'index/activate',
+                    ['version' => $version]
+                );
+            }
         };
     }
 
@@ -346,5 +354,109 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->listIndexVersions();
+    }
+
+    public function testActivateIndexVersionSuccess(): void
+    {
+        $version = 2;
+
+        $apiResponse = [
+            'previous_version' => 1,
+            'new_version' => 2,
+            'alias_name' => 'app_550e8400',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/index/activate',
+                ['version' => $version]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->activateIndexVersion($version);
+
+        $this->assertIsArray($result);
+        $this->assertEquals(1, $result['previous_version']);
+        $this->assertEquals(2, $result['new_version']);
+        $this->assertEquals('app_550e8400', $result['alias_name']);
+    }
+
+    public function testActivateIndexVersionReturnsRawApiResponse(): void
+    {
+        $version = 3;
+
+        $apiResponse = [
+            'previous_version' => 2,
+            'new_version' => 3,
+            'alias_name' => 'app_550e8400',
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->activateIndexVersion($version);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testActivateIndexVersionAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn(['previous_version' => 1, 'new_version' => 2]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->activateIndexVersion(2);
+    }
+
+    public function testActivateIndexVersionUsesCorrectEndpoint(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/index/activate'),
+                $this->anything()
+            )
+            ->willReturn(['previous_version' => 1, 'new_version' => 2]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->activateIndexVersion(2);
+    }
+
+    public function testActivateIndexVersionSendsCorrectRequestBody(): void
+    {
+        $version = 5;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                ['version' => $version]
+            )
+            ->willReturn(['previous_version' => 4, 'new_version' => 5]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->activateIndexVersion($version);
     }
 }
