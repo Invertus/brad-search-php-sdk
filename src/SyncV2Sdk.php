@@ -196,4 +196,18 @@ class SyncV2Sdk
             $this->baseApiPath . 'synonyms?language=' . $language
         );
     }
+
+    /**
+     * Delete search synonyms for a specific language.
+     *
+     * @param string $language Language code (e.g., "en", "lt")
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function deleteSynonyms(string $language): array
+    {
+        return $this->httpClient->delete(
+            $this->baseApiPath . 'synonyms?language=' . $language
+        );
+    }
 }
