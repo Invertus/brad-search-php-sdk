@@ -59,6 +59,13 @@ class SyncV2SdkTest extends TestCase
                     ['version' => $version]
                 );
             }
+
+            public function deleteIndexVersion(int $version): array
+            {
+                return $this->mockedHttpClient->delete(
+                    $this->getBaseApiPath() . 'index/version/' . $version
+                );
+            }
         };
     }
 
@@ -458,5 +465,96 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->activateIndexVersion($version);
+    }
+
+    public function testDeleteIndexVersionSuccess(): void
+    {
+        $version = 1;
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Index version 1 deleted successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/applications/' . self::APP_ID . '/index/version/' . $version)
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteIndexVersion($version);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('deleted', $result['status']);
+        $this->assertArrayHasKey('message', $result);
+    }
+
+    public function testDeleteIndexVersionReturnsRawApiResponse(): void
+    {
+        $version = 2;
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Index version 2 deleted successfully',
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteIndexVersion($version);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testDeleteIndexVersionAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringContains(self::APP_ID))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteIndexVersion(1);
+    }
+
+    public function testDeleteIndexVersionUsesCorrectEndpoint(): void
+    {
+        $version = 3;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringEndsWith('/index/version/' . $version))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteIndexVersion($version);
+    }
+
+    public function testDeleteIndexVersionIncludesVersionInUrl(): void
+    {
+        $version = 5;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/applications/' . self::APP_ID . '/index/version/5')
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteIndexVersion($version);
     }
 }
