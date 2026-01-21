@@ -182,4 +182,18 @@ class SyncV2Sdk
             ]
         );
     }
+
+    /**
+     * Get search synonyms for a specific language.
+     *
+     * @param string $language Language code (e.g., "en", "lt")
+     *
+     * @return array<string, mixed> Raw API response with synonyms data
+     */
+    public function getSynonyms(string $language): array
+    {
+        return $this->httpClient->get(
+            $this->baseApiPath . 'synonyms?language=' . $language
+        );
+    }
 }
