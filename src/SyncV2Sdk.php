@@ -210,4 +210,19 @@ class SyncV2Sdk
             $this->baseApiPath . 'synonyms?language=' . $language
         );
     }
+
+    /**
+     * Perform bulk product operations (index, update, delete).
+     *
+     * @param array<int, array<string, mixed>> $operations Array of operations with 'type' and 'payload'
+     *
+     * @return array<string, mixed> Raw API response with operation results
+     */
+    public function bulkOperations(array $operations): array
+    {
+        return $this->httpClient->post(
+            $this->baseApiPath . 'sync/bulk-operations',
+            ['operations' => $operations]
+        );
+    }
 }
