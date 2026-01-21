@@ -1,0 +1,10 @@
+parameters:
+    level: 4
+    paths:
+        - src
+    excludePaths:
+        - vendor
+    ignoreErrors:
+        - '#PHPDoc tag @param references unknown parameter#'
+        - '#Deprecated in PHP 8.0: Required parameter .* follows optional parameter#'
+        - '#Strict comparison using === between .* and null will always evaluate to false#'
