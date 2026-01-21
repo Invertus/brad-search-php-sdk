@@ -199,9 +199,26 @@ class DataValidator
                     $errors = array_merge($errors, $this->validateNameValueList($fieldName, $value));
                 }
                 break;
+
+            case FieldType::DATETIME:
+                if (!is_string($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a string datetime value";
+                } elseif (!$this->isValidDatetime($value)) {
+                    $errors[] = "Field '{$fieldName}' must be a valid datetime in format 'Y-m-d H:i:s'";
+                }
+                break;
         }
 
         return $errors;
+    }
+
+    /**
+     * Validate datetime format (Y-m-d H:i:s)
+     */
+    private function isValidDatetime(string $value): bool
+    {
+        $datetime = \DateTime::createFromFormat('Y-m-d H:i:s', $value);
+        return $datetime !== false && $datetime->format('Y-m-d H:i:s') === $value;
     }
 
     /**

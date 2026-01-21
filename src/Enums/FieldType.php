@@ -18,4 +18,5 @@ enum FieldType: string
     case INTEGER = 'integer';
     case DOUBLE = 'double';
     case BOOLEAN = 'boolean';
+    case DATETIME = 'datetime';
 }
