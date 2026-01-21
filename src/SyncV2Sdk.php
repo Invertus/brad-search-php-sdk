@@ -39,4 +39,19 @@ class SyncV2Sdk
     {
         return $this->httpClient;
     }
+
+    /**
+     * Create a versioned index with the given field definitions.
+     *
+     * @param array<int, array<string, mixed>> $fields Array of field definitions
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function createIndex(array $fields): array
+    {
+        return $this->httpClient->post(
+            $this->baseApiPath . 'index',
+            ['fields' => $fields]
+        );
+    }
 }
