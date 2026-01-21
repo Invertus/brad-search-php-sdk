@@ -95,4 +95,18 @@ class SyncV2Sdk
             ['version' => $version]
         );
     }
+
+    /**
+     * Delete a specific index version.
+     *
+     * @param int $version The version number to delete
+     *
+     * @return array<string, mixed> Raw API response with status and message
+     */
+    public function deleteIndexVersion(int $version): array
+    {
+        return $this->httpClient->delete(
+            $this->baseApiPath . 'index/version/' . $version
+        );
+    }
 }
