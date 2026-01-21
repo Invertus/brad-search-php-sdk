@@ -15,7 +15,8 @@ class DataValidator
      */
     public function __construct(
         private readonly array $fieldConfiguration
-    ) {}
+    ) {
+    }
 
     /**
      * Validate a single product against the field configuration

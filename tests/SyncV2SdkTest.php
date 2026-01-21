@@ -19,7 +19,7 @@ class SyncV2SdkTest extends TestCase
     {
         $config = new SyncConfigV2(self::APP_ID, self::API_URL, self::TOKEN);
 
-        return new class($config, $httpClientMock) extends SyncV2Sdk {
+        return new class ($config, $httpClientMock) extends SyncV2Sdk {
             public function __construct(SyncConfigV2 $config, private HttpClient $mockedHttpClient)
             {
                 parent::__construct($config);

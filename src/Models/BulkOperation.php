@@ -11,7 +11,8 @@ class BulkOperation
     public function __construct(
         public readonly BulkOperationType $type,
         public readonly array $payload
-    ) {}
+    ) {
+    }
 
     public function toArray(): array
     {

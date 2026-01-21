@@ -8,11 +8,13 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class PrestaShopAdapter
 {
-    public function __construct() {}
+    public function __construct()
+    {
+    }
 
     /**
      * Transform PrestaShop product data to BradSearch format
-     * 
+     *
      * @param array $prestaShopData The PrestaShop API response
      * @return array<array> Array of products in BradSearch format
      */
@@ -485,7 +487,7 @@ class PrestaShopAdapter
 
     /**
      * Validate and convert a field value to a proper boolean or null
-     * 
+     *
      * @param mixed $value The value to validate
      * @return bool|null Returns true/false for valid boolean values, null for invalid/missing values
      */
