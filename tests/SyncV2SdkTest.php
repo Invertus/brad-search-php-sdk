@@ -44,6 +44,13 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'index/info'
                 );
             }
+
+            public function listIndexVersions(): array
+            {
+                return $this->mockedHttpClient->get(
+                    $this->getBaseApiPath() . 'index/versions'
+                );
+            }
         };
     }
 
@@ -268,5 +275,76 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->getIndexInfo();
+    }
+
+    public function testListIndexVersionsSuccess(): void
+    {
+        $apiResponse = [
+            'versions' => [
+                ['version' => 1, 'created_at' => '2024-01-01T00:00:00Z'],
+                ['version' => 2, 'created_at' => '2024-01-02T00:00:00Z'],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/applications/' . self::APP_ID . '/index/versions')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->listIndexVersions();
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('versions', $result);
+        $this->assertCount(2, $result['versions']);
+    }
+
+    public function testListIndexVersionsReturnsRawApiResponse(): void
+    {
+        $apiResponse = [
+            'versions' => [1, 2, 3],
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->listIndexVersions();
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testListIndexVersionsAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with($this->stringContains(self::APP_ID))
+            ->willReturn(['versions' => []]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->listIndexVersions();
+    }
+
+    public function testListIndexVersionsUsesCorrectEndpoint(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with($this->stringEndsWith('/index/versions'))
+            ->willReturn(['versions' => []]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->listIndexVersions();
     }
 }
