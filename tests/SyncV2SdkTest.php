@@ -121,6 +121,14 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'synonyms?language=' . $language
                 );
             }
+
+            public function bulkOperations(array $operations): array
+            {
+                return $this->mockedHttpClient->post(
+                    $this->getBaseApiPath() . 'sync/bulk-operations',
+                    ['operations' => $operations]
+                );
+            }
         };
     }
 
@@ -1415,5 +1423,335 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->deleteSynonyms($language);
+    }
+
+    public function testBulkOperationsSuccess(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [
+                        ['id' => 'prod-123', 'name' => 'Product 1', 'price' => 99.99],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'update_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'updates' => [
+                        ['id' => 'prod-124', 'fields' => ['price' => 129.99]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'delete_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'product_ids' => ['prod-125'],
+                ],
+            ],
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'message' => 'All 3 operations completed successfully',
+            'total_operations' => 3,
+            'successful_operations' => 3,
+            'failed_operations' => 0,
+            'processing_time_ms' => 2156,
+            'results' => [
+                [
+                    'type' => 'index_products',
+                    'status' => 'success',
+                    'message' => 'Operation completed',
+                    'count' => 1,
+                    'index_name' => 'products-v1',
+                ],
+                [
+                    'type' => 'update_products',
+                    'status' => 'success',
+                    'message' => 'Operation completed',
+                    'count' => 1,
+                    'index_name' => 'products-v1',
+                ],
+                [
+                    'type' => 'delete_products',
+                    'status' => 'success',
+                    'message' => 'Operation completed',
+                    'count' => 1,
+                    'index_name' => 'products-v1',
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
+                ['operations' => $operations]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->bulkOperations($operations);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(3, $result['total_operations']);
+        $this->assertEquals(3, $result['successful_operations']);
+        $this->assertEquals(0, $result['failed_operations']);
+        $this->assertCount(3, $result['results']);
+    }
+
+    public function testBulkOperationsWithEmptyOperations(): void
+    {
+        $operations = [];
+
+        $apiResponse = [
+            'status' => 'success',
+            'message' => 'No operations to process',
+            'total_operations' => 0,
+            'successful_operations' => 0,
+            'failed_operations' => 0,
+            'processing_time_ms' => 0,
+            'results' => [],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
+                ['operations' => $operations]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->bulkOperations($operations);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('status', $result);
+        $this->assertEquals(0, $result['total_operations']);
+    }
+
+    public function testBulkOperationsReturnsRawApiResponse(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [['id' => 'prod-123']],
+                ],
+            ],
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'message' => 'All 1 operations completed successfully',
+            'total_operations' => 1,
+            'successful_operations' => 1,
+            'failed_operations' => 0,
+            'processing_time_ms' => 500,
+            'results' => [
+                [
+                    'type' => 'index_products',
+                    'status' => 'success',
+                ],
+            ],
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->bulkOperations($operations);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testBulkOperationsAppIdIncludedInUrlPath(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [],
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->bulkOperations($operations);
+    }
+
+    public function testBulkOperationsUsesCorrectEndpoint(): void
+    {
+        $operations = [
+            [
+                'type' => 'delete_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'product_ids' => ['prod-123'],
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/sync/bulk-operations'),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->bulkOperations($operations);
+    }
+
+    public function testBulkOperationsSendsCorrectRequestBody(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [
+                        ['id' => 'prod-123', 'name' => 'Test Product'],
+                    ],
+                    'subfields' => ['name' => ['split_by' => [' ']]],
+                    'embeddablefields' => ['description' => 'name'],
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                ['operations' => $operations]
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->bulkOperations($operations);
+    }
+
+    public function testBulkOperationsPartialFailure(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [['id' => 'prod-123']],
+                ],
+            ],
+            [
+                'type' => 'delete_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'product_ids' => ['prod-999'],
+                ],
+            ],
+        ];
+
+        $apiResponse = [
+            'status' => 'partial',
+            'message' => '1 operations succeeded, 1 operations failed',
+            'total_operations' => 2,
+            'successful_operations' => 1,
+            'failed_operations' => 1,
+            'processing_time_ms' => 856,
+            'results' => [
+                [
+                    'type' => 'index_products',
+                    'status' => 'success',
+                    'message' => 'Operation completed',
+                    'count' => 1,
+                    'index_name' => 'products-v1',
+                ],
+                [
+                    'type' => 'delete_products',
+                    'status' => 'error',
+                    'message' => 'Products not found',
+                    'index_name' => 'products-v1',
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->bulkOperations($operations);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('partial', $result['status']);
+        $this->assertEquals(2, $result['total_operations']);
+        $this->assertEquals(1, $result['successful_operations']);
+        $this->assertEquals(1, $result['failed_operations']);
+    }
+
+    public function testBulkOperationsPassesOperationsWithoutModification(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [
+                        ['id' => 'prod-123', 'name' => 'Product 1', 'price' => 99.99],
+                        ['id' => 'prod-124', 'name' => 'Product 2', 'price' => 149.99],
+                    ],
+                    'subfields' => ['name' => ['split_by' => [' ', '-'], 'max_count' => 3]],
+                    'embeddablefields' => ['description' => 'name'],
+                    'custom_option' => ['nested' => 'value'],
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                ['operations' => $operations]
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->bulkOperations($operations);
     }
 }
