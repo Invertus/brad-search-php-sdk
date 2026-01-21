@@ -54,4 +54,17 @@ class SyncV2Sdk
             ['fields' => $fields]
         );
     }
+
+    /**
+     * Get index information including active version and all versions.
+     *
+     * @return array<string, mixed> Raw API response containing alias_name,
+     *                              active_version, active_index, all_versions
+     */
+    public function getIndexInfo(): array
+    {
+        return $this->httpClient->get(
+            $this->baseApiPath . 'index/info'
+        );
+    }
 }
