@@ -225,4 +225,63 @@ class SyncV2Sdk
             ['operations' => $operations]
         );
     }
+
+    /**
+     * Create search settings.
+     *
+     * @param array<string, mixed> $settings Search settings configuration
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function createSearchSettings(array $settings): array
+    {
+        return $this->httpClient->post(
+            'api/v2/configuration',
+            $settings
+        );
+    }
+
+    /**
+     * Get search settings for a specific application.
+     *
+     * @param string $appId Application ID
+     *
+     * @return array<string, mixed> Raw API response with settings data
+     */
+    public function getSearchSettings(string $appId): array
+    {
+        return $this->httpClient->get(
+            'api/v2/configuration/' . $appId
+        );
+    }
+
+    /**
+     * Update search settings for a specific application.
+     *
+     * @param string $appId Application ID
+     * @param array<string, mixed> $settings Search settings to update
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function updateSearchSettings(string $appId, array $settings): array
+    {
+        return $this->httpClient->put(
+            'api/v2/configuration/' . $appId,
+            $settings
+        );
+    }
+
+    /**
+     * Delete search settings for a specific application.
+     *
+     * @param string $appId Application ID
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function deleteSearchSettings(string $appId): array
+    {
+        return $this->httpClient->delete(
+            'api/v2/configuration/' . $appId
+        );
+    }
 }

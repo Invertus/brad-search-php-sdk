@@ -129,6 +129,36 @@ class SyncV2SdkTest extends TestCase
                     ['operations' => $operations]
                 );
             }
+
+            public function createSearchSettings(array $settings): array
+            {
+                return $this->mockedHttpClient->post(
+                    'api/v2/configuration',
+                    $settings
+                );
+            }
+
+            public function getSearchSettings(string $appId): array
+            {
+                return $this->mockedHttpClient->get(
+                    'api/v2/configuration/' . $appId
+                );
+            }
+
+            public function updateSearchSettings(string $appId, array $settings): array
+            {
+                return $this->mockedHttpClient->put(
+                    'api/v2/configuration/' . $appId,
+                    $settings
+                );
+            }
+
+            public function deleteSearchSettings(string $appId): array
+            {
+                return $this->mockedHttpClient->delete(
+                    'api/v2/configuration/' . $appId
+                );
+            }
         };
     }
 
@@ -1753,5 +1783,436 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->bulkOperations($operations);
+    }
+
+    public function testCreateSearchSettingsSuccess(): void
+    {
+        $settings = [
+            'app_id' => self::APP_ID,
+            'search_fields' => ['title', 'description'],
+            'fuzzy_matching' => true,
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'app_id' => self::APP_ID,
+            'message' => 'Search settings created successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/configuration',
+                $settings
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->createSearchSettings($settings);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(self::APP_ID, $result['app_id']);
+    }
+
+    public function testCreateSearchSettingsWithEmptySettings(): void
+    {
+        $settings = [];
+
+        $apiResponse = [
+            'status' => 'success',
+            'message' => 'Search settings created successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/configuration',
+                $settings
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->createSearchSettings($settings);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('status', $result);
+    }
+
+    public function testCreateSearchSettingsReturnsRawApiResponse(): void
+    {
+        $settings = [
+            'app_id' => self::APP_ID,
+            'search_fields' => ['title'],
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'app_id' => self::APP_ID,
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->createSearchSettings($settings);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testCreateSearchSettingsUsesCorrectEndpoint(): void
+    {
+        $settings = ['fuzzy_matching' => true];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/configuration',
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->createSearchSettings($settings);
+    }
+
+    public function testCreateSearchSettingsPassesSettingsWithoutModification(): void
+    {
+        $settings = [
+            'app_id' => self::APP_ID,
+            'search_fields' => ['title', 'description', 'brand'],
+            'fuzzy_matching' => true,
+            'custom_option' => ['nested' => 'value'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                $settings
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->createSearchSettings($settings);
+    }
+
+    public function testGetSearchSettingsSuccess(): void
+    {
+        $appId = self::APP_ID;
+
+        $apiResponse = [
+            'app_id' => $appId,
+            'search_fields' => ['title', 'description'],
+            'fuzzy_matching' => true,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/configuration/' . $appId)
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->getSearchSettings($appId);
+
+        $this->assertIsArray($result);
+        $this->assertEquals($appId, $result['app_id']);
+        $this->assertEquals(['title', 'description'], $result['search_fields']);
+        $this->assertTrue($result['fuzzy_matching']);
+    }
+
+    public function testGetSearchSettingsReturnsRawApiResponse(): void
+    {
+        $appId = self::APP_ID;
+
+        $apiResponse = [
+            'app_id' => $appId,
+            'search_fields' => ['title'],
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->getSearchSettings($appId);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testGetSearchSettingsAppIdIncludedInUrlPath(): void
+    {
+        $appId = self::APP_ID;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with($this->stringContains($appId))
+            ->willReturn(['app_id' => $appId]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getSearchSettings($appId);
+    }
+
+    public function testGetSearchSettingsUsesCorrectEndpoint(): void
+    {
+        $appId = self::APP_ID;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/configuration/' . $appId)
+            ->willReturn(['app_id' => $appId]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getSearchSettings($appId);
+    }
+
+    public function testUpdateSearchSettingsSuccess(): void
+    {
+        $appId = self::APP_ID;
+        $settings = [
+            'search_fields' => ['title', 'description', 'brand'],
+            'fuzzy_matching' => false,
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'app_id' => $appId,
+            'message' => 'Search settings updated successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->with(
+                'api/v2/configuration/' . $appId,
+                $settings
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->updateSearchSettings($appId, $settings);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals($appId, $result['app_id']);
+    }
+
+    public function testUpdateSearchSettingsWithEmptySettings(): void
+    {
+        $appId = self::APP_ID;
+        $settings = [];
+
+        $apiResponse = [
+            'status' => 'success',
+            'app_id' => $appId,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->with(
+                'api/v2/configuration/' . $appId,
+                $settings
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->updateSearchSettings($appId, $settings);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('status', $result);
+    }
+
+    public function testUpdateSearchSettingsReturnsRawApiResponse(): void
+    {
+        $appId = self::APP_ID;
+        $settings = [
+            'search_fields' => ['title'],
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'app_id' => $appId,
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->updateSearchSettings($appId, $settings);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testUpdateSearchSettingsAppIdIncludedInUrlPath(): void
+    {
+        $appId = self::APP_ID;
+        $settings = ['fuzzy_matching' => true];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->with(
+                $this->stringContains($appId),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->updateSearchSettings($appId, $settings);
+    }
+
+    public function testUpdateSearchSettingsUsesCorrectEndpoint(): void
+    {
+        $appId = self::APP_ID;
+        $settings = ['fuzzy_matching' => false];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->with(
+                'api/v2/configuration/' . $appId,
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->updateSearchSettings($appId, $settings);
+    }
+
+    public function testUpdateSearchSettingsPassesSettingsWithoutModification(): void
+    {
+        $appId = self::APP_ID;
+        $settings = [
+            'search_fields' => ['title', 'description', 'brand'],
+            'fuzzy_matching' => true,
+            'custom_option' => ['nested' => 'value'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('put')
+            ->with(
+                $this->anything(),
+                $settings
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->updateSearchSettings($appId, $settings);
+    }
+
+    public function testDeleteSearchSettingsSuccess(): void
+    {
+        $appId = self::APP_ID;
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Search settings deleted successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/configuration/' . $appId)
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteSearchSettings($appId);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('deleted', $result['status']);
+        $this->assertArrayHasKey('message', $result);
+    }
+
+    public function testDeleteSearchSettingsReturnsRawApiResponse(): void
+    {
+        $appId = self::APP_ID;
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Search settings deleted successfully',
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteSearchSettings($appId);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testDeleteSearchSettingsAppIdIncludedInUrlPath(): void
+    {
+        $appId = self::APP_ID;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringContains($appId))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteSearchSettings($appId);
+    }
+
+    public function testDeleteSearchSettingsUsesCorrectEndpoint(): void
+    {
+        $appId = self::APP_ID;
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/configuration/' . $appId)
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteSearchSettings($appId);
     }
 }
