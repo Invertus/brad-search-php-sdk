@@ -114,6 +114,13 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'synonyms?language=' . $language
                 );
             }
+
+            public function deleteSynonyms(string $language): array
+            {
+                return $this->mockedHttpClient->delete(
+                    $this->getBaseApiPath() . 'synonyms?language=' . $language
+                );
+            }
         };
     }
 
@@ -1312,5 +1319,101 @@ class SyncV2SdkTest extends TestCase
         $this->assertIsArray($result);
         $this->assertEquals('fr', $result['language']);
         $this->assertEmpty($result['synonyms']);
+    }
+
+    public function testDeleteSynonymsSuccess(): void
+    {
+        $language = 'en';
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'language' => 'en',
+            'message' => 'Synonyms deleted successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/applications/' . self::APP_ID . '/synonyms?language=' . $language)
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteSynonyms($language);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('deleted', $result['status']);
+        $this->assertEquals('en', $result['language']);
+        $this->assertArrayHasKey('message', $result);
+    }
+
+    public function testDeleteSynonymsReturnsRawApiResponse(): void
+    {
+        $language = 'lt';
+
+        $apiResponse = [
+            'status' => 'deleted',
+            'language' => 'lt',
+            'message' => 'Synonyms deleted successfully',
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteSynonyms($language);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testDeleteSynonymsAppIdIncludedInUrlPath(): void
+    {
+        $language = 'en';
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringContains(self::APP_ID))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteSynonyms($language);
+    }
+
+    public function testDeleteSynonymsUsesCorrectEndpoint(): void
+    {
+        $language = 'en';
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringContains('/synonyms?language='))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteSynonyms($language);
+    }
+
+    public function testDeleteSynonymsIncludesLanguageInQueryString(): void
+    {
+        $language = 'de';
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/applications/' . self::APP_ID . '/synonyms?language=de')
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteSynonyms($language);
     }
 }
