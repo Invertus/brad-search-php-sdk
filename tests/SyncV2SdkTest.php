@@ -2215,4 +2215,284 @@ class SyncV2SdkTest extends TestCase
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->deleteSearchSettings($appId);
     }
+
+    public function testGetAppIdReturnsConfiguredAppId(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+
+        $this->assertEquals(self::APP_ID, $sdk->getAppId());
+    }
+
+    public function testGetBaseApiPathIncludesAppId(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+
+        $expectedPath = 'api/v2/applications/' . self::APP_ID . '/';
+        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
+    }
+
+    public function testGetBaseApiPathFollowsCorrectV2Format(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+
+        $basePath = $sdk->getBaseApiPath();
+
+        $this->assertStringStartsWith('api/v2/', $basePath);
+        $this->assertStringContainsString('/applications/', $basePath);
+        $this->assertStringEndsWith('/', $basePath);
+    }
+
+    public function testSdkConstructorConfiguresCorrectBaseApiPath(): void
+    {
+        $config = new SyncConfigV2(self::APP_ID, self::API_URL, self::TOKEN);
+        $sdk = new SyncV2Sdk($config);
+
+        $expectedPath = 'api/v2/applications/' . self::APP_ID . '/';
+        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
+    }
+
+    public function testSdkWithDifferentAppIdHasCorrectPath(): void
+    {
+        $differentAppId = '12345678-1234-1234-1234-123456789012';
+        $config = new SyncConfigV2($differentAppId, self::API_URL, self::TOKEN);
+        $sdk = new SyncV2Sdk($config);
+
+        $expectedPath = 'api/v2/applications/' . $differentAppId . '/';
+        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
+        $this->assertEquals($differentAppId, $sdk->getAppId());
+    }
+
+    public function testAllEndpointsUseV2ApiVersion(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+
+        // Track all called endpoints
+        $calledEndpoints = [];
+
+        $httpClientMock
+            ->method('get')
+            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
+                $calledEndpoints[] = $endpoint;
+                return ['status' => 'success'];
+            });
+
+        $httpClientMock
+            ->method('post')
+            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
+                $calledEndpoints[] = $endpoint;
+                return ['status' => 'success'];
+            });
+
+        $httpClientMock
+            ->method('put')
+            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
+                $calledEndpoints[] = $endpoint;
+                return ['status' => 'success'];
+            });
+
+        $httpClientMock
+            ->method('delete')
+            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
+                $calledEndpoints[] = $endpoint;
+                return ['status' => 'deleted'];
+            });
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+
+        // Call various methods to collect endpoints
+        $sdk->createIndex([['name' => 'id', 'type' => 'keyword']]);
+        $sdk->getIndexInfo();
+        $sdk->listIndexVersions();
+        $sdk->getConfiguration();
+        $sdk->getSynonyms('en');
+
+        // Verify all endpoints use v2 API
+        foreach ($calledEndpoints as $endpoint) {
+            $this->assertStringContainsString('api/v2/', $endpoint);
+        }
+    }
+
+    public function testDataIntegrityForNestedStructures(): void
+    {
+        $complexFields = [
+            [
+                'name' => 'categories',
+                'type' => 'hierarchy',
+                'settings' => [
+                    'delimiter' => ' > ',
+                    'max_depth' => 5,
+                    'nested' => [
+                        'option1' => true,
+                        'option2' => ['a', 'b', 'c'],
+                    ],
+                ],
+            ],
+            [
+                'name' => 'variants',
+                'type' => 'variants',
+                'attributes' => ['color', 'size'],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                ['fields' => $complexFields]
+            )
+            ->willReturn(['status' => 'created']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->createIndex($complexFields);
+    }
+
+    public function testMultipleLanguageSynonymsPassedCorrectly(): void
+    {
+        $synonyms = [
+            ['laptop', 'notebook', 'portable computer', 'portable PC'],
+            ['phone', 'mobile', 'smartphone', 'cellphone', 'cell'],
+            ['TV', 'television', 'telly', 'flat screen'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                [
+                    'language' => 'en',
+                    'synonyms' => $synonyms,
+                ]
+            )
+            ->willReturn(['language' => 'en', 'synonym_count' => 3]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setSynonyms('en', $synonyms);
+    }
+
+    public function testBulkOperationsWithAllOperationTypes(): void
+    {
+        $operations = [
+            [
+                'type' => 'index_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'products' => [
+                        ['id' => 'prod-1', 'name' => 'Product 1'],
+                        ['id' => 'prod-2', 'name' => 'Product 2'],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'update_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'updates' => [
+                        ['id' => 'prod-3', 'fields' => ['price' => 99.99]],
+                    ],
+                ],
+            ],
+            [
+                'type' => 'delete_products',
+                'payload' => [
+                    'index_name' => 'products-v1',
+                    'product_ids' => ['prod-4', 'prod-5'],
+                ],
+            ],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
+                ['operations' => $operations]
+            )
+            ->willReturn([
+                'status' => 'success',
+                'total_operations' => 3,
+                'successful_operations' => 3,
+                'failed_operations' => 0,
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->bulkOperations($operations);
+
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals(3, $result['total_operations']);
+    }
+
+    public function testSearchSettingsEndpointsDoNotIncludeAppIdInBasePath(): void
+    {
+        $settings = ['search_fields' => ['title']];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->callback(function (string $endpoint) {
+                    // Search settings use global endpoint without app_id in base path
+                    return $endpoint === 'api/v2/configuration';
+                }),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->createSearchSettings($settings);
+    }
+
+    public function testGetSearchSettingsIncludesAppIdInUrl(): void
+    {
+        $targetAppId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/configuration/' . $targetAppId)
+            ->willReturn(['app_id' => $targetAppId]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getSearchSettings($targetAppId);
+    }
+
+    public function testConfigurationMethodsUseAppIdBasePath(): void
+    {
+        $config = ['search_fields' => ['title', 'description']];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/configuration',
+                $config
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setConfiguration($config);
+    }
+
+    public function testIndexMethodsUseAppIdBasePath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->with('api/v2/applications/' . self::APP_ID . '/index/info')
+            ->willReturn(['alias_name' => 'test']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->getIndexInfo();
+    }
 }
