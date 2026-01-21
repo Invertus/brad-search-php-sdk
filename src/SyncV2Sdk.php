@@ -124,4 +124,16 @@ class SyncV2Sdk
             $config
         );
     }
+
+    /**
+     * Get query configuration.
+     *
+     * @return array<string, mixed> Raw API response with configuration data
+     */
+    public function getConfiguration(): array
+    {
+        return $this->httpClient->get(
+            $this->baseApiPath . 'configuration'
+        );
+    }
 }
