@@ -89,6 +89,13 @@ class SyncV2SdkTest extends TestCase
                     $config
                 );
             }
+
+            public function deleteConfiguration(): array
+            {
+                return $this->mockedHttpClient->delete(
+                    $this->getBaseApiPath() . 'configuration'
+                );
+            }
         };
     }
 
@@ -939,5 +946,75 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->updateConfiguration($config);
+    }
+
+    public function testDeleteConfigurationSuccess(): void
+    {
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Configuration deleted successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with('api/v2/applications/' . self::APP_ID . '/configuration')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteConfiguration();
+
+        $this->assertIsArray($result);
+        $this->assertEquals('deleted', $result['status']);
+        $this->assertArrayHasKey('message', $result);
+    }
+
+    public function testDeleteConfigurationReturnsRawApiResponse(): void
+    {
+        $apiResponse = [
+            'status' => 'deleted',
+            'message' => 'Configuration deleted successfully',
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->deleteConfiguration();
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testDeleteConfigurationAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringContains(self::APP_ID))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteConfiguration();
+    }
+
+    public function testDeleteConfigurationUsesCorrectEndpoint(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('delete')
+            ->with($this->stringEndsWith('/configuration'))
+            ->willReturn(['status' => 'deleted']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->deleteConfiguration();
     }
 }
