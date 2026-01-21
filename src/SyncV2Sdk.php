@@ -136,4 +136,19 @@ class SyncV2Sdk
             $this->baseApiPath . 'configuration'
         );
     }
+
+    /**
+     * Update query configuration.
+     *
+     * @param array<string, mixed> $config Configuration options to update
+     *
+     * @return array<string, mixed> Raw API response
+     */
+    public function updateConfiguration(array $config): array
+    {
+        return $this->httpClient->put(
+            $this->baseApiPath . 'configuration',
+            $config
+        );
+    }
 }
