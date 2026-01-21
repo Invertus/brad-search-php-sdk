@@ -66,6 +66,14 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'index/version/' . $version
                 );
             }
+
+            public function setConfiguration(array $config): array
+            {
+                return $this->mockedHttpClient->post(
+                    $this->getBaseApiPath() . 'configuration',
+                    $config
+                );
+            }
         };
     }
 
@@ -556,5 +564,149 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->deleteIndexVersion($version);
+    }
+
+    public function testSetConfigurationSuccess(): void
+    {
+        $config = [
+            'search_fields' => ['title', 'description'],
+            'fuzzy_matching' => true,
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'index_name' => 'app_550e8400',
+            'cache_ttl_hours' => 24,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/configuration',
+                $config
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setConfiguration($config);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('success', $result['status']);
+        $this->assertEquals('app_550e8400', $result['index_name']);
+        $this->assertEquals(24, $result['cache_ttl_hours']);
+    }
+
+    public function testSetConfigurationWithEmptyConfig(): void
+    {
+        $config = [];
+
+        $apiResponse = [
+            'status' => 'success',
+            'index_name' => 'app_550e8400',
+            'cache_ttl_hours' => 24,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/configuration',
+                $config
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setConfiguration($config);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('status', $result);
+    }
+
+    public function testSetConfigurationReturnsRawApiResponse(): void
+    {
+        $config = [
+            'search_fields' => ['title'],
+        ];
+
+        $apiResponse = [
+            'status' => 'success',
+            'index_name' => 'app_550e8400',
+            'cache_ttl_hours' => 12,
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setConfiguration($config);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testSetConfigurationAppIdIncludedInUrlPath(): void
+    {
+        $config = ['fuzzy_matching' => true];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setConfiguration($config);
+    }
+
+    public function testSetConfigurationUsesCorrectEndpoint(): void
+    {
+        $config = ['fuzzy_matching' => false];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/configuration'),
+                $this->anything()
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setConfiguration($config);
+    }
+
+    public function testSetConfigurationPassesConfigWithoutModification(): void
+    {
+        $config = [
+            'search_fields' => ['title', 'description', 'brand'],
+            'fuzzy_matching' => true,
+            'custom_option' => ['nested' => 'value'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                $config
+            )
+            ->willReturn(['status' => 'success']);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setConfiguration($config);
     }
 }
