@@ -96,6 +96,17 @@ class SyncV2SdkTest extends TestCase
                     $this->getBaseApiPath() . 'configuration'
                 );
             }
+
+            public function setSynonyms(string $language, array $synonyms): array
+            {
+                return $this->mockedHttpClient->post(
+                    $this->getBaseApiPath() . 'synonyms',
+                    [
+                        'language' => $language,
+                        'synonyms' => $synonyms,
+                    ]
+                );
+            }
         };
     }
 
@@ -1016,5 +1027,162 @@ class SyncV2SdkTest extends TestCase
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->deleteConfiguration();
+    }
+
+    public function testSetSynonymsSuccess(): void
+    {
+        $language = 'en';
+        $synonyms = [
+            ['laptop', 'notebook', 'portable computer'],
+            ['phone', 'mobile', 'smartphone'],
+        ];
+
+        $apiResponse = [
+            'language' => 'en',
+            'synonym_count' => 2,
+            'requires_reindex' => true,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/synonyms',
+                [
+                    'language' => $language,
+                    'synonyms' => $synonyms,
+                ]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setSynonyms($language, $synonyms);
+
+        $this->assertIsArray($result);
+        $this->assertEquals('en', $result['language']);
+        $this->assertEquals(2, $result['synonym_count']);
+        $this->assertTrue($result['requires_reindex']);
+    }
+
+    public function testSetSynonymsWithEmptySynonyms(): void
+    {
+        $language = 'en';
+        $synonyms = [];
+
+        $apiResponse = [
+            'language' => 'en',
+            'synonym_count' => 0,
+            'requires_reindex' => false,
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/synonyms',
+                [
+                    'language' => $language,
+                    'synonyms' => $synonyms,
+                ]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setSynonyms($language, $synonyms);
+
+        $this->assertIsArray($result);
+        $this->assertArrayHasKey('language', $result);
+        $this->assertEquals(0, $result['synonym_count']);
+    }
+
+    public function testSetSynonymsReturnsRawApiResponse(): void
+    {
+        $language = 'lt';
+        $synonyms = [['kompiuteris', 'PC']];
+
+        $apiResponse = [
+            'language' => 'lt',
+            'synonym_count' => 1,
+            'requires_reindex' => true,
+            'extra_field' => 'extra_value',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->setSynonyms($language, $synonyms);
+
+        $this->assertEquals($apiResponse, $result);
+        $this->assertArrayHasKey('extra_field', $result);
+        $this->assertEquals('extra_value', $result['extra_field']);
+    }
+
+    public function testSetSynonymsAppIdIncludedInUrlPath(): void
+    {
+        $language = 'en';
+        $synonyms = [['test', 'trial']];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn(['language' => 'en', 'synonym_count' => 1]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setSynonyms($language, $synonyms);
+    }
+
+    public function testSetSynonymsUsesCorrectEndpoint(): void
+    {
+        $language = 'en';
+        $synonyms = [['test', 'trial']];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/synonyms'),
+                $this->anything()
+            )
+            ->willReturn(['language' => 'en', 'synonym_count' => 1]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setSynonyms($language, $synonyms);
+    }
+
+    public function testSetSynonymsSendsCorrectRequestBody(): void
+    {
+        $language = 'de';
+        $synonyms = [
+            ['computer', 'rechner'],
+            ['handy', 'smartphone', 'mobiltelefon'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                [
+                    'language' => $language,
+                    'synonyms' => $synonyms,
+                ]
+            )
+            ->willReturn(['language' => 'de', 'synonym_count' => 2]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->setSynonyms($language, $synonyms);
     }
 }
