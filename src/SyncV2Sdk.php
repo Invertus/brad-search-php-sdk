@@ -67,4 +67,16 @@ class SyncV2Sdk
             $this->baseApiPath . 'index/info'
         );
     }
+
+    /**
+     * List all index versions.
+     *
+     * @return array<string, mixed> Raw API response with list of versions
+     */
+    public function listIndexVersions(): array
+    {
+        return $this->httpClient->get(
+            $this->baseApiPath . 'index/versions'
+        );
+    }
 }
