@@ -109,4 +109,19 @@ class SyncV2Sdk
             $this->baseApiPath . 'index/version/' . $version
         );
     }
+
+    /**
+     * Set query configuration for search behavior.
+     *
+     * @param array<string, mixed> $config Configuration options (search_fields, fuzzy_matching, etc.)
+     *
+     * @return array<string, mixed> Raw API response containing status, index_name, cache_ttl_hours
+     */
+    public function setConfiguration(array $config): array
+    {
+        return $this->httpClient->post(
+            $this->baseApiPath . 'configuration',
+            $config
+        );
+    }
 }
