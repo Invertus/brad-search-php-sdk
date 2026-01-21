@@ -163,4 +163,23 @@ class SyncV2Sdk
             $this->baseApiPath . 'configuration'
         );
     }
+
+    /**
+     * Set search synonyms for a specific language.
+     *
+     * @param string $language Language code (e.g., "en", "lt")
+     * @param array<int, array<int, string>> $synonyms Array of synonym groups
+     *
+     * @return array<string, mixed> Raw API response containing language, synonym_count, requires_reindex
+     */
+    public function setSynonyms(string $language, array $synonyms): array
+    {
+        return $this->httpClient->post(
+            $this->baseApiPath . 'synonyms',
+            [
+                'language' => $language,
+                'synonyms' => $synonyms,
+            ]
+        );
+    }
 }
