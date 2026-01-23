@@ -164,8 +164,8 @@ class FieldConfigBuilder
             'description' => self::textKeyword(),
             'inStock' => self::boolean(),
             'isNew' => self::boolean(),
-            'created_at' => self::datetime(),
-            'updated_at' => self::datetime(),
+            'createdAt' => self::datetime(),
+            'updatedAt' => self::datetime(),
         ];
 
         return array_merge($defaultFields, $localizedFields);

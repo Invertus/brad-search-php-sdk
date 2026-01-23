@@ -1311,8 +1311,8 @@ class PrestaShopAdapterTest extends TestCase
                     ],
                     'categories' => [],
                     'variants' => [],
-                    'created_at' => '2025-05-16 18:28:58',
-                    'updated_at' => '2025-12-16 15:17:11'
+                    'createdAt' => '2025-05-16 18:28:58',
+                    'updatedAt' => '2025-12-16 15:17:11'
                 ]
             ]
         ];
@@ -1320,8 +1320,8 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $this->getProductFromResult($result);
 
-        $this->assertEquals('2025-05-16 18:28:58', $product['created_at']);
-        $this->assertEquals('2025-12-16 15:17:11', $product['updated_at']);
+        $this->assertEquals('2025-05-16 18:28:58', $product['createdAt']);
+        $this->assertEquals('2025-12-16 15:17:11', $product['updatedAt']);
     }
 
     public function testTransformProductWithOnlyCreatedAt(): void
@@ -1340,7 +1340,7 @@ class PrestaShopAdapterTest extends TestCase
                     ],
                     'categories' => [],
                     'variants' => [],
-                    'created_at' => '2025-05-16 18:28:58'
+                    'createdAt' => '2025-05-16 18:28:58'
                 ]
             ]
         ];
@@ -1348,8 +1348,8 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $this->getProductFromResult($result);
 
-        $this->assertEquals('2025-05-16 18:28:58', $product['created_at']);
-        $this->assertArrayNotHasKey('updated_at', $product);
+        $this->assertEquals('2025-05-16 18:28:58', $product['createdAt']);
+        $this->assertArrayNotHasKey('updatedAt', $product);
     }
 
     public function testTransformProductWithoutTimestamps(): void
@@ -1375,8 +1375,8 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $this->getProductFromResult($result);
 
-        $this->assertArrayNotHasKey('created_at', $product);
-        $this->assertArrayNotHasKey('updated_at', $product);
+        $this->assertArrayNotHasKey('createdAt', $product);
+        $this->assertArrayNotHasKey('updatedAt', $product);
     }
 
     public function testTransformProductWithEmptyTimestamps(): void
@@ -1395,8 +1395,8 @@ class PrestaShopAdapterTest extends TestCase
                     ],
                     'categories' => [],
                     'variants' => [],
-                    'created_at' => '',
-                    'updated_at' => null
+                    'createdAt' => '',
+                    'updatedAt' => null
                 ]
             ]
         ];
@@ -1404,7 +1404,7 @@ class PrestaShopAdapterTest extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $this->getProductFromResult($result);
 
-        $this->assertArrayNotHasKey('created_at', $product);
-        $this->assertArrayNotHasKey('updated_at', $product);
+        $this->assertArrayNotHasKey('createdAt', $product);
+        $this->assertArrayNotHasKey('updatedAt', $product);
     }
 }

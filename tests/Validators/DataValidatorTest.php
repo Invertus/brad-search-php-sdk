@@ -17,16 +17,16 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
-            'updated_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
+            'updatedAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => '2025-05-16 18:28:58',
-            'updated_at' => '2025-12-16 15:17:11',
+            'createdAt' => '2025-05-16 18:28:58',
+            'updatedAt' => '2025-12-16 15:17:11',
         ];
 
         // Should not throw exception
@@ -38,14 +38,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => '2025/05/16 18:28:58', // Wrong format
+            'createdAt' => '2025/05/16 18:28:58', // Wrong format
         ];
 
         $this->expectException(ValidationException::class);
@@ -56,14 +56,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => 1234567890, // Integer instead of string
+            'createdAt' => 1234567890, // Integer instead of string
         ];
 
         $this->expectException(ValidationException::class);
@@ -74,14 +74,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => '2025-13-45 99:99:99', // Invalid date values
+            'createdAt' => '2025-13-45 99:99:99', // Invalid date values
         ];
 
         $this->expectException(ValidationException::class);
@@ -92,14 +92,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            // created_at is not present, which is allowed
+            // createdAt is not present, which is allowed
         ];
 
         // Should not throw exception
@@ -111,14 +111,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => '2025-01-01 00:00:00',
+            'createdAt' => '2025-01-01 00:00:00',
         ];
 
         // Should not throw exception
@@ -130,14 +130,14 @@ class DataValidatorTest extends TestCase
     {
         $fieldConfig = [
             'id' => FieldConfigBuilder::keyword(),
-            'created_at' => FieldConfigBuilder::datetime(),
+            'createdAt' => FieldConfigBuilder::datetime(),
         ];
 
         $validator = new DataValidator($fieldConfig);
 
         $product = [
             'id' => '123',
-            'created_at' => '2025-12-31 23:59:59',
+            'createdAt' => '2025-12-31 23:59:59',
         ];
 
         // Should not throw exception

@@ -75,11 +75,11 @@ class PrestaShopAdapter
         }
 
         // Add optional timestamp fields
-        if (isset($product['created_at']) && $product['created_at'] !== null && $product['created_at'] !== '') {
-            $result['created_at'] = (string) $product['created_at'];
+        if (isset($product['createdAt']) && $product['createdAt'] !== null && $product['createdAt'] !== '') {
+            $result['createdAt'] = (string) $product['createdAt'];
         }
-        if (isset($product['updated_at']) && $product['updated_at'] !== null && $product['updated_at'] !== '') {
-            $result['updated_at'] = (string) $product['updated_at'];
+        if (isset($product['updatedAt']) && $product['updatedAt'] !== null && $product['updatedAt'] !== '') {
+            $result['updatedAt'] = (string) $product['updatedAt'];
         }
 
         // Handle localized product name
