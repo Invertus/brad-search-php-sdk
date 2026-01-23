@@ -1294,4 +1294,117 @@ class PrestaShopAdapterTest extends TestCase
         $this->assertEquals('http://prestashop/13601-square_cart_default/drip-tray.jpg', $variant2['imageUrl']['small']);
         $this->assertEquals('http://prestashop/13601-home_default/drip-tray.jpg', $variant2['imageUrl']['medium']);
     }
+
+    public function testTransformProductWithTimestamps(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => [],
+                    'createdAt' => '2025-05-16 18:28:58',
+                    'updatedAt' => '2025-12-16 15:17:11'
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertEquals('2025-05-16 18:28:58', $product['createdAt']);
+        $this->assertEquals('2025-12-16 15:17:11', $product['updatedAt']);
+    }
+
+    public function testTransformProductWithOnlyCreatedAt(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => [],
+                    'createdAt' => '2025-05-16 18:28:58'
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertEquals('2025-05-16 18:28:58', $product['createdAt']);
+        $this->assertArrayNotHasKey('updatedAt', $product);
+    }
+
+    public function testTransformProductWithoutTimestamps(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertArrayNotHasKey('createdAt', $product);
+        $this->assertArrayNotHasKey('updatedAt', $product);
+    }
+
+    public function testTransformProductWithEmptyTimestamps(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => 'M0E20000000EAAK',
+                    'price' => '99.99',
+                    'basePrice' => '9.99',
+                    'priceTaxExcluded' => '1.00',
+                    'basePriceTaxExcluded' => '8.44',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => [],
+                    'createdAt' => '',
+                    'updatedAt' => null
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertArrayNotHasKey('createdAt', $product);
+        $this->assertArrayNotHasKey('updatedAt', $product);
+    }
 }

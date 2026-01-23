@@ -89,6 +89,14 @@ class FieldConfigBuilder
     }
 
     /**
+     * Create a datetime field
+     */
+    public static function datetime(): FieldConfig
+    {
+        return new FieldConfig(FieldType::DATETIME);
+    }
+
+    /**
      * Create a variants field with attributes
      *
      * @param array<string, FieldConfig> $attributes
@@ -156,6 +164,8 @@ class FieldConfigBuilder
             'description' => self::textKeyword(),
             'inStock' => self::boolean(),
             'isNew' => self::boolean(),
+            'createdAt' => self::datetime(),
+            'updatedAt' => self::datetime(),
         ];
 
         return array_merge($defaultFields, $localizedFields);
