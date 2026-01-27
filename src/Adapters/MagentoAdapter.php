@@ -29,26 +29,28 @@ class MagentoAdapter
             throw new ValidationException('Invalid Magento data: missing data field');
         }
 
-        if (!isset($magentoData['data']['products'])) {
+        $responseKey = $this->resolveResponseKey($magentoData['data']);
+
+        if ($responseKey === null) {
             throw new ValidationException('Invalid Magento data: missing products field');
         }
 
         // Handle empty results gracefully
-        if (!isset($magentoData['data']['products']['items'])) {
+        if (!isset($magentoData['data'][$responseKey]['items'])) {
             return [
                 'products' => [],
                 'errors' => [],
             ];
         }
 
-        if (!is_array($magentoData['data']['products']['items'])) {
+        if (!is_array($magentoData['data'][$responseKey]['items'])) {
             throw new ValidationException('Invalid Magento data: products items must be an array');
         }
 
         $transformedProducts = [];
         $errors = [];
 
-        foreach ($magentoData['data']['products']['items'] as $index => $item) {
+        foreach ($magentoData['data'][$responseKey]['items'] as $index => $item) {
             if (!is_array($item)) {
                 $errors[] = [
                     'type' => 'invalid_structure',
@@ -87,11 +89,17 @@ class MagentoAdapter
      */
     public function extractPaginationInfo(array $magentoData): ?array
     {
-        if (!isset($magentoData['data']['products'])) {
+        if (!isset($magentoData['data'])) {
             return null;
         }
 
-        $products = $magentoData['data']['products'];
+        $responseKey = $this->resolveResponseKey($magentoData['data']);
+
+        if ($responseKey === null) {
+            return null;
+        }
+
+        $products = $magentoData['data'][$responseKey];
         $result = [];
 
         if (isset($products['total_count'])) {
@@ -115,6 +123,24 @@ class MagentoAdapter
         }
 
         return empty($result) ? null : $result;
+    }
+
+    /**
+     * Resolve the response key from Magento GraphQL data.
+     * Supports both 'bradProducts' (custom query) and 'products' (standard query).
+     * Prefers 'bradProducts' when both are present.
+     */
+    private function resolveResponseKey(array $data): ?string
+    {
+        if (isset($data['bradProducts'])) {
+            return 'bradProducts';
+        }
+
+        if (isset($data['products'])) {
+            return 'products';
+        }
+
+        return null;
     }
 
     /**

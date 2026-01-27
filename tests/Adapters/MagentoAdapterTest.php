@@ -721,6 +721,114 @@ class MagentoAdapterTest extends TestCase
         $this->assertArrayNotHasKey('description', $product);
     }
 
+    public function testTransformWithBradProductsResponseKey(): void
+    {
+        $magentoData = [
+            'data' => [
+                'bradProducts' => [
+                    'items' => [
+                        ['id' => 1, 'sku' => 'SKU-1', 'name' => 'Product 1'],
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('1', $result['products'][0]['id']);
+    }
+
+    public function testExtractPaginationInfoWithBradProducts(): void
+    {
+        $magentoData = [
+            'data' => [
+                'bradProducts' => [
+                    'total_count' => 50,
+                    'page_info' => [
+                        'current_page' => 2,
+                        'page_size' => 10,
+                        'total_pages' => 5,
+                    ],
+                    'items' => [],
+                ]
+            ]
+        ];
+
+        $pagination = $this->adapter->extractPaginationInfo($magentoData);
+
+        $this->assertNotNull($pagination);
+        $this->assertSame(50, $pagination['total_count']);
+        $this->assertSame(2, $pagination['current_page']);
+        $this->assertSame(10, $pagination['page_size']);
+        $this->assertSame(5, $pagination['total_pages']);
+    }
+
+    public function testTransformWithBradProductsMissingItems(): void
+    {
+        $magentoData = [
+            'data' => [
+                'bradProducts' => [
+                    'total_count' => 0,
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+
+        $this->assertSame([], $result['products']);
+        $this->assertSame([], $result['errors']);
+    }
+
+    public function testTransformPrefersBradProductsOverProducts(): void
+    {
+        $magentoData = [
+            'data' => [
+                'bradProducts' => [
+                    'items' => [
+                        ['id' => 1, 'sku' => 'BRAD-1', 'name' => 'Brad Product'],
+                    ]
+                ],
+                'products' => [
+                    'items' => [
+                        ['id' => 2, 'sku' => 'STD-2', 'name' => 'Standard Product'],
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertSame('BRAD-1', $result['products'][0]['sku']);
+    }
+
+    public function testTransformPreservesSortPopularityFields(): void
+    {
+        $magentoData = [
+            'data' => [
+                'products' => [
+                    'items' => [
+                        [
+                            'id' => 1,
+                            'sku' => 'TEST',
+                            'name' => 'Test Product',
+                            'sort_popularity' => '42',
+                            'sort_popularity_sales' => 15,
+                        ]
+                    ]
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($magentoData);
+        $product = $this->getProductFromResult($result);
+
+        $this->assertSame('42', $product['sort_popularity']);
+        $this->assertSame(15, $product['sort_popularity_sales']);
+    }
+
     private function getSampleMagentoResponse(): array
     {
         return [
@@ -768,7 +876,9 @@ class MagentoAdapterTest extends TestCase
                                 ['id' => 663, 'name' => 'Gręžimo karūnos', 'url_path' => 'graztai-kaltai-frezos-antgaliai/grezimo-karunos', 'level' => 3, 'path' => '1/2/34/663'],
                                 ['id' => 1128, 'name' => 'TEST ', 'url_path' => 'test', 'level' => 2, 'path' => '1/2/1128']
                             ],
-                            'stock_status' => 'IN_STOCK'
+                            'stock_status' => 'IN_STOCK',
+                            'sort_popularity' => '42',
+                            'sort_popularity_sales' => 15
                         ]
                     ]
                 ]

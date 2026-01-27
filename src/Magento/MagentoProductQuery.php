@@ -85,6 +85,8 @@ final class MagentoProductQuery
                 path
             }
             stock_status
+            sort_popularity
+            sort_popularity_sales
 GRAPHQL;
 
     /**
@@ -199,7 +201,7 @@ GRAPHQL;
 
         return <<<GRAPHQL
 query GetProducts(\$filter: ProductAttributeFilterInput, \$pageSize: Int, \$currentPage: Int) {
-    products(filter: \$filter, pageSize: \$pageSize, currentPage: \$currentPage) {
+    bradProducts(filter: \$filter, pageSize: \$pageSize, currentPage: \$currentPage) {
         total_count
 {$pageInfo}
         items {
