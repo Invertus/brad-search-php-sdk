@@ -814,7 +814,7 @@ class MagentoAdapterTest extends TestCase
                             'id' => 1,
                             'sku' => 'TEST',
                             'name' => 'Test Product',
-                            'sort_popularity' => 42,
+                            'sort_popularity' => '42',
                             'sort_popularity_sales' => 15,
                         ]
                     ]
@@ -825,7 +825,7 @@ class MagentoAdapterTest extends TestCase
         $result = $this->adapter->transform($magentoData);
         $product = $this->getProductFromResult($result);
 
-        $this->assertSame(42, $product['sort_popularity']);
+        $this->assertSame('42', $product['sort_popularity']);
         $this->assertSame(15, $product['sort_popularity_sales']);
     }
 
@@ -877,7 +877,7 @@ class MagentoAdapterTest extends TestCase
                                 ['id' => 1128, 'name' => 'TEST ', 'url_path' => 'test', 'level' => 2, 'path' => '1/2/1128']
                             ],
                             'stock_status' => 'IN_STOCK',
-                            'sort_popularity' => 42,
+                            'sort_popularity' => '42',
                             'sort_popularity_sales' => 15
                         ]
                     ]
