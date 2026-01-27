@@ -221,7 +221,7 @@ GRAPHQL;
 
         return <<<GRAPHQL
 query GetProductsByIds(\$ids: [String!], \$pageSize: Int, \$currentPage: Int) {
-    products(filter: { entity_id: { in: \$ids } }, pageSize: \$pageSize, currentPage: \$currentPage) {
+    bradProducts(filter: { entity_id: { in: \$ids } }, pageSize: \$pageSize, currentPage: \$currentPage) {
         total_count
 {$pageInfo}
         items {
