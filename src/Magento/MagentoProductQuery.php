@@ -144,7 +144,7 @@ GRAPHQL;
      * Get the default paginated query with full item fields.
      *
      * Variables:
-     * - $filter: ProductAttributeFilterInput (e.g., {"category_id": {"eq": "2"}})
+     * - $filter: BradProductFilterInput (e.g., {"category_id": {"eq": "2"}})
      * - $pageSize: Int (e.g., 100)
      * - $currentPage: Int (e.g., 1)
      */
@@ -170,7 +170,7 @@ GRAPHQL;
      * Get minimal paginated query for faster performance on large catalogs.
      *
      * Variables:
-     * - $filter: ProductAttributeFilterInput (e.g., {"category_id": {"eq": "2"}})
+     * - $filter: BradProductFilterInput (e.g., {"category_id": {"eq": "2"}})
      * - $pageSize: Int (e.g., 100)
      * - $currentPage: Int (e.g., 1)
      */
@@ -183,7 +183,7 @@ GRAPHQL;
      * Get incremental sync query for checking updated products.
      *
      * Variables:
-     * - $filter: ProductAttributeFilterInput (e.g., {"category_id": {"eq": "2"}})
+     * - $filter: BradProductFilterInput (e.g., {"category_id": {"eq": "2"}})
      * - $pageSize: Int (e.g., 100)
      * - $currentPage: Int (e.g., 1)
      */
@@ -200,7 +200,7 @@ GRAPHQL;
         $pageInfo = self::PAGE_INFO;
 
         return <<<GRAPHQL
-query GetProducts(\$filter: ProductAttributeFilterInput, \$pageSize: Int, \$currentPage: Int) {
+query GetProducts(\$filter: BradProductFilterInput, \$pageSize: Int, \$currentPage: Int) {
     bradProducts(filter: \$filter, pageSize: \$pageSize, currentPage: \$currentPage) {
         total_count
 {$pageInfo}
