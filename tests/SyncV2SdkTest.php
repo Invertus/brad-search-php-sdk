@@ -7,6 +7,10 @@ namespace BradSearch\SyncSdk\Tests;
 use BradSearch\SyncSdk\SyncV2Sdk;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\Client\HttpClient;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use PHPUnit\Framework\TestCase;
 
 class SyncV2SdkTest extends TestCase
@@ -30,11 +34,11 @@ class SyncV2SdkTest extends TestCase
                 return $this->mockedHttpClient;
             }
 
-            public function createIndex(array $fields): array
+            public function createIndex(IndexCreateRequest $request): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'index',
-                    ['fields' => $fields]
+                    $request->jsonSerialize()
                 );
             }
 
@@ -164,20 +168,14 @@ class SyncV2SdkTest extends TestCase
 
     public function testCreateIndexSuccess(): void
     {
-        $fields = [
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
             [
-                'name' => 'id',
-                'type' => 'keyword',
-            ],
-            [
-                'name' => 'title',
-                'type' => 'text_keyword',
-            ],
-            [
-                'name' => 'price',
-                'type' => 'float',
-            ],
-        ];
+                new FieldDefinition('id', FieldType::KEYWORD),
+                new FieldDefinition('title', FieldType::TEXT),
+                new FieldDefinition('price', FieldType::DOUBLE),
+            ]
+        );
 
         $apiResponse = [
             'status' => 'created',
@@ -193,12 +191,12 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/index',
-                ['fields' => $fields]
+                $request->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($fields);
+        $result = $sdk->createIndex($request);
 
         $this->assertIsArray($result);
         $this->assertEquals('created', $result['status']);
@@ -208,9 +206,12 @@ class SyncV2SdkTest extends TestCase
         $this->assertTrue($result['active']);
     }
 
-    public function testCreateIndexWithEmptyFields(): void
+    public function testCreateIndexWithMinimalRequest(): void
     {
-        $fields = [];
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [new FieldDefinition('id', FieldType::KEYWORD)]
+        );
 
         $apiResponse = [
             'status' => 'created',
@@ -226,12 +227,12 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/index',
-                ['fields' => $fields]
+                $request->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($fields);
+        $result = $sdk->createIndex($request);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -239,9 +240,10 @@ class SyncV2SdkTest extends TestCase
 
     public function testCreateIndexReturnsRawApiResponse(): void
     {
-        $fields = [
-            ['name' => 'id', 'type' => 'keyword'],
-        ];
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [new FieldDefinition('id', FieldType::KEYWORD)]
+        );
 
         $apiResponse = [
             'status' => 'created',
@@ -259,7 +261,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($fields);
+        $result = $sdk->createIndex($request);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -268,7 +270,10 @@ class SyncV2SdkTest extends TestCase
 
     public function testAppIdIncludedInUrlPath(): void
     {
-        $fields = [['name' => 'id', 'type' => 'keyword']];
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [new FieldDefinition('id', FieldType::KEYWORD)]
+        );
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -281,17 +286,24 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($fields);
+        $sdk->createIndex($request);
     }
 
-    public function testFieldsPassedThroughWithoutModification(): void
+    public function testRequestSerializedCorrectly(): void
     {
-        $fields = [
+        $request = new IndexCreateRequest(
+            ['lt-LT', 'en-US'],
             [
-                'name' => 'categories',
-                'type' => 'hierarchy',
-                'custom_setting' => true,
-                'nested' => ['a' => 1, 'b' => 2],
+                new FieldDefinition('id', FieldType::KEYWORD),
+                new FieldDefinition('name', FieldType::TEXT),
+            ]
+        );
+
+        $expectedPayload = [
+            'locales' => ['lt-LT', 'en-US'],
+            'fields' => [
+                ['name' => 'id', 'type' => 'keyword'],
+                ['name' => 'name', 'type' => 'text'],
             ],
         ];
 
@@ -301,12 +313,12 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 $this->anything(),
-                ['fields' => $fields]
+                $expectedPayload
             )
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($fields);
+        $sdk->createIndex($request);
     }
 
     public function testGetIndexInfoSuccess(): void
@@ -2303,7 +2315,11 @@ class SyncV2SdkTest extends TestCase
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
 
         // Call various methods to collect endpoints
-        $sdk->createIndex([['name' => 'id', 'type' => 'keyword']]);
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [new FieldDefinition('id', FieldType::KEYWORD)]
+        );
+        $sdk->createIndex($request);
         $sdk->getIndexInfo();
         $sdk->listIndexVersions();
         $sdk->getConfiguration();
@@ -2317,25 +2333,16 @@ class SyncV2SdkTest extends TestCase
 
     public function testDataIntegrityForNestedStructures(): void
     {
-        $complexFields = [
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
             [
-                'name' => 'categories',
-                'type' => 'hierarchy',
-                'settings' => [
-                    'delimiter' => ' > ',
-                    'max_depth' => 5,
-                    'nested' => [
-                        'option1' => true,
-                        'option2' => ['a', 'b', 'c'],
-                    ],
-                ],
-            ],
-            [
-                'name' => 'variants',
-                'type' => 'variants',
-                'attributes' => ['color', 'size'],
-            ],
-        ];
+                new FieldDefinition('categories', FieldType::TEXT),
+                new FieldDefinition('variants', FieldType::VARIANTS, [
+                    new VariantAttribute('color', FieldType::KEYWORD, true),
+                    new VariantAttribute('size', FieldType::KEYWORD, true),
+                ]),
+            ]
+        );
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2343,12 +2350,12 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 $this->anything(),
-                ['fields' => $complexFields]
+                $request->jsonSerialize()
             )
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($complexFields);
+        $sdk->createIndex($request);
     }
 
     public function testMultipleLanguageSynonymsPassedCorrectly(): void

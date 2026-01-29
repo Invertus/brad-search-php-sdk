@@ -7,6 +7,7 @@ namespace BradSearch\SyncSdk;
 use BradSearch\SyncSdk\Client\HttpClient;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 
 class SyncV2Sdk
 {
@@ -41,17 +42,17 @@ class SyncV2Sdk
     }
 
     /**
-     * Create a versioned index with the given field definitions.
+     * Create a versioned index with the given request.
      *
-     * @param array<int, array<string, mixed>> $fields Array of field definitions
+     * @param IndexCreateRequest $request The index creation request
      *
      * @return array<string, mixed> Raw API response
      */
-    public function createIndex(array $fields): array
+    public function createIndex(IndexCreateRequest $request): array
     {
         return $this->httpClient->post(
             $this->baseApiPath . 'index',
-            ['fields' => $fields]
+            $request->jsonSerialize()
         );
     }
 
