@@ -14,6 +14,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\SearchFieldConfig;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 use PHPUnit\Framework\TestCase;
 
 class SyncV2SdkTest extends TestCase
@@ -104,14 +105,11 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function setSynonyms(string $language, array $synonyms): array
+            public function setSynonyms(SynonymConfiguration $config): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'synonyms',
-                    [
-                        'language' => $language,
-                        'synonyms' => $synonyms,
-                    ]
+                    $config->jsonSerialize()
                 );
             }
 
@@ -1104,11 +1102,11 @@ class SyncV2SdkTest extends TestCase
 
     public function testSetSynonymsSuccess(): void
     {
-        $language = 'en';
         $synonyms = [
             ['laptop', 'notebook', 'portable computer'],
             ['phone', 'mobile', 'smartphone'],
         ];
+        $config = new SynonymConfiguration('en', $synonyms);
 
         $apiResponse = [
             'language' => 'en',
@@ -1123,14 +1121,14 @@ class SyncV2SdkTest extends TestCase
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/synonyms',
                 [
-                    'language' => $language,
+                    'language' => 'en',
                     'synonyms' => $synonyms,
                 ]
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($language, $synonyms);
+        $result = $sdk->setSynonyms($config);
 
         $this->assertIsArray($result);
         $this->assertEquals('en', $result['language']);
@@ -1138,14 +1136,14 @@ class SyncV2SdkTest extends TestCase
         $this->assertTrue($result['requires_reindex']);
     }
 
-    public function testSetSynonymsWithEmptySynonyms(): void
+    public function testSetSynonymsWithSingleSynonymGroup(): void
     {
-        $language = 'en';
-        $synonyms = [];
+        $synonyms = [['test', 'trial']];
+        $config = new SynonymConfiguration('en', $synonyms);
 
         $apiResponse = [
             'language' => 'en',
-            'synonym_count' => 0,
+            'synonym_count' => 1,
             'requires_reindex' => false,
         ];
 
@@ -1156,24 +1154,23 @@ class SyncV2SdkTest extends TestCase
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/synonyms',
                 [
-                    'language' => $language,
+                    'language' => 'en',
                     'synonyms' => $synonyms,
                 ]
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($language, $synonyms);
+        $result = $sdk->setSynonyms($config);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('language', $result);
-        $this->assertEquals(0, $result['synonym_count']);
+        $this->assertEquals(1, $result['synonym_count']);
     }
 
     public function testSetSynonymsReturnsRawApiResponse(): void
     {
-        $language = 'lt';
-        $synonyms = [['kompiuteris', 'PC']];
+        $config = new SynonymConfiguration('lt', [['kompiuteris', 'PC']]);
 
         $apiResponse = [
             'language' => 'lt',
@@ -1189,7 +1186,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($language, $synonyms);
+        $result = $sdk->setSynonyms($config);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1198,8 +1195,7 @@ class SyncV2SdkTest extends TestCase
 
     public function testSetSynonymsAppIdIncludedInUrlPath(): void
     {
-        $language = 'en';
-        $synonyms = [['test', 'trial']];
+        $config = new SynonymConfiguration('en', [['test', 'trial']]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1212,13 +1208,12 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 1]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($language, $synonyms);
+        $sdk->setSynonyms($config);
     }
 
     public function testSetSynonymsUsesCorrectEndpoint(): void
     {
-        $language = 'en';
-        $synonyms = [['test', 'trial']];
+        $config = new SynonymConfiguration('en', [['test', 'trial']]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1231,16 +1226,16 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 1]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($language, $synonyms);
+        $sdk->setSynonyms($config);
     }
 
     public function testSetSynonymsSendsCorrectRequestBody(): void
     {
-        $language = 'de';
         $synonyms = [
             ['computer', 'rechner'],
             ['handy', 'smartphone', 'mobiltelefon'],
         ];
+        $config = new SynonymConfiguration('de', $synonyms);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1249,14 +1244,14 @@ class SyncV2SdkTest extends TestCase
             ->with(
                 $this->anything(),
                 [
-                    'language' => $language,
+                    'language' => 'de',
                     'synonyms' => $synonyms,
                 ]
             )
             ->willReturn(['language' => 'de', 'synonym_count' => 2]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($language, $synonyms);
+        $sdk->setSynonyms($config);
     }
 
     public function testGetSynonymsSuccess(): void
@@ -2374,6 +2369,7 @@ class SyncV2SdkTest extends TestCase
             ['phone', 'mobile', 'smartphone', 'cellphone', 'cell'],
             ['TV', 'television', 'telly', 'flat screen'],
         ];
+        $config = new SynonymConfiguration('en', $synonyms);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2389,7 +2385,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 3]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms('en', $synonyms);
+        $sdk->setSynonyms($config);
     }
 
     public function testBulkOperationsWithAllOperationTypes(): void

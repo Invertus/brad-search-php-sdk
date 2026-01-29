@@ -9,6 +9,7 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 
 class SyncV2Sdk
 {
@@ -169,19 +170,15 @@ class SyncV2Sdk
     /**
      * Set search synonyms for a specific language.
      *
-     * @param string $language Language code (e.g., "en", "lt")
-     * @param array<int, array<int, string>> $synonyms Array of synonym groups
+     * @param SynonymConfiguration $config The synonym configuration
      *
      * @return array<string, mixed> Raw API response containing language, synonym_count, requires_reindex
      */
-    public function setSynonyms(string $language, array $synonyms): array
+    public function setSynonyms(SynonymConfiguration $config): array
     {
         return $this->httpClient->post(
             $this->baseApiPath . 'synonyms',
-            [
-                'language' => $language,
-                'synonyms' => $synonyms,
-            ]
+            $config->jsonSerialize()
         );
     }
 
