@@ -8,6 +8,7 @@ use BradSearch\SyncSdk\Client\HttpClient;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
 
 class SyncV2Sdk
 {
@@ -114,15 +115,15 @@ class SyncV2Sdk
     /**
      * Set query configuration for search behavior.
      *
-     * @param array<string, mixed> $config Configuration options (search_fields, fuzzy_matching, etc.)
+     * @param QueryConfigurationRequest $config The query configuration request
      *
      * @return array<string, mixed> Raw API response containing status, index_name, cache_ttl_hours
      */
-    public function setConfiguration(array $config): array
+    public function setConfiguration(QueryConfigurationRequest $config): array
     {
         return $this->httpClient->post(
             $this->baseApiPath . 'configuration',
-            $config
+            $config->jsonSerialize()
         );
     }
 
