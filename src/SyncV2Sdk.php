@@ -7,6 +7,7 @@ namespace BradSearch\SyncSdk;
 use BradSearch\SyncSdk\Client\HttpClient;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
@@ -213,15 +214,15 @@ class SyncV2Sdk
     /**
      * Perform bulk product operations (index, update, delete).
      *
-     * @param array<int, array<string, mixed>> $operations Array of operations with 'type' and 'payload'
+     * @param BulkOperationsRequest $request The bulk operations request
      *
      * @return array<string, mixed> Raw API response with operation results
      */
-    public function bulkOperations(array $operations): array
+    public function bulkOperations(BulkOperationsRequest $request): array
     {
         return $this->httpClient->post(
             $this->baseApiPath . 'sync/bulk-operations',
-            ['operations' => $operations]
+            $request->jsonSerialize()
         );
     }
 

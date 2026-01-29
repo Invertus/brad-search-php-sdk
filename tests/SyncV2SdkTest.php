@@ -7,6 +7,7 @@ namespace BradSearch\SyncSdk\Tests;
 use BradSearch\SyncSdk\SyncV2Sdk;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\Client\HttpClient;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
@@ -127,11 +128,11 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function bulkOperations(array $operations): array
+            public function bulkOperations(BulkOperationsRequest $request): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'sync/bulk-operations',
-                    ['operations' => $operations]
+                    $request->jsonSerialize()
                 );
             }
 
@@ -1473,39 +1474,25 @@ class SyncV2SdkTest extends TestCase
 
     public function testBulkOperationsSuccess(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [
-                        ['id' => 'prod-123', 'name' => 'Product 1', 'price' => 99.99],
-                    ],
-                ],
-            ],
-            [
-                'type' => 'update_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'updates' => [
-                        ['id' => 'prod-124', 'fields' => ['price' => 129.99]],
-                    ],
-                ],
-            ],
-            [
-                'type' => 'delete_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'product_ids' => ['prod-125'],
-                ],
-            ],
-        ];
+        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Product 1']
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $apiResponse = [
             'status' => 'success',
-            'message' => 'All 3 operations completed successfully',
-            'total_operations' => 3,
-            'successful_operations' => 3,
+            'message' => 'All 1 operations completed successfully',
+            'total_operations' => 1,
+            'successful_operations' => 1,
             'failed_operations' => 0,
             'processing_time_ms' => 2156,
             'results' => [
@@ -1514,21 +1501,6 @@ class SyncV2SdkTest extends TestCase
                     'status' => 'success',
                     'message' => 'Operation completed',
                     'count' => 1,
-                    'index_name' => 'products-v1',
-                ],
-                [
-                    'type' => 'update_products',
-                    'status' => 'success',
-                    'message' => 'Operation completed',
-                    'count' => 1,
-                    'index_name' => 'products-v1',
-                ],
-                [
-                    'type' => 'delete_products',
-                    'status' => 'success',
-                    'message' => 'Operation completed',
-                    'count' => 1,
-                    'index_name' => 'products-v1',
                 ],
             ],
         ];
@@ -1539,64 +1511,34 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
-                ['operations' => $operations]
+                $request->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
+        $result = $sdk->bulkOperations($request);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
-        $this->assertEquals(3, $result['total_operations']);
-        $this->assertEquals(3, $result['successful_operations']);
+        $this->assertEquals(1, $result['total_operations']);
+        $this->assertEquals(1, $result['successful_operations']);
         $this->assertEquals(0, $result['failed_operations']);
-        $this->assertCount(3, $result['results']);
-    }
-
-    public function testBulkOperationsWithEmptyOperations(): void
-    {
-        $operations = [];
-
-        $apiResponse = [
-            'status' => 'success',
-            'message' => 'No operations to process',
-            'total_operations' => 0,
-            'successful_operations' => 0,
-            'failed_operations' => 0,
-            'processing_time_ms' => 0,
-            'results' => [],
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
-                ['operations' => $operations]
-            )
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-        $this->assertEquals(0, $result['total_operations']);
+        $this->assertCount(1, $result['results']);
     }
 
     public function testBulkOperationsReturnsRawApiResponse(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [['id' => 'prod-123']],
-                ],
-            ],
-        ];
+        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            )
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $apiResponse = [
             'status' => 'success',
@@ -1621,7 +1563,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
+        $result = $sdk->bulkOperations($request);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1630,15 +1572,17 @@ class SyncV2SdkTest extends TestCase
 
     public function testBulkOperationsAppIdIncludedInUrlPath(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [],
-                ],
-            ],
-        ];
+        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            )
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1651,20 +1595,22 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($operations);
+        $sdk->bulkOperations($request);
     }
 
     public function testBulkOperationsUsesCorrectEndpoint(): void
     {
-        $operations = [
-            [
-                'type' => 'delete_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'product_ids' => ['prod-123'],
-                ],
-            ],
-        ];
+        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            )
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1677,24 +1623,24 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($operations);
+        $sdk->bulkOperations($request);
     }
 
     public function testBulkOperationsSendsCorrectRequestBody(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [
-                        ['id' => 'prod-123', 'name' => 'Test Product'],
-                    ],
-                    'subfields' => ['name' => ['split_by' => [' ']]],
-                    'embeddablefields' => ['description' => 'name'],
-                ],
-            ],
-        ];
+        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Test Product']
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1702,55 +1648,46 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 $this->anything(),
-                ['operations' => $operations]
+                $request->jsonSerialize()
             )
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($operations);
+        $sdk->bulkOperations($request);
     }
 
-    public function testBulkOperationsPartialFailure(): void
+    public function testBulkOperationsWithMultipleProducts(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [['id' => 'prod-123']],
-                ],
-            ],
-            [
-                'type' => 'delete_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'product_ids' => ['prod-999'],
-                ],
-            ],
-        ];
+        $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-123',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small.jpg',
+                'https://cdn.example.com/medium.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Product 1']
+        );
+
+        $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-124',
+            149.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small2.jpg',
+                'https://cdn.example.com/medium2.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Product 2']
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product1, $product2]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $apiResponse = [
-            'status' => 'partial',
-            'message' => '1 operations succeeded, 1 operations failed',
-            'total_operations' => 2,
+            'status' => 'success',
+            'total_operations' => 1,
             'successful_operations' => 1,
-            'failed_operations' => 1,
-            'processing_time_ms' => 856,
-            'results' => [
-                [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                    'message' => 'Operation completed',
-                    'count' => 1,
-                    'index_name' => 'products-v1',
-                ],
-                [
-                    'type' => 'delete_products',
-                    'status' => 'error',
-                    'message' => 'Products not found',
-                    'index_name' => 'products-v1',
-                ],
-            ],
+            'failed_operations' => 0,
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1760,45 +1697,10 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
+        $result = $sdk->bulkOperations($request);
 
         $this->assertIsArray($result);
-        $this->assertEquals('partial', $result['status']);
-        $this->assertEquals(2, $result['total_operations']);
-        $this->assertEquals(1, $result['successful_operations']);
-        $this->assertEquals(1, $result['failed_operations']);
-    }
-
-    public function testBulkOperationsPassesOperationsWithoutModification(): void
-    {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [
-                        ['id' => 'prod-123', 'name' => 'Product 1', 'price' => 99.99],
-                        ['id' => 'prod-124', 'name' => 'Product 2', 'price' => 149.99],
-                    ],
-                    'subfields' => ['name' => ['split_by' => [' ', '-'], 'max_count' => 3]],
-                    'embeddablefields' => ['description' => 'name'],
-                    'custom_option' => ['nested' => 'value'],
-                ],
-            ],
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                ['operations' => $operations]
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($operations);
+        $this->assertEquals('success', $result['status']);
     }
 
     public function testCreateSearchSettingsSuccess(): void
@@ -2388,36 +2290,32 @@ class SyncV2SdkTest extends TestCase
         $sdk->setSynonyms($config);
     }
 
-    public function testBulkOperationsWithAllOperationTypes(): void
+    public function testBulkOperationsWithIndexProductsOperation(): void
     {
-        $operations = [
-            [
-                'type' => 'index_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'products' => [
-                        ['id' => 'prod-1', 'name' => 'Product 1'],
-                        ['id' => 'prod-2', 'name' => 'Product 2'],
-                    ],
-                ],
-            ],
-            [
-                'type' => 'update_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'updates' => [
-                        ['id' => 'prod-3', 'fields' => ['price' => 99.99]],
-                    ],
-                ],
-            ],
-            [
-                'type' => 'delete_products',
-                'payload' => [
-                    'index_name' => 'products-v1',
-                    'product_ids' => ['prod-4', 'prod-5'],
-                ],
-            ],
-        ];
+        $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-1',
+            99.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small1.jpg',
+                'https://cdn.example.com/medium1.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Product 1']
+        );
+
+        $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
+            'prod-2',
+            149.99,
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
+                'https://cdn.example.com/small2.jpg',
+                'https://cdn.example.com/medium2.jpg'
+            ),
+            [],
+            ['name_lt-LT' => 'Product 2']
+        );
+
+        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product1, $product2]);
+        $request = new BulkOperationsRequest([$operation]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2425,20 +2323,20 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
-                ['operations' => $operations]
+                $request->jsonSerialize()
             )
             ->willReturn([
                 'status' => 'success',
-                'total_operations' => 3,
-                'successful_operations' => 3,
+                'total_operations' => 1,
+                'successful_operations' => 1,
                 'failed_operations' => 0,
             ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($operations);
+        $result = $sdk->bulkOperations($request);
 
         $this->assertEquals('success', $result['status']);
-        $this->assertEquals(3, $result['total_operations']);
+        $this->assertEquals(1, $result['total_operations']);
     }
 
     public function testSearchSettingsEndpointsDoNotIncludeAppIdInBasePath(): void
