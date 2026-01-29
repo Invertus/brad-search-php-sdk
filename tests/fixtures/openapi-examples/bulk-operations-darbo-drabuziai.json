@@ -1,0 +1,43 @@
+{
+    "operations": [
+        {
+            "type": "index_products",
+            "payload": {
+                "products": [
+                    {
+                        "id": "12345",
+                        "price": 99.99,
+                        "imageUrl": {
+                            "small": "https://cdn.shop.lt/images/12345-small.jpg",
+                            "medium": "https://cdn.shop.lt/images/12345-medium.jpg"
+                        },
+                        "name_lt-LT": "Darbo drabužis Premium",
+                        "brand_lt-LT": "WorkWear Pro",
+                        "sku": "SKU-12345",
+                        "description_lt-LT": "Aukštos kokybės darbo drabužis",
+                        "categories_lt-LT": ["Darbo drabužiai", "Darbo drabužiai > Kelnės"],
+                        "variants": [
+                            {
+                                "id": "12345-M-RED",
+                                "sku": "SKU-12345-M-RED",
+                                "price": 99.99,
+                                "basePrice": 129.99,
+                                "priceTaxExcluded": 82.64,
+                                "basePriceTaxExcluded": 107.43,
+                                "productUrl": "https://shop.lt/produktas-12345?size=M&color=RED",
+                                "imageUrl": {
+                                    "small": "https://cdn.shop.lt/images/12345-small.jpg",
+                                    "medium": "https://cdn.shop.lt/images/12345-medium.jpg"
+                                },
+                                "attrs": {
+                                    "size": "M",
+                                    "color": "RED"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
