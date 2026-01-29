@@ -12,6 +12,12 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\VersionActivateResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\SearchFieldConfig;
@@ -40,7 +46,8 @@ class SyncV2SdkTest extends TestCase
                 return $this->mockedHttpClient;
             }
 
-            public function createIndex(IndexCreateRequest $request): array
+            // Raw array returning methods for testing (bypassing typed responses)
+            public function createIndexRaw(IndexCreateRequest $request): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'index',
@@ -48,21 +55,21 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function getIndexInfo(): array
+            public function getIndexInfoRaw(): array
             {
                 return $this->mockedHttpClient->get(
                     $this->getBaseApiPath() . 'index/info'
                 );
             }
 
-            public function listIndexVersions(): array
+            public function listIndexVersionsRaw(): array
             {
                 return $this->mockedHttpClient->get(
                     $this->getBaseApiPath() . 'index/versions'
                 );
             }
 
-            public function activateIndexVersion(int $version): array
+            public function activateIndexVersionRaw(int $version): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'index/activate',
@@ -77,7 +84,7 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function setConfiguration(QueryConfigurationRequest $config): array
+            public function setConfigurationRaw(QueryConfigurationRequest $config): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'configuration',
@@ -85,14 +92,14 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function getConfiguration(): array
+            public function getConfigurationRaw(): array
             {
                 return $this->mockedHttpClient->get(
                     $this->getBaseApiPath() . 'configuration'
                 );
             }
 
-            public function updateConfiguration(array $config): array
+            public function updateConfigurationRaw(array $config): array
             {
                 return $this->mockedHttpClient->put(
                     $this->getBaseApiPath() . 'configuration',
@@ -107,7 +114,7 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function setSynonyms(SynonymConfiguration $config): array
+            public function setSynonymsRaw(SynonymConfiguration $config): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'synonyms',
@@ -115,7 +122,7 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function getSynonyms(string $language): array
+            public function getSynonymsRaw(string $language): array
             {
                 return $this->mockedHttpClient->get(
                     $this->getBaseApiPath() . 'synonyms?language=' . $language
@@ -129,7 +136,7 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function bulkOperations(BulkOperationsRequest $request): array
+            public function bulkOperationsRaw(BulkOperationsRequest $request): array
             {
                 return $this->mockedHttpClient->post(
                     $this->getBaseApiPath() . 'sync/bulk-operations',
@@ -199,7 +206,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($request);
+        $result = $sdk->createIndexRaw($request);
 
         $this->assertIsArray($result);
         $this->assertEquals('created', $result['status']);
@@ -235,7 +242,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($request);
+        $result = $sdk->createIndexRaw($request);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -264,7 +271,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndex($request);
+        $result = $sdk->createIndexRaw($request);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -289,7 +296,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($request);
+        $sdk->createIndexRaw($request);
     }
 
     public function testRequestSerializedCorrectly(): void
@@ -321,7 +328,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($request);
+        $sdk->createIndexRaw($request);
     }
 
     public function testGetIndexInfoSuccess(): void
@@ -341,7 +348,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getIndexInfo();
+        $result = $sdk->getIndexInfoRaw();
 
         $this->assertIsArray($result);
         $this->assertEquals('app_550e8400', $result['alias_name']);
@@ -367,7 +374,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getIndexInfo();
+        $result = $sdk->getIndexInfoRaw();
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -384,7 +391,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfo();
+        $sdk->getIndexInfoRaw();
     }
 
     public function testGetIndexInfoUsesCorrectEndpoint(): void
@@ -397,7 +404,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfo();
+        $sdk->getIndexInfoRaw();
     }
 
     public function testListIndexVersionsSuccess(): void
@@ -417,7 +424,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->listIndexVersions();
+        $result = $sdk->listIndexVersionsRaw();
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('versions', $result);
@@ -438,7 +445,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->listIndexVersions();
+        $result = $sdk->listIndexVersionsRaw();
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -455,7 +462,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['versions' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->listIndexVersions();
+        $sdk->listIndexVersionsRaw();
     }
 
     public function testListIndexVersionsUsesCorrectEndpoint(): void
@@ -468,7 +475,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['versions' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->listIndexVersions();
+        $sdk->listIndexVersionsRaw();
     }
 
     public function testActivateIndexVersionSuccess(): void
@@ -492,7 +499,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->activateIndexVersion($version);
+        $result = $sdk->activateIndexVersionRaw($version);
 
         $this->assertIsArray($result);
         $this->assertEquals(1, $result['previous_version']);
@@ -518,7 +525,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->activateIndexVersion($version);
+        $result = $sdk->activateIndexVersionRaw($version);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -538,7 +545,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['previous_version' => 1, 'new_version' => 2]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersion(2);
+        $sdk->activateIndexVersionRaw(2);
     }
 
     public function testActivateIndexVersionUsesCorrectEndpoint(): void
@@ -554,7 +561,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['previous_version' => 1, 'new_version' => 2]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersion(2);
+        $sdk->activateIndexVersionRaw(2);
     }
 
     public function testActivateIndexVersionSendsCorrectRequestBody(): void
@@ -572,7 +579,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['previous_version' => 4, 'new_version' => 5]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersion($version);
+        $sdk->activateIndexVersionRaw($version);
     }
 
     public function testDeleteIndexVersionSuccess(): void
@@ -690,7 +697,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfiguration($config);
+        $result = $sdk->setConfigurationRaw($config);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
@@ -721,7 +728,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfiguration($config);
+        $result = $sdk->setConfigurationRaw($config);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -747,7 +754,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfiguration($config);
+        $result = $sdk->setConfigurationRaw($config);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -771,7 +778,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfiguration($config);
+        $sdk->setConfigurationRaw($config);
     }
 
     public function testSetConfigurationUsesCorrectEndpoint(): void
@@ -791,7 +798,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfiguration($config);
+        $sdk->setConfigurationRaw($config);
     }
 
     public function testSetConfigurationPassesConfigWithCorrectSerialization(): void
@@ -813,7 +820,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfiguration($config);
+        $sdk->setConfigurationRaw($config);
     }
 
     public function testGetConfigurationSuccess(): void
@@ -832,7 +839,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getConfiguration();
+        $result = $sdk->getConfigurationRaw();
 
         $this->assertIsArray($result);
         $this->assertEquals(['title', 'description'], $result['search_fields']);
@@ -855,7 +862,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getConfiguration();
+        $result = $sdk->getConfigurationRaw();
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -872,7 +879,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['search_fields' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getConfiguration();
+        $sdk->getConfigurationRaw();
     }
 
     public function testGetConfigurationUsesCorrectEndpoint(): void
@@ -885,7 +892,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['search_fields' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getConfiguration();
+        $sdk->getConfigurationRaw();
     }
 
     public function testUpdateConfigurationSuccess(): void
@@ -912,7 +919,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfiguration($config);
+        $result = $sdk->updateConfigurationRaw($config);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
@@ -941,7 +948,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfiguration($config);
+        $result = $sdk->updateConfigurationRaw($config);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -967,7 +974,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfiguration($config);
+        $result = $sdk->updateConfigurationRaw($config);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -989,7 +996,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfiguration($config);
+        $sdk->updateConfigurationRaw($config);
     }
 
     public function testUpdateConfigurationUsesCorrectEndpoint(): void
@@ -1007,7 +1014,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfiguration($config);
+        $sdk->updateConfigurationRaw($config);
     }
 
     public function testUpdateConfigurationPassesConfigWithoutModification(): void
@@ -1029,7 +1036,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfiguration($config);
+        $sdk->updateConfigurationRaw($config);
     }
 
     public function testDeleteConfigurationSuccess(): void
@@ -1130,7 +1137,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($config);
+        $result = $sdk->setSynonymsRaw($config);
 
         $this->assertIsArray($result);
         $this->assertEquals('en', $result['language']);
@@ -1163,7 +1170,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($config);
+        $result = $sdk->setSynonymsRaw($config);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('language', $result);
@@ -1188,7 +1195,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonyms($config);
+        $result = $sdk->setSynonymsRaw($config);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1210,7 +1217,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 1]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($config);
+        $sdk->setSynonymsRaw($config);
     }
 
     public function testSetSynonymsUsesCorrectEndpoint(): void
@@ -1228,7 +1235,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 1]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($config);
+        $sdk->setSynonymsRaw($config);
     }
 
     public function testSetSynonymsSendsCorrectRequestBody(): void
@@ -1253,7 +1260,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'de', 'synonym_count' => 2]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($config);
+        $sdk->setSynonymsRaw($config);
     }
 
     public function testGetSynonymsSuccess(): void
@@ -1276,7 +1283,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonyms($language);
+        $result = $sdk->getSynonymsRaw($language);
 
         $this->assertIsArray($result);
         $this->assertEquals('en', $result['language']);
@@ -1301,7 +1308,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonyms($language);
+        $result = $sdk->getSynonymsRaw($language);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1320,7 +1327,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonyms' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonyms($language);
+        $sdk->getSynonymsRaw($language);
     }
 
     public function testGetSynonymsUsesCorrectEndpoint(): void
@@ -1335,7 +1342,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonyms' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonyms($language);
+        $sdk->getSynonymsRaw($language);
     }
 
     public function testGetSynonymsIncludesLanguageInQueryString(): void
@@ -1350,7 +1357,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'de', 'synonyms' => []]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonyms($language);
+        $sdk->getSynonymsRaw($language);
     }
 
     public function testGetSynonymsWithEmptyResult(): void
@@ -1370,7 +1377,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonyms($language);
+        $result = $sdk->getSynonymsRaw($language);
 
         $this->assertIsArray($result);
         $this->assertEquals('fr', $result['language']);
@@ -1517,7 +1524,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($request);
+        $result = $sdk->bulkOperationsRaw($request);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
@@ -1564,7 +1571,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($request);
+        $result = $sdk->bulkOperationsRaw($request);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1596,7 +1603,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($request);
+        $sdk->bulkOperationsRaw($request);
     }
 
     public function testBulkOperationsUsesCorrectEndpoint(): void
@@ -1624,7 +1631,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($request);
+        $sdk->bulkOperationsRaw($request);
     }
 
     public function testBulkOperationsSendsCorrectRequestBody(): void
@@ -1654,7 +1661,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperations($request);
+        $sdk->bulkOperationsRaw($request);
     }
 
     public function testBulkOperationsWithMultipleProducts(): void
@@ -1698,7 +1705,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($request);
+        $result = $sdk->bulkOperationsRaw($request);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
@@ -2214,11 +2221,11 @@ class SyncV2SdkTest extends TestCase
             ['lt-LT'],
             [new FieldDefinition('id', FieldType::KEYWORD)]
         );
-        $sdk->createIndex($request);
-        $sdk->getIndexInfo();
-        $sdk->listIndexVersions();
-        $sdk->getConfiguration();
-        $sdk->getSynonyms('en');
+        $sdk->createIndexRaw($request);
+        $sdk->getIndexInfoRaw();
+        $sdk->listIndexVersionsRaw();
+        $sdk->getConfigurationRaw();
+        $sdk->getSynonymsRaw('en');
 
         // Verify all endpoints use v2 API
         foreach ($calledEndpoints as $endpoint) {
@@ -2250,7 +2257,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'created']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndex($request);
+        $sdk->createIndexRaw($request);
     }
 
     public function testMultipleLanguageSynonymsPassedCorrectly(): void
@@ -2276,7 +2283,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['language' => 'en', 'synonym_count' => 3]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonyms($config);
+        $sdk->setSynonymsRaw($config);
     }
 
     public function testBulkOperationsWithIndexProductsOperation(): void
@@ -2322,7 +2329,7 @@ class SyncV2SdkTest extends TestCase
             ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperations($request);
+        $result = $sdk->bulkOperationsRaw($request);
 
         $this->assertEquals('success', $result['status']);
         $this->assertEquals(1, $result['total_operations']);
@@ -2382,7 +2389,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfiguration($config);
+        $sdk->setConfigurationRaw($config);
     }
 
     public function testIndexMethodsUseAppIdBasePath(): void
@@ -2395,6 +2402,6 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfo();
+        $sdk->getIndexInfoRaw();
     }
 }

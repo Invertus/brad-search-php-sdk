@@ -35,6 +35,54 @@ final readonly class PopularityBoostConfig extends ValueObject
     }
 
     /**
+     * Creates a PopularityBoostConfig from an API response array.
+     *
+     * @param array<string, mixed> $data Raw API response data
+     *
+     * @return self
+     *
+     * @throws InvalidArgumentException If required fields are missing or invalid
+     */
+    public static function fromArray(array $data): self
+    {
+        self::validateRequiredFields($data, ['enabled', 'field']);
+
+        $algorithm = BoostAlgorithm::LOGARITHMIC;
+        if (isset($data['algorithm'])) {
+            $algorithm = BoostAlgorithm::from($data['algorithm']);
+        }
+        $maxBoost = $data['max_boost'] ?? 2.0;
+
+        return new self(
+            enabled: (bool) $data['enabled'],
+            field: (string) $data['field'],
+            algorithm: $algorithm,
+            maxBoost: (float) $maxBoost
+        );
+    }
+
+    /**
+     * Validates that all required fields are present in the data array.
+     *
+     * @param array<string, mixed> $data
+     * @param array<string> $requiredFields
+     *
+     * @throws InvalidArgumentException If a required field is missing
+     */
+    private static function validateRequiredFields(array $data, array $requiredFields): void
+    {
+        foreach ($requiredFields as $field) {
+            if (!array_key_exists($field, $data)) {
+                throw new InvalidArgumentException(
+                    sprintf('Missing required field: %s', $field),
+                    $field,
+                    null
+                );
+            }
+        }
+    }
+
+    /**
      * Returns a new instance with a different enabled value.
      */
     public function withEnabled(bool $enabled): self

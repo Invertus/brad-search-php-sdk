@@ -38,6 +38,53 @@ final readonly class SearchFieldConfig extends ValueObject
     }
 
     /**
+     * Creates a SearchFieldConfig from an API response array.
+     *
+     * @param array<string, mixed> $data Raw API response data
+     *
+     * @return self
+     *
+     * @throws InvalidArgumentException If required fields are missing or invalid
+     */
+    public static function fromArray(array $data): self
+    {
+        self::validateRequiredFields($data, ['field', 'position', 'boost_multiplier']);
+
+        $matchMode = MatchMode::FUZZY;
+        if (isset($data['match_mode'])) {
+            $matchMode = MatchMode::from($data['match_mode']);
+        }
+
+        return new self(
+            field: (string) $data['field'],
+            position: (int) $data['position'],
+            boostMultiplier: (float) $data['boost_multiplier'],
+            matchMode: $matchMode
+        );
+    }
+
+    /**
+     * Validates that all required fields are present in the data array.
+     *
+     * @param array<string, mixed> $data
+     * @param array<string> $requiredFields
+     *
+     * @throws InvalidArgumentException If a required field is missing
+     */
+    private static function validateRequiredFields(array $data, array $requiredFields): void
+    {
+        foreach ($requiredFields as $field) {
+            if (!array_key_exists($field, $data)) {
+                throw new InvalidArgumentException(
+                    sprintf('Missing required field: %s', $field),
+                    $field,
+                    null
+                );
+            }
+        }
+    }
+
+    /**
      * Returns a new instance with a different field name.
      */
     public function withField(string $field): self

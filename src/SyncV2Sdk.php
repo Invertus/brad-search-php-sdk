@@ -9,6 +9,12 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\VersionActivateResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchSettingsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
@@ -50,39 +56,45 @@ class SyncV2Sdk
      *
      * @param IndexCreateRequest $request The index creation request
      *
-     * @return array<string, mixed> Raw API response
+     * @return IndexCreationResponse Typed response object
      */
-    public function createIndex(IndexCreateRequest $request): array
+    public function createIndex(IndexCreateRequest $request): IndexCreationResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             $this->baseApiPath . 'index',
             $request->jsonSerialize()
         );
+
+        return IndexCreationResponse::fromArray($response);
     }
 
     /**
      * Get index information including active version and all versions.
      *
-     * @return array<string, mixed> Raw API response containing alias_name,
-     *                              active_version, active_index, all_versions
+     * @return IndexInfoResponse Typed response containing alias_name,
+     *                           active_version, active_index, all_versions
      */
-    public function getIndexInfo(): array
+    public function getIndexInfo(): IndexInfoResponse
     {
-        return $this->httpClient->get(
+        $response = $this->httpClient->get(
             $this->baseApiPath . 'index/info'
         );
+
+        return IndexInfoResponse::fromArray($response);
     }
 
     /**
      * List all index versions.
      *
-     * @return array<string, mixed> Raw API response with list of versions
+     * @return IndexInfoResponse Typed response with list of versions
      */
-    public function listIndexVersions(): array
+    public function listIndexVersions(): IndexInfoResponse
     {
-        return $this->httpClient->get(
+        $response = $this->httpClient->get(
             $this->baseApiPath . 'index/versions'
         );
+
+        return IndexInfoResponse::fromArray($response);
     }
 
     /**
@@ -90,15 +102,17 @@ class SyncV2Sdk
      *
      * @param int $version The version number to activate
      *
-     * @return array<string, mixed> Raw API response containing previous_version,
-     *                              new_version, alias_name
+     * @return VersionActivateResponse Typed response containing previous_version,
+     *                                 new_version, alias_name
      */
-    public function activateIndexVersion(int $version): array
+    public function activateIndexVersion(int $version): VersionActivateResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             $this->baseApiPath . 'index/activate',
             ['version' => $version]
         );
+
+        return VersionActivateResponse::fromArray($response);
     }
 
     /**
@@ -120,26 +134,30 @@ class SyncV2Sdk
      *
      * @param QueryConfigurationRequest $config The query configuration request
      *
-     * @return array<string, mixed> Raw API response containing status, index_name, cache_ttl_hours
+     * @return QueryConfigurationResponse Typed response containing status, index_name, cache_ttl_hours
      */
-    public function setConfiguration(QueryConfigurationRequest $config): array
+    public function setConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             $this->baseApiPath . 'configuration',
             $config->jsonSerialize()
         );
+
+        return QueryConfigurationResponse::fromArray($response);
     }
 
     /**
      * Get query configuration.
      *
-     * @return array<string, mixed> Raw API response with configuration data
+     * @return QueryConfigurationResponse Typed response with configuration data
      */
-    public function getConfiguration(): array
+    public function getConfiguration(): QueryConfigurationResponse
     {
-        return $this->httpClient->get(
+        $response = $this->httpClient->get(
             $this->baseApiPath . 'configuration'
         );
+
+        return QueryConfigurationResponse::fromArray($response);
     }
 
     /**
@@ -147,14 +165,16 @@ class SyncV2Sdk
      *
      * @param array<string, mixed> $config Configuration options to update
      *
-     * @return array<string, mixed> Raw API response
+     * @return QueryConfigurationResponse Typed response
      */
-    public function updateConfiguration(array $config): array
+    public function updateConfiguration(array $config): QueryConfigurationResponse
     {
-        return $this->httpClient->put(
+        $response = $this->httpClient->put(
             $this->baseApiPath . 'configuration',
             $config
         );
+
+        return QueryConfigurationResponse::fromArray($response);
     }
 
     /**
@@ -174,14 +194,16 @@ class SyncV2Sdk
      *
      * @param SynonymConfiguration $config The synonym configuration
      *
-     * @return array<string, mixed> Raw API response containing language, synonym_count, requires_reindex
+     * @return SynonymResponse Typed response containing language, synonym_count, requires_reindex
      */
-    public function setSynonyms(SynonymConfiguration $config): array
+    public function setSynonyms(SynonymConfiguration $config): SynonymResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             $this->baseApiPath . 'synonyms',
             $config->jsonSerialize()
         );
+
+        return SynonymResponse::fromArray($response);
     }
 
     /**
@@ -189,13 +211,15 @@ class SyncV2Sdk
      *
      * @param string $language Language code (e.g., "en", "lt")
      *
-     * @return array<string, mixed> Raw API response with synonyms data
+     * @return SynonymResponse Typed response with synonyms data
      */
-    public function getSynonyms(string $language): array
+    public function getSynonyms(string $language): SynonymResponse
     {
-        return $this->httpClient->get(
+        $response = $this->httpClient->get(
             $this->baseApiPath . 'synonyms?language=' . $language
         );
+
+        return SynonymResponse::fromArray($response);
     }
 
     /**
@@ -217,14 +241,16 @@ class SyncV2Sdk
      *
      * @param BulkOperationsRequest $request The bulk operations request
      *
-     * @return array<string, mixed> Raw API response with operation results
+     * @return BulkOperationsResponse Typed response with operation results
      */
-    public function bulkOperations(BulkOperationsRequest $request): array
+    public function bulkOperations(BulkOperationsRequest $request): BulkOperationsResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             $this->baseApiPath . 'sync/bulk-operations',
             $request->jsonSerialize()
         );
+
+        return BulkOperationsResponse::fromArray($response);
     }
 
     /**

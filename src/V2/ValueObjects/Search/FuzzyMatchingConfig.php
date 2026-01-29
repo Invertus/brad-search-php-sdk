@@ -32,6 +32,29 @@ final readonly class FuzzyMatchingConfig extends ValueObject
     }
 
     /**
+     * Creates a FuzzyMatchingConfig from an API response array.
+     *
+     * @param array<string, mixed> $data Raw API response data
+     *
+     * @return self
+     */
+    public static function fromArray(array $data): self
+    {
+        $enabled = $data['enabled'] ?? true;
+        $mode = FuzzyMode::AUTO;
+        if (isset($data['mode'])) {
+            $mode = FuzzyMode::from($data['mode']);
+        }
+        $minSimilarity = $data['min_similarity'] ?? 2;
+
+        return new self(
+            enabled: (bool) $enabled,
+            mode: $mode,
+            minSimilarity: (int) $minSimilarity
+        );
+    }
+
+    /**
      * Returns a new instance with a different enabled value.
      */
     public function withEnabled(bool $enabled): self
