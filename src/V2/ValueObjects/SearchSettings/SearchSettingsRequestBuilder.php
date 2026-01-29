@@ -1,0 +1,239 @@
+<?php
+
+declare(strict_types=1);
+
+namespace BradSearch\SyncSdk\V2\ValueObjects\SearchSettings;
+
+use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+
+/**
+ * Builder for creating SearchSettingsRequest ValueObjects with fluent API.
+ *
+ * Provides a convenient way to construct complex search settings configurations
+ * with method chaining and clear, descriptive methods.
+ */
+final class SearchSettingsRequestBuilder
+{
+    private ?string $appId = null;
+
+    /** @var array<FieldConfig> */
+    private array $fields = [];
+
+    /** @var array<NestedFieldConfig> */
+    private array $nestedFields = [];
+
+    /** @var array<MultiMatchConfig> */
+    private array $multiMatchConfigs = [];
+
+    private ?FunctionScoreConfig $functionScore = null;
+
+    private ?float $minScore = null;
+
+    /** @var array<string> */
+    private array $sourceFields = [];
+
+    /** @var array<string> */
+    private array $sortableFields = [];
+
+    /**
+     * Sets the application ID.
+     */
+    public function appId(string $appId): self
+    {
+        $this->appId = $appId;
+        return $this;
+    }
+
+    /**
+     * Adds a field configuration.
+     */
+    public function addField(FieldConfig $field): self
+    {
+        $this->fields[] = $field;
+        return $this;
+    }
+
+    /**
+     * Adds a nested field configuration.
+     */
+    public function addNestedField(NestedFieldConfig $nestedField): self
+    {
+        $this->nestedFields[] = $nestedField;
+        return $this;
+    }
+
+    /**
+     * Adds a multi-match configuration.
+     */
+    public function addMultiMatchConfig(MultiMatchConfig $multiMatchConfig): self
+    {
+        $this->multiMatchConfigs[] = $multiMatchConfig;
+        return $this;
+    }
+
+    /**
+     * Sets the function score configuration.
+     */
+    public function functionScore(FunctionScoreConfig $functionScore): self
+    {
+        $this->functionScore = $functionScore;
+        return $this;
+    }
+
+    /**
+     * Sets the minimum score threshold.
+     */
+    public function minScore(float $minScore): self
+    {
+        $this->minScore = $minScore;
+        return $this;
+    }
+
+    /**
+     * Adds a source field.
+     */
+    public function addSourceField(string $sourceField): self
+    {
+        $this->sourceFields[] = $sourceField;
+        return $this;
+    }
+
+    /**
+     * Sets all source fields at once.
+     *
+     * @param array<string> $sourceFields
+     */
+    public function sourceFields(array $sourceFields): self
+    {
+        $this->sourceFields = $sourceFields;
+        return $this;
+    }
+
+    /**
+     * Adds a sortable field.
+     */
+    public function addSortableField(string $sortableField): self
+    {
+        $this->sortableFields[] = $sortableField;
+        return $this;
+    }
+
+    /**
+     * Sets all sortable fields at once.
+     *
+     * @param array<string> $sortableFields
+     */
+    public function sortableFields(array $sortableFields): self
+    {
+        $this->sortableFields = $sortableFields;
+        return $this;
+    }
+
+    /**
+     * Sets the complete search config.
+     */
+    public function searchConfig(SearchConfig $searchConfig): self
+    {
+        $this->fields = [];
+        $this->nestedFields = [];
+        $this->multiMatchConfigs = [];
+
+        foreach ($searchConfig->fields as $field) {
+            $this->fields[] = $field;
+        }
+
+        foreach ($searchConfig->nestedFields as $nestedField) {
+            $this->nestedFields[] = $nestedField;
+        }
+
+        foreach ($searchConfig->multiMatchConfigs as $config) {
+            $this->multiMatchConfigs[] = $config;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Sets the complete scoring config.
+     */
+    public function scoringConfig(ScoringConfig $scoringConfig): self
+    {
+        $this->functionScore = $scoringConfig->functionScore;
+        $this->minScore = $scoringConfig->minScore;
+        return $this;
+    }
+
+    /**
+     * Sets the complete response config.
+     */
+    public function responseConfig(ResponseConfig $responseConfig): self
+    {
+        $this->sourceFields = $responseConfig->sourceFields;
+        $this->sortableFields = $responseConfig->sortableFields;
+        return $this;
+    }
+
+    /**
+     * Builds and returns the immutable SearchSettingsRequest.
+     *
+     * @throws InvalidArgumentException If required fields are missing
+     */
+    public function build(): SearchSettingsRequest
+    {
+        if ($this->appId === null || $this->appId === '') {
+            throw new InvalidArgumentException(
+                'Application ID is required.',
+                'app_id',
+                $this->appId
+            );
+        }
+
+        $searchConfig = null;
+        if (count($this->fields) > 0 || count($this->nestedFields) > 0 || count($this->multiMatchConfigs) > 0) {
+            $searchConfig = new SearchConfig(
+                $this->fields,
+                $this->nestedFields,
+                $this->multiMatchConfigs
+            );
+        }
+
+        $scoringConfig = null;
+        if ($this->functionScore !== null || $this->minScore !== null) {
+            $scoringConfig = new ScoringConfig(
+                $this->functionScore,
+                $this->minScore
+            );
+        }
+
+        $responseConfig = null;
+        if (count($this->sourceFields) > 0 || count($this->sortableFields) > 0) {
+            $responseConfig = new ResponseConfig(
+                $this->sourceFields,
+                $this->sortableFields
+            );
+        }
+
+        return new SearchSettingsRequest(
+            $this->appId,
+            $searchConfig,
+            $scoringConfig,
+            $responseConfig
+        );
+    }
+
+    /**
+     * Resets the builder to its initial state.
+     */
+    public function reset(): self
+    {
+        $this->appId = null;
+        $this->fields = [];
+        $this->nestedFields = [];
+        $this->multiMatchConfigs = [];
+        $this->functionScore = null;
+        $this->minScore = null;
+        $this->sourceFields = [];
+        $this->sortableFields = [];
+        return $this;
+    }
+}

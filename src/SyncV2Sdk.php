@@ -10,6 +10,7 @@ use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchSettingsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 
 class SyncV2Sdk
@@ -229,15 +230,15 @@ class SyncV2Sdk
     /**
      * Create search settings.
      *
-     * @param array<string, mixed> $settings Search settings configuration
+     * @param SearchSettingsRequest $settings Search settings configuration
      *
      * @return array<string, mixed> Raw API response
      */
-    public function createSearchSettings(array $settings): array
+    public function createSearchSettings(SearchSettingsRequest $settings): array
     {
         return $this->httpClient->post(
             'api/v2/configuration',
-            $settings
+            $settings->jsonSerialize()
         );
     }
 
