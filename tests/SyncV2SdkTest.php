@@ -16,6 +16,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\SettingsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\VersionActivateResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
@@ -99,11 +100,11 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function updateConfigurationRaw(array $config): array
+            public function updateConfigurationRaw(QueryConfigurationRequest $config): array
             {
                 return $this->mockedHttpClient->put(
                     $this->getBaseApiPath() . 'configuration',
-                    $config
+                    $config->jsonSerialize()
                 );
             }
 
@@ -144,7 +145,7 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function createSearchSettings(SearchSettingsRequest $settings): array
+            public function createSearchSettingsRaw(SearchSettingsRequest $settings): array
             {
                 return $this->mockedHttpClient->post(
                     'api/v2/configuration',
@@ -159,11 +160,11 @@ class SyncV2SdkTest extends TestCase
                 );
             }
 
-            public function updateSearchSettings(string $appId, array $settings): array
+            public function updateSearchSettingsRaw(string $appId, SearchSettingsRequest $settings): array
             {
                 return $this->mockedHttpClient->put(
                     'api/v2/configuration/' . $appId,
-                    $settings
+                    $settings->jsonSerialize()
                 );
             }
 
@@ -897,10 +898,11 @@ class SyncV2SdkTest extends TestCase
 
     public function testUpdateConfigurationSuccess(): void
     {
-        $config = [
-            'search_fields' => ['title', 'description', 'brand'],
-            'fuzzy_matching' => false,
-        ];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, 1.5, MatchMode::FUZZY),
+            new SearchFieldConfig('brand', 3, 1.0, MatchMode::EXACT),
+        ]);
 
         $apiResponse = [
             'status' => 'success',
@@ -914,7 +916,7 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/configuration',
-                $config
+                $config->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
@@ -927,9 +929,11 @@ class SyncV2SdkTest extends TestCase
         $this->assertEquals(12, $result['cache_ttl_hours']);
     }
 
-    public function testUpdateConfigurationWithEmptyConfig(): void
+    public function testUpdateConfigurationWithMinimalConfig(): void
     {
-        $config = [];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+        ]);
 
         $apiResponse = [
             'status' => 'success',
@@ -943,7 +947,7 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/configuration',
-                $config
+                $config->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
@@ -956,9 +960,9 @@ class SyncV2SdkTest extends TestCase
 
     public function testUpdateConfigurationReturnsRawApiResponse(): void
     {
-        $config = [
-            'search_fields' => ['title'],
-        ];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+        ]);
 
         $apiResponse = [
             'status' => 'success',
@@ -983,7 +987,9 @@ class SyncV2SdkTest extends TestCase
 
     public function testUpdateConfigurationAppIdIncludedInUrlPath(): void
     {
-        $config = ['fuzzy_matching' => true];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+        ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1001,7 +1007,9 @@ class SyncV2SdkTest extends TestCase
 
     public function testUpdateConfigurationUsesCorrectEndpoint(): void
     {
-        $config = ['fuzzy_matching' => false];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+        ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1017,13 +1025,13 @@ class SyncV2SdkTest extends TestCase
         $sdk->updateConfigurationRaw($config);
     }
 
-    public function testUpdateConfigurationPassesConfigWithoutModification(): void
+    public function testUpdateConfigurationPassesConfigAsJsonSerialized(): void
     {
-        $config = [
-            'search_fields' => ['title', 'description', 'brand'],
-            'fuzzy_matching' => true,
-            'custom_option' => ['nested' => 'value'],
-        ];
+        $config = new QueryConfigurationRequest([
+            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, 1.5, MatchMode::PHRASE_PREFIX),
+            new SearchFieldConfig('brand', 3, 1.0, MatchMode::EXACT),
+        ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1031,7 +1039,7 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 $this->anything(),
-                $config
+                $config->jsonSerialize()
             )
             ->willReturn(['status' => 'success']);
 
@@ -1732,7 +1740,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettings($settings);
+        $result = $sdk->createSearchSettingsRaw($settings);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
@@ -1759,7 +1767,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettings($settings);
+        $result = $sdk->createSearchSettingsRaw($settings);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -1782,7 +1790,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettings($settings);
+        $result = $sdk->createSearchSettingsRaw($settings);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1804,7 +1812,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettings($settings);
+        $sdk->createSearchSettingsRaw($settings);
     }
 
     public function testCreateSearchSettingsPassesSettingsAsJsonSerialized(): void
@@ -1822,7 +1830,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettings($settings);
+        $sdk->createSearchSettingsRaw($settings);
     }
 
     public function testGetSearchSettingsSuccess(): void
@@ -1908,10 +1916,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateSearchSettingsSuccess(): void
     {
         $appId = self::APP_ID;
-        $settings = [
-            'search_fields' => ['title', 'description', 'brand'],
-            'fuzzy_matching' => false,
-        ];
+        $settings = new SearchSettingsRequest($appId);
 
         $apiResponse = [
             'status' => 'success',
@@ -1925,22 +1930,22 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 'api/v2/configuration/' . $appId,
-                $settings
+                $settings->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettings($appId, $settings);
+        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
         $this->assertEquals($appId, $result['app_id']);
     }
 
-    public function testUpdateSearchSettingsWithEmptySettings(): void
+    public function testUpdateSearchSettingsWithMinimalSettings(): void
     {
         $appId = self::APP_ID;
-        $settings = [];
+        $settings = new SearchSettingsRequest($appId);
 
         $apiResponse = [
             'status' => 'success',
@@ -1953,12 +1958,12 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 'api/v2/configuration/' . $appId,
-                $settings
+                $settings->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettings($appId, $settings);
+        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
 
         $this->assertIsArray($result);
         $this->assertArrayHasKey('status', $result);
@@ -1967,9 +1972,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateSearchSettingsReturnsRawApiResponse(): void
     {
         $appId = self::APP_ID;
-        $settings = [
-            'search_fields' => ['title'],
-        ];
+        $settings = new SearchSettingsRequest($appId);
 
         $apiResponse = [
             'status' => 'success',
@@ -1984,7 +1987,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettings($appId, $settings);
+        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
 
         $this->assertEquals($apiResponse, $result);
         $this->assertArrayHasKey('extra_field', $result);
@@ -1994,7 +1997,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateSearchSettingsAppIdIncludedInUrlPath(): void
     {
         $appId = self::APP_ID;
-        $settings = ['fuzzy_matching' => true];
+        $settings = new SearchSettingsRequest($appId);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2004,16 +2007,16 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains($appId),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn(['status' => 'success', 'app_id' => $appId]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettings($appId, $settings);
+        $sdk->updateSearchSettingsRaw($appId, $settings);
     }
 
     public function testUpdateSearchSettingsUsesCorrectEndpoint(): void
     {
         $appId = self::APP_ID;
-        $settings = ['fuzzy_matching' => false];
+        $settings = new SearchSettingsRequest($appId);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2023,20 +2026,16 @@ class SyncV2SdkTest extends TestCase
                 'api/v2/configuration/' . $appId,
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn(['status' => 'success', 'app_id' => $appId]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettings($appId, $settings);
+        $sdk->updateSearchSettingsRaw($appId, $settings);
     }
 
-    public function testUpdateSearchSettingsPassesSettingsWithoutModification(): void
+    public function testUpdateSearchSettingsPassesSettingsAsJsonSerialized(): void
     {
         $appId = self::APP_ID;
-        $settings = [
-            'search_fields' => ['title', 'description', 'brand'],
-            'fuzzy_matching' => true,
-            'custom_option' => ['nested' => 'value'],
-        ];
+        $settings = new SearchSettingsRequest($appId);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2044,12 +2043,12 @@ class SyncV2SdkTest extends TestCase
             ->method('put')
             ->with(
                 $this->anything(),
-                $settings
+                $settings->jsonSerialize()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn(['status' => 'success', 'app_id' => $appId]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettings($appId, $settings);
+        $sdk->updateSearchSettingsRaw($appId, $settings);
     }
 
     public function testDeleteSearchSettingsSuccess(): void
@@ -2353,7 +2352,7 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'success']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettings($settings);
+        $sdk->createSearchSettingsRaw($settings);
     }
 
     public function testGetSearchSettingsIncludesAppIdInUrl(): void

@@ -13,6 +13,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\SettingsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\VersionActivateResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\QueryConfigurationRequest;
@@ -163,15 +164,15 @@ class SyncV2Sdk
     /**
      * Update query configuration.
      *
-     * @param array<string, mixed> $config Configuration options to update
+     * @param QueryConfigurationRequest $config Configuration request to update
      *
      * @return QueryConfigurationResponse Typed response
      */
-    public function updateConfiguration(array $config): QueryConfigurationResponse
+    public function updateConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
     {
         $response = $this->httpClient->put(
             $this->baseApiPath . 'configuration',
-            $config
+            $config->jsonSerialize()
         );
 
         return QueryConfigurationResponse::fromArray($response);
@@ -258,14 +259,16 @@ class SyncV2Sdk
      *
      * @param SearchSettingsRequest $settings Search settings configuration
      *
-     * @return array<string, mixed> Raw API response
+     * @return SettingsResponse Typed response
      */
-    public function createSearchSettings(SearchSettingsRequest $settings): array
+    public function createSearchSettings(SearchSettingsRequest $settings): SettingsResponse
     {
-        return $this->httpClient->post(
+        $response = $this->httpClient->post(
             'api/v2/configuration',
             $settings->jsonSerialize()
         );
+
+        return SettingsResponse::fromArray($response);
     }
 
     /**
@@ -286,16 +289,18 @@ class SyncV2Sdk
      * Update search settings for a specific application.
      *
      * @param string $appId Application ID
-     * @param array<string, mixed> $settings Search settings to update
+     * @param SearchSettingsRequest $settings Search settings to update
      *
-     * @return array<string, mixed> Raw API response
+     * @return SettingsResponse Typed response
      */
-    public function updateSearchSettings(string $appId, array $settings): array
+    public function updateSearchSettings(string $appId, SearchSettingsRequest $settings): SettingsResponse
     {
-        return $this->httpClient->put(
+        $response = $this->httpClient->put(
             'api/v2/configuration/' . $appId,
-            $settings
+            $settings->jsonSerialize()
         );
+
+        return SettingsResponse::fromArray($response);
     }
 
     /**
