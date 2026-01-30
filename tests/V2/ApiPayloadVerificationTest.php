@@ -14,8 +14,6 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\BoostAlgorithm;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMatchingConfig;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\PopularityBoostConfig;
@@ -129,12 +127,11 @@ class ApiPayloadVerificationTest extends TestCase
 
         $request = new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name_lt-LT', 1, 2.5, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('brand_lt-LT', 2, 2.0, MatchMode::FUZZY),
-                new SearchFieldConfig('description_lt-LT', 3, 1.0, MatchMode::FUZZY),
-                new SearchFieldConfig('sku', 4, 3.0, MatchMode::EXACT),
+                new SearchFieldConfig('name_lt-LT', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('brand_lt-LT', 2, MatchMode::FUZZY),
+                new SearchFieldConfig('description_lt-LT', 3, MatchMode::FUZZY),
+                new SearchFieldConfig('sku', 4, MatchMode::EXACT),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0),
             MultiWordOperator::AND,
             0.1
@@ -375,7 +372,7 @@ class ApiPayloadVerificationTest extends TestCase
         );
 
         $queryRequest = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $synonymConfig = new SynonymConfiguration('en', [['test', 'example']]);

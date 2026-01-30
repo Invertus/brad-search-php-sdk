@@ -22,8 +22,6 @@ use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\VersionActivateResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\BoostAlgorithm;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMatchingConfig;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\PopularityBoostConfig;
@@ -241,18 +239,17 @@ class DarboDrabuziaiWorkflowTest extends TestCase
     }
 
     /**
-     * Create Darbo Drabuziai search configuration with boosting and fuzzy matching.
+     * Create Darbo Drabuziai search configuration with boosting.
      */
     private function createDarboDrabuziaiSearchConfig(): QueryConfigurationRequest
     {
         return new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name_lt-LT', 1, 2.5, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('brand_lt-LT', 2, 2.0, MatchMode::FUZZY),
-                new SearchFieldConfig('description_lt-LT', 3, 1.0, MatchMode::FUZZY),
-                new SearchFieldConfig('sku', 4, 3.0, MatchMode::EXACT),
+                new SearchFieldConfig('name_lt-LT', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('brand_lt-LT', 2, MatchMode::FUZZY),
+                new SearchFieldConfig('description_lt-LT', 3, MatchMode::FUZZY),
+                new SearchFieldConfig('sku', 4, MatchMode::EXACT),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0),
             MultiWordOperator::AND,
             0.1
@@ -327,7 +324,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'index_name' => 'darbo_drabuziai',
                 'cache_ttl_hours' => 24,
                 'search_fields' => [
-                    ['field' => 'name_lt-LT', 'position' => 1, 'boost_multiplier' => 2.5, 'match_mode' => 'phrase_prefix'],
+                    ['field' => 'name_lt-LT', 'position' => 1, 'match_mode' => 'phrase_prefix'],
                 ],
             ],
             // Step 3: Sync Initial Data (Bulk Operations)
@@ -372,7 +369,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'index_name' => 'darbo_drabuziai',
                 'cache_ttl_hours' => 12,
                 'search_fields' => [
-                    ['field' => 'name_lt-LT', 'position' => 1, 'boost_multiplier' => 3.0, 'match_mode' => 'phrase_prefix'],
+                    ['field' => 'name_lt-LT', 'position' => 1, 'match_mode' => 'phrase_prefix'],
                 ],
             ],
             // Step 8: Activate v2
@@ -454,12 +451,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         // Step 7: Update Configuration with modified search config
         $updatedConfig = new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name_lt-LT', 1, 3.0, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('brand_lt-LT', 2, 2.5, MatchMode::FUZZY),
-                new SearchFieldConfig('description_lt-LT', 3, 1.5, MatchMode::FUZZY),
-                new SearchFieldConfig('sku', 4, 3.5, MatchMode::EXACT),
+                new SearchFieldConfig('name_lt-LT', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('brand_lt-LT', 2, MatchMode::FUZZY),
+                new SearchFieldConfig('description_lt-LT', 3, MatchMode::FUZZY),
+                new SearchFieldConfig('sku', 4, MatchMode::EXACT),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 1),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 4.0),
             MultiWordOperator::AND,
             0.05
@@ -543,7 +539,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'index_name' => 'darbo_drabuziai',
                 'cache_ttl_hours' => 24,
                 'search_fields' => [
-                    ['field' => 'name_lt-LT', 'position' => 1, 'boost_multiplier' => 2.5, 'match_mode' => 'phrase_prefix'],
+                    ['field' => 'name_lt-LT', 'position' => 1, 'match_mode' => 'phrase_prefix'],
                 ],
             ],
             // Bulk operations
@@ -590,7 +586,6 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         // Verify configuration payload structure
         $configPayload = $this->capturedRequests[1]['body'];
         $this->assertArrayHasKey('search_fields', $configPayload);
-        $this->assertArrayHasKey('fuzzy_matching', $configPayload);
         $this->assertArrayHasKey('popularity_boost', $configPayload);
         $this->assertArrayHasKey('multi_word_operator', $configPayload);
         $this->assertArrayHasKey('min_score', $configPayload);
@@ -600,14 +595,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $firstField = $configPayload['search_fields'][0];
         $this->assertEquals('name_lt-LT', $firstField['field']);
         $this->assertEquals(1, $firstField['position']);
-        $this->assertEquals(2.5, $firstField['boost_multiplier']);
         $this->assertEquals('phrase_prefix', $firstField['match_mode']);
-
-        // Verify fuzzy matching structure
-        $fuzzy = $configPayload['fuzzy_matching'];
-        $this->assertTrue($fuzzy['enabled']);
-        $this->assertEquals('auto', $fuzzy['mode']);
-        $this->assertEquals(2, $fuzzy['min_similarity']);
 
         // Sync products
         $product = $this->createDarboDrabuziaiProduct('12345', 'Test', 'Brand', 99.99);
@@ -669,7 +657,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'index_name' => 'darbo_drabuziai',
                 'cache_ttl_hours' => 24,
                 'search_fields' => [
-                    ['field' => 'name_lt-LT', 'position' => 1, 'boost_multiplier' => 2.5, 'match_mode' => 'phrase_prefix'],
+                    ['field' => 'name_lt-LT', 'position' => 1, 'match_mode' => 'phrase_prefix'],
                 ],
             ],
             // Bulk operations response
@@ -825,7 +813,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
     {
         // Full responses for each operation type
         $indexResponse = ['status' => 'success', 'physical_index_name' => 'test_v1', 'alias_name' => 'test', 'version' => 1, 'fields_created' => 9, 'message' => 'Created'];
-        $configResponse = ['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name', 'position' => 1, 'boost_multiplier' => 1.0, 'match_mode' => 'fuzzy']]];
+        $configResponse = ['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name', 'position' => 1, 'match_mode' => 'fuzzy']]];
         $bulkResponse = ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]];
         $infoResponse = ['alias_name' => 'test', 'active_version' => 1, 'active_index' => 'test_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]]];
         $activateResponse = ['previous_version' => 0, 'new_version' => 1, 'alias_name' => 'test'];
@@ -925,7 +913,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
      */
     public function testConfigurationWithNestedVariantsSearch(): void
     {
-        $mockResponses = [['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name_lt-LT', 'position' => 1, 'boost_multiplier' => 2.5, 'match_mode' => 'phrase_prefix']]]];
+        $mockResponses = [['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name_lt-LT', 'position' => 1, 'match_mode' => 'phrase_prefix']]]];
         $sdk = $this->createSdkWithRequestCapture($mockResponses);
 
         $config = $this->createDarboDrabuziaiSearchConfig();
@@ -936,10 +924,6 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         // Verify search fields include variant-searchable fields
         $searchFieldNames = array_map(fn($field) => $field['field'], $payload['search_fields']);
         $this->assertContains('sku', $searchFieldNames);
-
-        // Verify fuzzy matching configuration
-        $this->assertTrue($payload['fuzzy_matching']['enabled']);
-        $this->assertEquals('auto', $payload['fuzzy_matching']['mode']);
 
         // Verify popularity boost for sorting by sales
         $this->assertTrue($payload['popularity_boost']['enabled']);

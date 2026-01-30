@@ -7,8 +7,6 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\Response;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\BoostAlgorithm;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMatchingConfig;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\PopularityBoostConfig;
@@ -21,7 +19,7 @@ class QueryConfigurationResponseTest extends TestCase
 {
     private function createSearchField(string $field = 'name', int $position = 1): SearchFieldConfig
     {
-        return new SearchFieldConfig($field, $position, 1.0, MatchMode::FUZZY);
+        return new SearchFieldConfig($field, $position, MatchMode::FUZZY);
     }
 
     public function testConstructorWithValidValues(): void
@@ -68,7 +66,6 @@ class QueryConfigurationResponseTest extends TestCase
     public function testConstructorWithAllOptionalParams(): void
     {
         $searchFields = [$this->createSearchField()];
-        $fuzzyMatching = new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2);
         $popularityBoost = new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 2.0);
 
         $response = new QueryConfigurationResponse(
@@ -76,13 +73,11 @@ class QueryConfigurationResponseTest extends TestCase
             indexName: 'products',
             cacheTtlHours: 24,
             searchFields: $searchFields,
-            fuzzyMatching: $fuzzyMatching,
             popularityBoost: $popularityBoost,
             multiWordOperator: MultiWordOperator::OR,
             minScore: 0.5
         );
 
-        $this->assertNotNull($response->fuzzyMatching);
         $this->assertNotNull($response->popularityBoost);
         $this->assertEquals(MultiWordOperator::OR, $response->multiWordOperator);
         $this->assertEquals(0.5, $response->minScore);
@@ -98,13 +93,11 @@ class QueryConfigurationResponseTest extends TestCase
                 [
                     'field' => 'name',
                     'position' => 1,
-                    'boost_multiplier' => 2.0,
                     'match_mode' => 'fuzzy',
                 ],
                 [
                     'field' => 'description',
                     'position' => 2,
-                    'boost_multiplier' => 1.0,
                     'match_mode' => 'exact',
                 ],
             ],
@@ -127,12 +120,7 @@ class QueryConfigurationResponseTest extends TestCase
             'index_name' => 'products',
             'cache_ttl_hours' => 24,
             'search_fields' => [
-                ['field' => 'name', 'position' => 1, 'boost_multiplier' => 1.0],
-            ],
-            'fuzzy_matching' => [
-                'enabled' => true,
-                'mode' => 'auto',
-                'min_similarity' => 2,
+                ['field' => 'name', 'position' => 1],
             ],
             'popularity_boost' => [
                 'enabled' => true,
@@ -146,8 +134,6 @@ class QueryConfigurationResponseTest extends TestCase
 
         $response = QueryConfigurationResponse::fromArray($data);
 
-        $this->assertNotNull($response->fuzzyMatching);
-        $this->assertTrue($response->fuzzyMatching->enabled);
         $this->assertNotNull($response->popularityBoost);
         $this->assertEquals('sales', $response->popularityBoost->field);
         $this->assertEquals(MultiWordOperator::OR, $response->multiWordOperator);
@@ -242,7 +228,6 @@ class QueryConfigurationResponseTest extends TestCase
             'products',
             24,
             [$this->createSearchField()],
-            new FuzzyMatchingConfig(),
             new PopularityBoostConfig(true, 'sales'),
             MultiWordOperator::OR,
             0.5
@@ -250,7 +235,6 @@ class QueryConfigurationResponseTest extends TestCase
 
         $serialized = $response->jsonSerialize();
 
-        $this->assertArrayHasKey('fuzzy_matching', $serialized);
         $this->assertArrayHasKey('popularity_boost', $serialized);
         $this->assertEquals('or', $serialized['multi_word_operator']);
         $this->assertEquals(0.5, $serialized['min_score']);
@@ -267,7 +251,6 @@ class QueryConfigurationResponseTest extends TestCase
 
         $serialized = $response->jsonSerialize();
 
-        $this->assertArrayNotHasKey('fuzzy_matching', $serialized);
         $this->assertArrayNotHasKey('popularity_boost', $serialized);
         $this->assertArrayNotHasKey('min_score', $serialized);
     }
@@ -297,20 +280,13 @@ class QueryConfigurationResponseTest extends TestCase
                 [
                     'field' => 'name',
                     'position' => 1,
-                    'boost_multiplier' => 3.0,
                     'match_mode' => 'fuzzy',
                 ],
                 [
                     'field' => 'description',
                     'position' => 2,
-                    'boost_multiplier' => 1.5,
                     'match_mode' => 'phrase_prefix',
                 ],
-            ],
-            'fuzzy_matching' => [
-                'enabled' => true,
-                'mode' => 'auto',
-                'min_similarity' => 2,
             ],
             'multi_word_operator' => 'and',
         ];
@@ -322,9 +298,6 @@ class QueryConfigurationResponseTest extends TestCase
         $this->assertEquals(24, $response->cacheTtlHours);
         $this->assertCount(2, $response->searchFields);
         $this->assertEquals('name', $response->searchFields[0]->field);
-        $this->assertEquals(3.0, $response->searchFields[0]->boostMultiplier);
-        $this->assertNotNull($response->fuzzyMatching);
-        $this->assertTrue($response->fuzzyMatching->enabled);
     }
 
     public function testJsonEncodeProducesValidJson(): void

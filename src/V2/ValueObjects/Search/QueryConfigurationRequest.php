@@ -11,7 +11,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * Represents a query configuration request matching QueryConfigurationRequest schema.
  *
  * This immutable ValueObject contains the complete configuration for search behavior,
- * including search fields, fuzzy matching, popularity boost, and scoring options.
+ * including search fields, popularity boost, and scoring options.
  */
 final readonly class QueryConfigurationRequest extends ValueObject
 {
@@ -20,14 +20,12 @@ final readonly class QueryConfigurationRequest extends ValueObject
 
     /**
      * @param array<SearchFieldConfig> $searchFields Array of search field configurations
-     * @param FuzzyMatchingConfig|null $fuzzyMatching Optional fuzzy matching configuration
      * @param PopularityBoostConfig|null $popularityBoost Optional popularity boost configuration
      * @param MultiWordOperator $multiWordOperator Operator for multi-word queries (defaults to 'and')
      * @param float|null $minScore Optional minimum score threshold (0.0 to 1.0)
      */
     public function __construct(
         public array $searchFields,
-        public ?FuzzyMatchingConfig $fuzzyMatching = null,
         public ?PopularityBoostConfig $popularityBoost = null,
         public MultiWordOperator $multiWordOperator = MultiWordOperator::AND,
         public ?float $minScore = null
@@ -45,7 +43,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
     {
         return new self(
             $searchFields,
-            $this->fuzzyMatching,
             $this->popularityBoost,
             $this->multiWordOperator,
             $this->minScore
@@ -59,21 +56,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
     {
         return new self(
             [...$this->searchFields, $searchField],
-            $this->fuzzyMatching,
-            $this->popularityBoost,
-            $this->multiWordOperator,
-            $this->minScore
-        );
-    }
-
-    /**
-     * Returns a new instance with different fuzzy matching configuration.
-     */
-    public function withFuzzyMatching(?FuzzyMatchingConfig $fuzzyMatching): self
-    {
-        return new self(
-            $this->searchFields,
-            $fuzzyMatching,
             $this->popularityBoost,
             $this->multiWordOperator,
             $this->minScore
@@ -87,7 +69,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
     {
         return new self(
             $this->searchFields,
-            $this->fuzzyMatching,
             $popularityBoost,
             $this->multiWordOperator,
             $this->minScore
@@ -101,7 +82,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
     {
         return new self(
             $this->searchFields,
-            $this->fuzzyMatching,
             $this->popularityBoost,
             $multiWordOperator,
             $this->minScore
@@ -115,7 +95,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
     {
         return new self(
             $this->searchFields,
-            $this->fuzzyMatching,
             $this->popularityBoost,
             $this->multiWordOperator,
             $minScore
@@ -134,10 +113,6 @@ final readonly class QueryConfigurationRequest extends ValueObject
             ),
             'multi_word_operator' => $this->multiWordOperator->value,
         ];
-
-        if ($this->fuzzyMatching !== null) {
-            $result['fuzzy_matching'] = $this->fuzzyMatching->jsonSerialize();
-        }
 
         if ($this->popularityBoost !== null) {
             $result['popularity_boost'] = $this->popularityBoost->jsonSerialize();

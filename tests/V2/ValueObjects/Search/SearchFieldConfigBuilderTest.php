@@ -19,13 +19,11 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config = $builder
             ->withField('name')
             ->withPosition(1)
-            ->withBoostMultiplier(1.5)
             ->build();
 
         $this->assertInstanceOf(SearchFieldConfig::class, $config);
         $this->assertEquals('name', $config->field);
         $this->assertEquals(1, $config->position);
-        $this->assertEquals(1.5, $config->boostMultiplier);
     }
 
     public function testFluentApiReturnsBuilder(): void
@@ -34,7 +32,6 @@ class SearchFieldConfigBuilderTest extends TestCase
 
         $this->assertSame($builder, $builder->withField('test'));
         $this->assertSame($builder, $builder->withPosition(1));
-        $this->assertSame($builder, $builder->withBoostMultiplier(1.0));
         $this->assertSame($builder, $builder->withMatchMode(MatchMode::EXACT));
     }
 
@@ -45,7 +42,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config = $builder
             ->withField('name')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->build();
 
         $this->assertEquals(MatchMode::FUZZY, $config->matchMode);
@@ -58,7 +54,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config = $builder
             ->withField('name')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->withMatchMode(MatchMode::EXACT)
             ->build();
 
@@ -74,7 +69,6 @@ class SearchFieldConfigBuilderTest extends TestCase
 
         $builder
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->build();
     }
 
@@ -87,20 +81,6 @@ class SearchFieldConfigBuilderTest extends TestCase
 
         $builder
             ->withField('name')
-            ->withBoostMultiplier(1.0)
-            ->build();
-    }
-
-    public function testThrowsExceptionWhenBoostMultiplierIsMissing(): void
-    {
-        $builder = new SearchFieldConfigBuilder();
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Boost multiplier is required.');
-
-        $builder
-            ->withField('name')
-            ->withPosition(1)
             ->build();
     }
 
@@ -111,7 +91,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $builder
             ->withField('test')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->withMatchMode(MatchMode::EXACT)
             ->reset();
 
@@ -128,12 +107,10 @@ class SearchFieldConfigBuilderTest extends TestCase
         $builder
             ->withField('test')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->withMatchMode(MatchMode::EXACT)
             ->reset()
             ->withField('name')
-            ->withPosition(1)
-            ->withBoostMultiplier(1.0);
+            ->withPosition(1);
 
         $config = $builder->build();
 
@@ -154,7 +131,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config1 = $builder
             ->withField('field1')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->build();
 
         $builder->reset();
@@ -162,7 +138,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config2 = $builder
             ->withField('field2')
             ->withPosition(2)
-            ->withBoostMultiplier(2.0)
             ->build();
 
         $this->assertEquals('field1', $config1->field);
@@ -180,7 +155,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $builder
             ->withField('name')
             ->withPosition(0)
-            ->withBoostMultiplier(1.0)
             ->build();
     }
 
@@ -191,7 +165,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config1 = $builder
             ->withField('name')
             ->withPosition(1)
-            ->withBoostMultiplier(2.0)
             ->withMatchMode(MatchMode::FUZZY)
             ->build();
 
@@ -200,7 +173,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config2 = $builder
             ->withField('description')
             ->withPosition(2)
-            ->withBoostMultiplier(1.0)
             ->withMatchMode(MatchMode::PHRASE_PREFIX)
             ->build();
 
@@ -209,7 +181,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config3 = $builder
             ->withField('sku')
             ->withPosition(3)
-            ->withBoostMultiplier(3.0)
             ->withMatchMode(MatchMode::EXACT)
             ->build();
 
@@ -233,7 +204,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         $config = $builder
             ->withField('test')
             ->withPosition(1)
-            ->withBoostMultiplier(1.0)
             ->withMatchMode($mode)
             ->build();
 
@@ -263,14 +233,12 @@ class SearchFieldConfigBuilderTest extends TestCase
         $nameConfig = $builder
             ->withField('name_lt-LT')
             ->withPosition(1)
-            ->withBoostMultiplier(2.0)
             ->withMatchMode(MatchMode::PHRASE_PREFIX)
             ->build();
 
         $expected = [
             'field' => 'name_lt-LT',
             'position' => 1,
-            'boost_multiplier' => 2.0,
             'match_mode' => 'phrase_prefix',
         ];
 
@@ -284,7 +252,6 @@ class SearchFieldConfigBuilderTest extends TestCase
         try {
             $builder
                 ->withPosition(1)
-                ->withBoostMultiplier(1.0)
                 ->build();
             $this->fail('Expected InvalidArgumentException was not thrown');
         } catch (InvalidArgumentException $e) {
@@ -300,27 +267,10 @@ class SearchFieldConfigBuilderTest extends TestCase
         try {
             $builder
                 ->withField('name')
-                ->withBoostMultiplier(1.0)
                 ->build();
             $this->fail('Expected InvalidArgumentException was not thrown');
         } catch (InvalidArgumentException $e) {
             $this->assertEquals('position', $e->argumentName);
-            $this->assertNull($e->invalidValue);
-        }
-    }
-
-    public function testExceptionArgumentNameWhenBoostMultiplierMissing(): void
-    {
-        $builder = new SearchFieldConfigBuilder();
-
-        try {
-            $builder
-                ->withField('name')
-                ->withPosition(1)
-                ->build();
-            $this->fail('Expected InvalidArgumentException was not thrown');
-        } catch (InvalidArgumentException $e) {
-            $this->assertEquals('boost_multiplier', $e->argumentName);
             $this->assertNull($e->invalidValue);
         }
     }

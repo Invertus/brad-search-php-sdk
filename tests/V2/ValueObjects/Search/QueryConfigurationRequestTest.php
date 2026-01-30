@@ -6,8 +6,6 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\Search;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\BoostAlgorithm;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMatchingConfig;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\PopularityBoostConfig;
@@ -22,13 +20,12 @@ class QueryConfigurationRequestTest extends TestCase
     public function testConstructorWithValidParameters(): void
     {
         $searchFields = [
-            new SearchFieldConfig('name', 1, 2.0, MatchMode::FUZZY),
+            new SearchFieldConfig('name', 1, MatchMode::FUZZY),
         ];
         $config = new QueryConfigurationRequest($searchFields);
 
         $this->assertCount(1, $config->searchFields);
         $this->assertEquals('name', $config->searchFields[0]->field);
-        $this->assertNull($config->fuzzyMatching);
         $this->assertNull($config->popularityBoost);
         $this->assertEquals(MultiWordOperator::AND, $config->multiWordOperator);
         $this->assertNull($config->minScore);
@@ -37,22 +34,19 @@ class QueryConfigurationRequestTest extends TestCase
     public function testConstructorWithAllParameters(): void
     {
         $searchFields = [
-            new SearchFieldConfig('name', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::PHRASE_PREFIX),
+            new SearchFieldConfig('name', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::PHRASE_PREFIX),
         ];
-        $fuzzyMatching = new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2);
         $popularityBoost = new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0);
 
         $config = new QueryConfigurationRequest(
             $searchFields,
-            $fuzzyMatching,
             $popularityBoost,
             MultiWordOperator::OR,
             0.5
         );
 
         $this->assertCount(2, $config->searchFields);
-        $this->assertSame($fuzzyMatching, $config->fuzzyMatching);
         $this->assertSame($popularityBoost, $config->popularityBoost);
         $this->assertEquals(MultiWordOperator::OR, $config->multiWordOperator);
         $this->assertEquals(0.5, $config->minScore);
@@ -72,7 +66,7 @@ class QueryConfigurationRequestTest extends TestCase
         $this->expectExceptionMessage('Search field at index 1 must be an instance of SearchFieldConfig.');
 
         new QueryConfigurationRequest([
-            new SearchFieldConfig('name', 1, 1.0),
+            new SearchFieldConfig('name', 1),
             'invalid',
         ]);
     }
@@ -83,8 +77,7 @@ class QueryConfigurationRequestTest extends TestCase
         $this->expectExceptionMessage('Minimum score must be between 0.0 and 1.0, got -0.10.');
 
         new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             -0.1
@@ -97,8 +90,7 @@ class QueryConfigurationRequestTest extends TestCase
         $this->expectExceptionMessage('Minimum score must be between 0.0 and 1.0, got 1.10.');
 
         new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             1.1
@@ -108,8 +100,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testAcceptsMinimumMinScore(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             0.0
@@ -121,8 +112,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testAcceptsMaximumMinScore(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             1.0
@@ -134,7 +124,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testExtendsValueObject(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $this->assertInstanceOf(ValueObject::class, $config);
@@ -143,7 +133,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testImplementsJsonSerializable(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $this->assertInstanceOf(JsonSerializable::class, $config);
@@ -152,7 +142,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testJsonSerializeWithMinimalConfig(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 2.0, MatchMode::FUZZY)]
+            [new SearchFieldConfig('name', 1, MatchMode::FUZZY)]
         );
 
         $expected = [
@@ -160,7 +150,6 @@ class QueryConfigurationRequestTest extends TestCase
                 [
                     'field' => 'name',
                     'position' => 1,
-                    'boost_multiplier' => 2.0,
                     'match_mode' => 'fuzzy',
                 ],
             ],
@@ -174,10 +163,9 @@ class QueryConfigurationRequestTest extends TestCase
     {
         $config = new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name', 1, 2.0, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('description', 2, 1.5, MatchMode::FUZZY),
+                new SearchFieldConfig('name', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('description', 2, MatchMode::FUZZY),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0),
             MultiWordOperator::OR,
             0.5
@@ -188,22 +176,15 @@ class QueryConfigurationRequestTest extends TestCase
                 [
                     'field' => 'name',
                     'position' => 1,
-                    'boost_multiplier' => 2.0,
                     'match_mode' => 'phrase_prefix',
                 ],
                 [
                     'field' => 'description',
                     'position' => 2,
-                    'boost_multiplier' => 1.5,
                     'match_mode' => 'fuzzy',
                 ],
             ],
             'multi_word_operator' => 'or',
-            'fuzzy_matching' => [
-                'enabled' => true,
-                'mode' => 'auto',
-                'min_similarity' => 2,
-            ],
             'popularity_boost' => [
                 'enabled' => true,
                 'field' => 'sales_count',
@@ -219,12 +200,11 @@ class QueryConfigurationRequestTest extends TestCase
     public function testJsonSerializeOmitsNullValues(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $serialized = $config->jsonSerialize();
 
-        $this->assertArrayNotHasKey('fuzzy_matching', $serialized);
         $this->assertArrayNotHasKey('popularity_boost', $serialized);
         $this->assertArrayNotHasKey('min_score', $serialized);
     }
@@ -232,7 +212,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testToArrayReturnsJsonSerializeOutput(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $this->assertEquals($config->jsonSerialize(), $config->toArray());
@@ -241,10 +221,10 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithSearchFieldsReturnsNewInstance(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
-        $newFields = [new SearchFieldConfig('title', 1, 2.0)];
+        $newFields = [new SearchFieldConfig('title', 1)];
         $newConfig = $config->withSearchFields($newFields);
 
         $this->assertNotSame($config, $newConfig);
@@ -255,11 +235,11 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithAddedSearchFieldReturnsNewInstance(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $newConfig = $config->withAddedSearchField(
-            new SearchFieldConfig('description', 2, 1.5)
+            new SearchFieldConfig('description', 2)
         );
 
         $this->assertNotSame($config, $newConfig);
@@ -268,24 +248,10 @@ class QueryConfigurationRequestTest extends TestCase
         $this->assertEquals('description', $newConfig->searchFields[1]->field);
     }
 
-    public function testWithFuzzyMatchingReturnsNewInstance(): void
-    {
-        $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
-        );
-
-        $fuzzyMatching = new FuzzyMatchingConfig(true, FuzzyMode::FIXED, 1);
-        $newConfig = $config->withFuzzyMatching($fuzzyMatching);
-
-        $this->assertNotSame($config, $newConfig);
-        $this->assertNull($config->fuzzyMatching);
-        $this->assertSame($fuzzyMatching, $newConfig->fuzzyMatching);
-    }
-
     public function testWithPopularityBoostReturnsNewInstance(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $popularityBoost = new PopularityBoostConfig(true, 'views', BoostAlgorithm::LINEAR, 2.0);
@@ -299,7 +265,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithMultiWordOperatorReturnsNewInstance(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $newConfig = $config->withMultiWordOperator(MultiWordOperator::OR);
@@ -312,7 +278,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithMinScoreReturnsNewInstance(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $newConfig = $config->withMinScore(0.75);
@@ -325,8 +291,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithMinScoreCanSetToNull(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             0.5
@@ -342,8 +307,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testJsonEncodeProducesValidJson(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 2.0, MatchMode::FUZZY)],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
+            [new SearchFieldConfig('name', 1, MatchMode::FUZZY)],
             null,
             MultiWordOperator::AND,
             0.5
@@ -353,7 +317,6 @@ class QueryConfigurationRequestTest extends TestCase
         $decoded = json_decode($json, true);
 
         $this->assertArrayHasKey('search_fields', $decoded);
-        $this->assertArrayHasKey('fuzzy_matching', $decoded);
         $this->assertArrayHasKey('multi_word_operator', $decoded);
         $this->assertArrayHasKey('min_score', $decoded);
         $this->assertArrayNotHasKey('popularity_boost', $decoded);
@@ -365,8 +328,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testAcceptsValidMinScores(float $minScore): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             $minScore
@@ -397,8 +359,7 @@ class QueryConfigurationRequestTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
 
         new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)],
-            null,
+            [new SearchFieldConfig('name', 1)],
             null,
             MultiWordOperator::AND,
             $minScore
@@ -432,7 +393,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithSearchFieldsValidatesNewFields(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $this->expectException(InvalidArgumentException::class);
@@ -444,7 +405,7 @@ class QueryConfigurationRequestTest extends TestCase
     public function testWithMinScoreValidatesNewValue(): void
     {
         $config = new QueryConfigurationRequest(
-            [new SearchFieldConfig('name', 1, 1.0)]
+            [new SearchFieldConfig('name', 1)]
         );
 
         $this->expectException(InvalidArgumentException::class);
@@ -460,10 +421,9 @@ class QueryConfigurationRequestTest extends TestCase
     {
         $config = new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name_lt-LT', 1, 2.0, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('brand_lt-LT', 2, 1.5, MatchMode::FUZZY),
+                new SearchFieldConfig('name_lt-LT', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('brand_lt-LT', 2, MatchMode::FUZZY),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0),
             MultiWordOperator::AND,
             0.5
@@ -482,12 +442,10 @@ class QueryConfigurationRequestTest extends TestCase
         foreach ($serialized['search_fields'] as $field) {
             $this->assertArrayHasKey('field', $field);
             $this->assertArrayHasKey('position', $field);
-            $this->assertArrayHasKey('boost_multiplier', $field);
             $this->assertArrayHasKey('match_mode', $field);
         }
 
         // Verify optional configs are present when set
-        $this->assertArrayHasKey('fuzzy_matching', $serialized);
         $this->assertArrayHasKey('popularity_boost', $serialized);
         $this->assertArrayHasKey('min_score', $serialized);
 
@@ -503,12 +461,11 @@ class QueryConfigurationRequestTest extends TestCase
     {
         $config = new QueryConfigurationRequest(
             [
-                new SearchFieldConfig('name_lt-LT', 1, 2.5, MatchMode::PHRASE_PREFIX),
-                new SearchFieldConfig('brand_lt-LT', 2, 2.0, MatchMode::FUZZY),
-                new SearchFieldConfig('description_lt-LT', 3, 1.0, MatchMode::FUZZY),
-                new SearchFieldConfig('sku', 4, 3.0, MatchMode::EXACT),
+                new SearchFieldConfig('name_lt-LT', 1, MatchMode::PHRASE_PREFIX),
+                new SearchFieldConfig('brand_lt-LT', 2, MatchMode::FUZZY),
+                new SearchFieldConfig('description_lt-LT', 3, MatchMode::FUZZY),
+                new SearchFieldConfig('sku', 4, MatchMode::EXACT),
             ],
-            new FuzzyMatchingConfig(true, FuzzyMode::AUTO, 2),
             new PopularityBoostConfig(true, 'sales_count', BoostAlgorithm::LOGARITHMIC, 3.0),
             MultiWordOperator::AND,
             0.1
@@ -519,34 +476,25 @@ class QueryConfigurationRequestTest extends TestCase
                 [
                     'field' => 'name_lt-LT',
                     'position' => 1,
-                    'boost_multiplier' => 2.5,
                     'match_mode' => 'phrase_prefix',
                 ],
                 [
                     'field' => 'brand_lt-LT',
                     'position' => 2,
-                    'boost_multiplier' => 2.0,
                     'match_mode' => 'fuzzy',
                 ],
                 [
                     'field' => 'description_lt-LT',
                     'position' => 3,
-                    'boost_multiplier' => 1.0,
                     'match_mode' => 'fuzzy',
                 ],
                 [
                     'field' => 'sku',
                     'position' => 4,
-                    'boost_multiplier' => 3.0,
                     'match_mode' => 'exact',
                 ],
             ],
             'multi_word_operator' => 'and',
-            'fuzzy_matching' => [
-                'enabled' => true,
-                'mode' => 'auto',
-                'min_similarity' => 2,
-            ],
             'popularity_boost' => [
                 'enabled' => true,
                 'field' => 'sales_count',

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\V2\ValueObjects\Response;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
-use BradSearch\SyncSdk\V2\ValueObjects\Search\FuzzyMatchingConfig;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\PopularityBoostConfig;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\SearchFieldConfig;
@@ -19,7 +18,6 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * - indexName: The index this configuration applies to
  * - cacheTtlHours: Cache time-to-live in hours
  * - searchFields: Array of search field configurations
- * - fuzzyMatching: Optional fuzzy matching configuration
  * - popularityBoost: Optional popularity boost configuration
  * - multiWordOperator: Operator for multi-word queries
  * - minScore: Optional minimum score threshold
@@ -31,7 +29,6 @@ final readonly class QueryConfigurationResponse extends ValueObject
      * @param string $indexName Index name
      * @param int $cacheTtlHours Cache TTL in hours
      * @param array<SearchFieldConfig> $searchFields Array of search field configurations
-     * @param FuzzyMatchingConfig|null $fuzzyMatching Optional fuzzy matching configuration
      * @param PopularityBoostConfig|null $popularityBoost Optional popularity boost configuration
      * @param MultiWordOperator $multiWordOperator Operator for multi-word queries
      * @param float|null $minScore Optional minimum score threshold
@@ -41,7 +38,6 @@ final readonly class QueryConfigurationResponse extends ValueObject
         public string $indexName,
         public int $cacheTtlHours,
         public array $searchFields,
-        public ?FuzzyMatchingConfig $fuzzyMatching = null,
         public ?PopularityBoostConfig $popularityBoost = null,
         public MultiWordOperator $multiWordOperator = MultiWordOperator::AND,
         public ?float $minScore = null
@@ -75,11 +71,6 @@ final readonly class QueryConfigurationResponse extends ValueObject
             $searchFields[] = SearchFieldConfig::fromArray($fieldData);
         }
 
-        $fuzzyMatching = null;
-        if (isset($data['fuzzy_matching']) && is_array($data['fuzzy_matching'])) {
-            $fuzzyMatching = FuzzyMatchingConfig::fromArray($data['fuzzy_matching']);
-        }
-
         $popularityBoost = null;
         if (isset($data['popularity_boost']) && is_array($data['popularity_boost'])) {
             $popularityBoost = PopularityBoostConfig::fromArray($data['popularity_boost']);
@@ -95,7 +86,6 @@ final readonly class QueryConfigurationResponse extends ValueObject
             indexName: (string) $data['index_name'],
             cacheTtlHours: (int) $data['cache_ttl_hours'],
             searchFields: $searchFields,
-            fuzzyMatching: $fuzzyMatching,
             popularityBoost: $popularityBoost,
             multiWordOperator: $multiWordOperator,
             minScore: isset($data['min_score']) ? (float) $data['min_score'] : null
@@ -117,10 +107,6 @@ final readonly class QueryConfigurationResponse extends ValueObject
             ),
             'multi_word_operator' => $this->multiWordOperator->value,
         ];
-
-        if ($this->fuzzyMatching !== null) {
-            $result['fuzzy_matching'] = $this->fuzzyMatching->jsonSerialize();
-        }
 
         if ($this->popularityBoost !== null) {
             $result['popularity_boost'] = $this->popularityBoost->jsonSerialize();

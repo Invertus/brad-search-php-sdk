@@ -14,8 +14,6 @@ final class QueryConfigurationRequestBuilder
     /** @var array<SearchFieldConfig> */
     private array $searchFields = [];
 
-    private ?FuzzyMatchingConfig $fuzzyMatching = null;
-
     private ?PopularityBoostConfig $popularityBoost = null;
 
     private MultiWordOperator $multiWordOperator = MultiWordOperator::AND;
@@ -28,15 +26,6 @@ final class QueryConfigurationRequestBuilder
     public function addSearchField(SearchFieldConfig $searchField): self
     {
         $this->searchFields[] = $searchField;
-        return $this;
-    }
-
-    /**
-     * Sets the fuzzy matching configuration.
-     */
-    public function fuzzyMatching(FuzzyMatchingConfig $fuzzyMatching): self
-    {
-        $this->fuzzyMatching = $fuzzyMatching;
         return $this;
     }
 
@@ -84,7 +73,6 @@ final class QueryConfigurationRequestBuilder
 
         return new QueryConfigurationRequest(
             $this->searchFields,
-            $this->fuzzyMatching,
             $this->popularityBoost,
             $this->multiWordOperator,
             $this->minScore
@@ -97,7 +85,6 @@ final class QueryConfigurationRequestBuilder
     public function reset(): self
     {
         $this->searchFields = [];
-        $this->fuzzyMatching = null;
         $this->popularityBoost = null;
         $this->multiWordOperator = MultiWordOperator::AND;
         $this->minScore = null;

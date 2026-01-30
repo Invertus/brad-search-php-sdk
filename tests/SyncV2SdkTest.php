@@ -677,8 +677,8 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationSuccess(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::FUZZY),
         ]);
 
         $apiResponse = [
@@ -709,7 +709,7 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationWithMinimalConfig(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $apiResponse = [
@@ -738,7 +738,7 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationReturnsRawApiResponse(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $apiResponse = [
@@ -765,7 +765,7 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationAppIdIncludedInUrlPath(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -785,7 +785,7 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationUsesCorrectEndpoint(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -805,9 +805,9 @@ class SyncV2SdkTest extends TestCase
     public function testSetConfigurationPassesConfigWithCorrectSerialization(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::PHRASE_PREFIX),
-            new SearchFieldConfig('brand', 3, 1.0, MatchMode::EXACT),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::PHRASE_PREFIX),
+            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -899,9 +899,9 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationSuccess(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::FUZZY),
-            new SearchFieldConfig('brand', 3, 1.0, MatchMode::EXACT),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::FUZZY),
+            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
         ]);
 
         $apiResponse = [
@@ -932,7 +932,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationWithMinimalConfig(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $apiResponse = [
@@ -961,7 +961,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationReturnsRawApiResponse(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $apiResponse = [
@@ -988,7 +988,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationAppIdIncludedInUrlPath(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1008,7 +1008,7 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationUsesCorrectEndpoint(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 1.0, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1028,9 +1028,9 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateConfigurationPassesConfigAsJsonSerialized(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::PHRASE_PREFIX),
-            new SearchFieldConfig('brand', 3, 1.0, MatchMode::EXACT),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::PHRASE_PREFIX),
+            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -2373,8 +2373,8 @@ class SyncV2SdkTest extends TestCase
     public function testConfigurationMethodsUseAppIdBasePath(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, 2.0, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, 1.5, MatchMode::FUZZY),
+            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
+            new SearchFieldConfig('description', 2, MatchMode::FUZZY),
         ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);

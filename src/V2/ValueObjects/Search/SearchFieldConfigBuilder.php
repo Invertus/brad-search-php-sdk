@@ -13,7 +13,6 @@ final class SearchFieldConfigBuilder
 {
     private ?string $field = null;
     private ?int $position = null;
-    private ?float $boostMultiplier = null;
     private MatchMode $matchMode = MatchMode::FUZZY;
 
     /**
@@ -31,15 +30,6 @@ final class SearchFieldConfigBuilder
     public function withPosition(int $position): self
     {
         $this->position = $position;
-        return $this;
-    }
-
-    /**
-     * Sets the boost multiplier for relevance scoring.
-     */
-    public function withBoostMultiplier(float $boostMultiplier): self
-    {
-        $this->boostMultiplier = $boostMultiplier;
         return $this;
     }
 
@@ -75,18 +65,9 @@ final class SearchFieldConfigBuilder
             );
         }
 
-        if ($this->boostMultiplier === null) {
-            throw new InvalidArgumentException(
-                'Boost multiplier is required.',
-                'boost_multiplier',
-                null
-            );
-        }
-
         return new SearchFieldConfig(
             $this->field,
             $this->position,
-            $this->boostMultiplier,
             $this->matchMode
         );
     }
@@ -98,7 +79,6 @@ final class SearchFieldConfigBuilder
     {
         $this->field = null;
         $this->position = null;
-        $this->boostMultiplier = null;
         $this->matchMode = MatchMode::FUZZY;
         return $this;
     }
