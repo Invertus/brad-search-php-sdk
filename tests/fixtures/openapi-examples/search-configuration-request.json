@@ -1,0 +1,63 @@
+{
+    "supported_locales": ["lt-LT"],
+    "query_config": {
+        "fields": [
+            {
+                "type": "text",
+                "name": "name",
+                "locale_suffix": "lt-LT",
+                "search_types": ["match", "match-fuzzy", "autocomplete"],
+                "last_word_search": true
+            },
+            {
+                "type": "text",
+                "name": "brand",
+                "locale_suffix": "lt-LT",
+                "search_types": ["match"]
+            },
+            {
+                "type": "text",
+                "name": "sku",
+                "search_types": ["exact", "substring"]
+            },
+            {
+                "type": "nested",
+                "name": "variants",
+                "nested_path": "variants",
+                "score_mode": "max",
+                "nested_fields": [
+                    {
+                        "type": "text",
+                        "name": "sku",
+                        "search_types": ["exact"]
+                    },
+                    {
+                        "type": "text",
+                        "name": "attrs",
+                        "locale_aware": true,
+                        "search_types": ["match"]
+                    }
+                ]
+            }
+        ],
+        "cross_fields_matching": ["name", "brand"]
+    },
+    "response_config": {
+        "source_fields": ["id", "name", "brand", "price", "imageUrl", "productUrl"],
+        "sortable_fields": ["price", "name", "created_at"],
+        "highlight_config": {
+            "enabled": true,
+            "fields": [
+                {
+                    "field_name": "name",
+                    "locale_suffix": "lt-LT",
+                    "pre_tags": ["<mark>"],
+                    "post_tags": ["</mark>"]
+                }
+            ]
+        },
+        "variant_enrichment": {
+            "replace_fields": ["price", "imageUrl", "productUrl"]
+        }
+    }
+}
