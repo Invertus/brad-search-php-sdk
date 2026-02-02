@@ -13,6 +13,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\BoostAlgorithm;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MatchMode;
 use BradSearch\SyncSdk\V2\ValueObjects\Search\MultiWordOperator;
@@ -192,40 +193,68 @@ class ApiPayloadVerificationTest extends TestCase
      *
      * This test verifies the SDK produces the exact structure documented
      * in the OpenAPI specification for bulk operations with products and variants.
+     *
+     * The expected format uses:
+     * - 'variants' array (not locale-specific like 'variants_lt-LT')
+     * - 'attrs' with numeric keys and locale-value objects: {"0": {"lt-LT": "8"}}
      */
     public function testBulkOperationsRequestMatchesDarboDrabuziaiIndexingExample(): void
     {
         $expected = $this->loadFixture('bulk-operations-darbo-drabuziai.json');
 
-        $variant = new ProductVariant(
-            '12345-M-RED',
-            'SKU-12345-M-RED',
-            99.99,
-            129.99,
-            82.64,
-            107.43,
-            'https://shop.lt/produktas-12345?size=M&color=RED',
-            new ImageUrl(
-                'https://cdn.shop.lt/images/12345-small.jpg',
-                'https://cdn.shop.lt/images/12345-medium.jpg'
-            ),
-            ['size' => 'M', 'color' => 'RED']
-        );
+        // Build variants in the new format with attrs having numeric keys and locale values
+        $variant1 = [
+            'id' => '4107',
+            'sku' => 'GLOVES-4107',
+            'price' => 1.64,
+            'basePrice' => 2.05,
+            'priceTaxExcluded' => 1.36,
+            'basePriceTaxExcluded' => 1.69,
+            'productUrl' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4107',
+            'imageUrl' => [
+                'small' => 'https://www.darbodrabuziai.lt/img/4107-s.jpg',
+                'medium' => 'https://www.darbodrabuziai.lt/img/4107.jpg',
+            ],
+            'attrs' => [
+                '101' => ['lt-LT' => '8'],
+                '102' => ['lt-LT' => 'Juoda'],
+            ],
+        ];
 
+        $variant2 = [
+            'id' => '4108',
+            'sku' => 'GLOVES-4108',
+            'price' => 1.64,
+            'basePrice' => 2.05,
+            'priceTaxExcluded' => 1.36,
+            'basePriceTaxExcluded' => 1.69,
+            'productUrl' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4108',
+            'imageUrl' => [
+                'small' => 'https://www.darbodrabuziai.lt/img/4108-s.jpg',
+                'medium' => 'https://www.darbodrabuziai.lt/img/4108.jpg',
+            ],
+            'attrs' => [
+                '101' => ['lt-LT' => '9'],
+                '102' => ['lt-LT' => 'Juoda'],
+            ],
+        ];
+
+        $productPricing = new ProductPricing(9.99, 12.99, 8.26, 10.74);
         $product = new Product(
-            '12345',
-            99.99,
+            'prod-123',
+            'MAIN-SKU',
+            $productPricing,
             new ImageUrl(
-                'https://cdn.shop.lt/images/12345-small.jpg',
-                'https://cdn.shop.lt/images/12345-medium.jpg'
+                'https://www.darbodrabuziai.lt/img/main-s.jpg',
+                'https://www.darbodrabuziai.lt/img/main.jpg'
             ),
-            [$variant],
+            null,
+            null,
             [
-                'name_lt-LT' => 'Darbo drabužis Premium',
-                'brand_lt-LT' => 'WorkWear Pro',
-                'sku' => 'SKU-12345',
-                'description_lt-LT' => 'Aukštos kokybės darbo drabužis',
-                'categories_lt-LT' => ['Darbo drabužiai', 'Darbo drabužiai > Kelnės'],
+                'name_lt-LT' => 'Darbo pirštinės',
+                'brand_lt-LT' => 'SafetyFirst',
+                'productUrl_lt-LT' => 'https://www.darbodrabuziai.lt/produktai/pirstines',
+                'variants' => [$variant1, $variant2],
             ]
         );
 
@@ -379,7 +408,12 @@ class ApiPayloadVerificationTest extends TestCase
 
         $bulkRequest = new BulkOperationsRequest([
             BulkOperation::indexProducts([
-                new Product('1', 10.0, new ImageUrl('https://example.com/s.jpg', 'https://example.com/m.jpg'))
+                new Product(
+                    '1',
+                    'SKU-1',
+                    new ProductPricing(10.0, 10.0, 10.0, 10.0),
+                    new ImageUrl('https://example.com/s.jpg', 'https://example.com/m.jpg')
+                )
             ])
         ]);
 

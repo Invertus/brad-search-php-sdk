@@ -6,33 +6,37 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
  * Represents a product for bulk indexing operations.
  *
  * This immutable ValueObject contains all product fields including
- * localized fields, pricing, categories, and variants collection.
+ * localized fields, pricing, categories, and optional metadata.
  */
 final readonly class Product extends ValueObject
 {
     /**
      * @param string $id Unique product identifier
-     * @param float $price Current product price
+     * @param string $sku Stock Keeping Unit
+     * @param ProductPricing $pricing Product pricing information
      * @param ImageUrl $imageUrl Product image URLs
-     * @param array<int, ProductVariant> $variants Product variants collection
+     * @param bool|null $inStock Whether the product is in stock
+     * @param bool|null $isNew Whether the product is new
      * @param array<string, mixed> $additionalFields Localized and other dynamic fields
      */
     public function __construct(
         public string $id,
-        public float $price,
+        public string $sku,
+        public ProductPricing $pricing,
         public ImageUrl $imageUrl,
-        public array $variants = [],
+        public ?bool $inStock = null,
+        public ?bool $isNew = null,
         public array $additionalFields = []
     ) {
         $this->validateId($id);
-        $this->validatePrice($price);
-        $this->validateVariants($variants);
+        $this->validateSku($sku);
     }
 
     /**
@@ -42,23 +46,43 @@ final readonly class Product extends ValueObject
     {
         return new self(
             $id,
-            $this->price,
+            $this->sku,
+            $this->pricing,
             $this->imageUrl,
-            $this->variants,
+            $this->inStock,
+            $this->isNew,
             $this->additionalFields
         );
     }
 
     /**
-     * Returns a new instance with a different price.
+     * Returns a new instance with a different SKU.
      */
-    public function withPrice(float $price): self
+    public function withSku(string $sku): self
     {
         return new self(
             $this->id,
-            $price,
+            $sku,
+            $this->pricing,
             $this->imageUrl,
-            $this->variants,
+            $this->inStock,
+            $this->isNew,
+            $this->additionalFields
+        );
+    }
+
+    /**
+     * Returns a new instance with different pricing.
+     */
+    public function withPricing(ProductPricing $pricing): self
+    {
+        return new self(
+            $this->id,
+            $this->sku,
+            $pricing,
+            $this->imageUrl,
+            $this->inStock,
+            $this->isNew,
             $this->additionalFields
         );
     }
@@ -70,38 +94,45 @@ final readonly class Product extends ValueObject
     {
         return new self(
             $this->id,
-            $this->price,
+            $this->sku,
+            $this->pricing,
             $imageUrl,
-            $this->variants,
+            $this->inStock,
+            $this->isNew,
             $this->additionalFields
         );
     }
 
     /**
-     * Returns a new instance with different variants.
-     *
-     * @param array<int, ProductVariant> $variants
+     * Returns a new instance with a different inStock value.
      */
-    public function withVariants(array $variants): self
+    public function withInStock(?bool $inStock): self
     {
         return new self(
             $this->id,
-            $this->price,
+            $this->sku,
+            $this->pricing,
             $this->imageUrl,
-            $variants,
+            $inStock,
+            $this->isNew,
             $this->additionalFields
         );
     }
 
     /**
-     * Returns a new instance with an added variant.
+     * Returns a new instance with a different isNew value.
      */
-    public function withAddedVariant(ProductVariant $variant): self
+    public function withIsNew(?bool $isNew): self
     {
-        $variants = $this->variants;
-        $variants[] = $variant;
-
-        return $this->withVariants($variants);
+        return new self(
+            $this->id,
+            $this->sku,
+            $this->pricing,
+            $this->imageUrl,
+            $this->inStock,
+            $isNew,
+            $this->additionalFields
+        );
     }
 
     /**
@@ -113,9 +144,11 @@ final readonly class Product extends ValueObject
     {
         return new self(
             $this->id,
-            $this->price,
+            $this->sku,
+            $this->pricing,
             $this->imageUrl,
-            $this->variants,
+            $this->inStock,
+            $this->isNew,
             $additionalFields
         );
     }
@@ -138,21 +171,25 @@ final readonly class Product extends ValueObject
     {
         $result = [
             'id' => $this->id,
-            'price' => $this->price,
+            'sku' => $this->sku,
+            'price' => $this->pricing->price,
+            'basePrice' => $this->pricing->basePrice,
+            'priceTaxExcluded' => $this->pricing->priceTaxExcluded,
+            'basePriceTaxExcluded' => $this->pricing->basePriceTaxExcluded,
             'imageUrl' => $this->imageUrl->jsonSerialize(),
         ];
+
+        if ($this->inStock !== null) {
+            $result['inStock'] = $this->inStock;
+        }
+
+        if ($this->isNew !== null) {
+            $result['isNew'] = $this->isNew;
+        }
 
         // Add localized and dynamic fields
         foreach ($this->additionalFields as $key => $value) {
             $result[$key] = $value;
-        }
-
-        // Add variants if present
-        if (count($this->variants) > 0) {
-            $result['variants'] = array_map(
-                fn(ProductVariant $variant) => $variant->jsonSerialize(),
-                $this->variants
-            );
         }
 
         return $result;
@@ -175,31 +212,14 @@ final readonly class Product extends ValueObject
     /**
      * @throws InvalidArgumentException
      */
-    private function validatePrice(float $price): void
+    private function validateSku(string $sku): void
     {
-        if ($price < 0) {
+        if (trim($sku) === '') {
             throw new InvalidArgumentException(
-                'The product price cannot be negative.',
-                'price',
-                $price
+                'The product SKU cannot be empty.',
+                'sku',
+                $sku
             );
-        }
-    }
-
-    /**
-     * @param array<int, ProductVariant> $variants
-     * @throws InvalidArgumentException
-     */
-    private function validateVariants(array $variants): void
-    {
-        foreach ($variants as $index => $variant) {
-            if (!$variant instanceof ProductVariant) {
-                throw new InvalidArgumentException(
-                    sprintf('Variant at index %d must be an instance of ProductVariant.', $index),
-                    'variants',
-                    $variant
-                );
-            }
         }
     }
 }

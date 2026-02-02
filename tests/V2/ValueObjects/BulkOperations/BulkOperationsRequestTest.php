@@ -12,6 +12,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
 use PHPUnit\Framework\TestCase;
@@ -26,11 +27,17 @@ class BulkOperationsRequestTest extends TestCase
         return new ImageUrl(self::SMALL_IMAGE, self::MEDIUM_IMAGE);
     }
 
+    private function createPricing(): ProductPricing
+    {
+        return new ProductPricing(99.99, 99.99, 82.64, 82.64);
+    }
+
     private function createProduct(string $id = 'prod-123'): Product
     {
         return new Product(
             $id,
-            99.99,
+            'SKU-' . $id,
+            $this->createPricing(),
             $this->createImageUrl()
         );
     }
@@ -84,7 +91,11 @@ class BulkOperationsRequestTest extends TestCase
                         'products' => [
                             [
                                 'id' => 'prod-123',
+                                'sku' => 'SKU-prod-123',
                                 'price' => 99.99,
+                                'basePrice' => 99.99,
+                                'priceTaxExcluded' => 82.64,
+                                'basePriceTaxExcluded' => 82.64,
                                 'imageUrl' => [
                                     'small' => self::SMALL_IMAGE,
                                     'medium' => self::MEDIUM_IMAGE,
@@ -202,13 +213,11 @@ class BulkOperationsRequestTest extends TestCase
 
     public function testJsonSerializeMatchesDarboDrabuziaiExample(): void
     {
+        $variantPricing = new ProductPricing(99.99, 129.99, 82.64, 107.43);
         $variant = new ProductVariant(
             '12345-M-RED',
             'SKU-12345-M-RED',
-            99.99,
-            129.99,
-            82.64,
-            107.43,
+            $variantPricing,
             'https://shop.lt/produktas-12345?size=M&color=RED',
             new ImageUrl(
                 'https://cdn.shop.lt/images/12345-small.jpg',
@@ -217,20 +226,23 @@ class BulkOperationsRequestTest extends TestCase
             ['size' => 'M', 'color' => 'RED']
         );
 
+        $productPricing = new ProductPricing(99.99, 99.99, 99.99, 99.99);
         $product = new Product(
             '12345',
-            99.99,
+            'SKU-12345',
+            $productPricing,
             new ImageUrl(
                 'https://cdn.shop.lt/images/12345-small.jpg',
                 'https://cdn.shop.lt/images/12345-medium.jpg'
             ),
-            [$variant],
+            null,
+            null,
             [
                 'name_lt-LT' => 'Darbo drabužis Premium',
                 'brand_lt-LT' => 'WorkWear Pro',
-                'sku' => 'SKU-12345',
                 'description_lt-LT' => 'Aukštos kokybės darbo drabužis',
                 'categories_lt-LT' => ['Darbo drabužiai', 'Darbo drabužiai > Kelnės'],
+                'variants' => [$variant->jsonSerialize()],
             ]
         );
 
@@ -270,12 +282,14 @@ class BulkOperationsRequestTest extends TestCase
     {
         $product = new Product(
             '12345',
-            99.99,
+            'SKU-12345',
+            new ProductPricing(99.99, 99.99, 82.64, 82.64),
             new ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Test Product']
         );
 

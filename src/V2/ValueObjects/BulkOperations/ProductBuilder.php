@@ -6,21 +6,22 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 
 /**
  * Builder for constructing Product ValueObjects with a fluent API.
  *
  * This builder simplifies the creation of complex Product objects with
- * many fields including localized fields and variants.
+ * many fields including localized fields and pricing.
  */
 final class ProductBuilder
 {
     private ?string $id = null;
-    private ?float $price = null;
+    private ?string $sku = null;
+    private ?ProductPricing $pricing = null;
     private ?ImageUrl $imageUrl = null;
-
-    /** @var array<int, ProductVariant> */
-    private array $variants = [];
+    private ?bool $inStock = null;
+    private ?bool $isNew = null;
 
     /** @var array<string, mixed> */
     private array $additionalFields = [];
@@ -35,11 +36,20 @@ final class ProductBuilder
     }
 
     /**
-     * Sets the product price.
+     * Sets the product SKU.
      */
-    public function price(float $price): self
+    public function sku(string $sku): self
     {
-        $this->price = $price;
+        $this->sku = $sku;
+        return $this;
+    }
+
+    /**
+     * Sets the product pricing.
+     */
+    public function pricing(ProductPricing $pricing): self
+    {
+        $this->pricing = $pricing;
         return $this;
     }
 
@@ -53,22 +63,20 @@ final class ProductBuilder
     }
 
     /**
-     * Adds a variant to the product.
+     * Sets the product in stock status.
      */
-    public function addVariant(ProductVariant $variant): self
+    public function inStock(?bool $inStock): self
     {
-        $this->variants[] = $variant;
+        $this->inStock = $inStock;
         return $this;
     }
 
     /**
-     * Sets all variants at once.
-     *
-     * @param array<int, ProductVariant> $variants
+     * Sets the product is new status.
      */
-    public function variants(array $variants): self
+    public function isNew(?bool $isNew): self
     {
-        $this->variants = $variants;
+        $this->isNew = $isNew;
         return $this;
     }
 
@@ -127,15 +135,6 @@ final class ProductBuilder
     }
 
     /**
-     * Sets the SKU field.
-     */
-    public function sku(string $sku): self
-    {
-        $this->additionalFields['sku'] = $sku;
-        return $this;
-    }
-
-    /**
      * Builds the Product ValueObject.
      *
      * @throws InvalidArgumentException If required fields are missing
@@ -150,10 +149,18 @@ final class ProductBuilder
             );
         }
 
-        if ($this->price === null) {
+        if ($this->sku === null) {
             throw new InvalidArgumentException(
-                'Product price is required.',
-                'price',
+                'Product SKU is required.',
+                'sku',
+                null
+            );
+        }
+
+        if ($this->pricing === null) {
+            throw new InvalidArgumentException(
+                'Product pricing is required.',
+                'pricing',
                 null
             );
         }
@@ -168,9 +175,11 @@ final class ProductBuilder
 
         return new Product(
             $this->id,
-            $this->price,
+            $this->sku,
+            $this->pricing,
             $this->imageUrl,
-            $this->variants,
+            $this->inStock,
+            $this->isNew,
             $this->additionalFields
         );
     }
@@ -181,9 +190,11 @@ final class ProductBuilder
     public function reset(): self
     {
         $this->id = null;
-        $this->price = null;
+        $this->sku = null;
+        $this->pricing = null;
         $this->imageUrl = null;
-        $this->variants = [];
+        $this->inStock = null;
+        $this->isNew = null;
         $this->additionalFields = [];
 
         return $this;

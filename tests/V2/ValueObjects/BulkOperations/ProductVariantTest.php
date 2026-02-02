@@ -7,6 +7,7 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\BulkOperations;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
 use PHPUnit\Framework\TestCase;
@@ -28,15 +29,22 @@ class ProductVariantTest extends TestCase
         return new ImageUrl(self::SMALL_IMAGE, self::MEDIUM_IMAGE);
     }
 
+    private function createPricing(): ProductPricing
+    {
+        return new ProductPricing(
+            self::PRICE,
+            self::BASE_PRICE,
+            self::PRICE_TAX_EXCLUDED,
+            self::BASE_PRICE_TAX_EXCLUDED
+        );
+    }
+
     private function createVariant(): ProductVariant
     {
         return new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
@@ -45,23 +53,18 @@ class ProductVariantTest extends TestCase
     public function testConstructorWithRequiredValues(): void
     {
         $imageUrl = $this->createImageUrl();
+        $pricing = $this->createPricing();
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $pricing,
             self::PRODUCT_URL,
             $imageUrl
         );
 
         $this->assertEquals(self::VARIANT_ID, $variant->id);
         $this->assertEquals(self::SKU, $variant->sku);
-        $this->assertEquals(self::PRICE, $variant->price);
-        $this->assertEquals(self::BASE_PRICE, $variant->basePrice);
-        $this->assertEquals(self::PRICE_TAX_EXCLUDED, $variant->priceTaxExcluded);
-        $this->assertEquals(self::BASE_PRICE_TAX_EXCLUDED, $variant->basePriceTaxExcluded);
+        $this->assertSame($pricing, $variant->pricing);
         $this->assertEquals(self::PRODUCT_URL, $variant->productUrl);
         $this->assertSame($imageUrl, $variant->imageUrl);
         $this->assertEquals([], $variant->attrs);
@@ -73,10 +76,7 @@ class ProductVariantTest extends TestCase
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl(),
             $attrs
@@ -105,10 +105,7 @@ class ProductVariantTest extends TestCase
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl(),
             $attrs
@@ -174,48 +171,15 @@ class ProductVariantTest extends TestCase
         $this->assertEquals($newSku, $newVariant->sku);
     }
 
-    public function testWithPriceReturnsNewInstance(): void
+    public function testWithPricingReturnsNewInstance(): void
     {
         $variant = $this->createVariant();
-        $newPrice = 149.99;
-        $newVariant = $variant->withPrice($newPrice);
+        $newPricing = new ProductPricing(149.99, 179.99, 123.97, 148.76);
+        $newVariant = $variant->withPricing($newPricing);
 
         $this->assertNotSame($variant, $newVariant);
-        $this->assertEquals(self::PRICE, $variant->price);
-        $this->assertEquals($newPrice, $newVariant->price);
-    }
-
-    public function testWithBasePriceReturnsNewInstance(): void
-    {
-        $variant = $this->createVariant();
-        $newBasePrice = 199.99;
-        $newVariant = $variant->withBasePrice($newBasePrice);
-
-        $this->assertNotSame($variant, $newVariant);
-        $this->assertEquals(self::BASE_PRICE, $variant->basePrice);
-        $this->assertEquals($newBasePrice, $newVariant->basePrice);
-    }
-
-    public function testWithPriceTaxExcludedReturnsNewInstance(): void
-    {
-        $variant = $this->createVariant();
-        $newPriceTaxExcluded = 123.97;
-        $newVariant = $variant->withPriceTaxExcluded($newPriceTaxExcluded);
-
-        $this->assertNotSame($variant, $newVariant);
-        $this->assertEquals(self::PRICE_TAX_EXCLUDED, $variant->priceTaxExcluded);
-        $this->assertEquals($newPriceTaxExcluded, $newVariant->priceTaxExcluded);
-    }
-
-    public function testWithBasePriceTaxExcludedReturnsNewInstance(): void
-    {
-        $variant = $this->createVariant();
-        $newBasePriceTaxExcluded = 165.29;
-        $newVariant = $variant->withBasePriceTaxExcluded($newBasePriceTaxExcluded);
-
-        $this->assertNotSame($variant, $newVariant);
-        $this->assertEquals(self::BASE_PRICE_TAX_EXCLUDED, $variant->basePriceTaxExcluded);
-        $this->assertEquals($newBasePriceTaxExcluded, $newVariant->basePriceTaxExcluded);
+        $this->assertEquals(self::PRICE, $variant->pricing->price);
+        $this->assertEquals(149.99, $newVariant->pricing->price);
     }
 
     public function testWithProductUrlReturnsNewInstance(): void
@@ -269,10 +233,7 @@ class ProductVariantTest extends TestCase
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl(),
             ['size' => 'M']
@@ -286,11 +247,11 @@ class ProductVariantTest extends TestCase
     public function testChainedWithMethods(): void
     {
         $variant = $this->createVariant()
-            ->withPrice(199.99)
+            ->withPricing(new ProductPricing(199.99, 249.99, 165.29, 206.61))
             ->withAddedAttr('size', 'L')
             ->withAddedAttr('color', 'Red');
 
-        $this->assertEquals(199.99, $variant->price);
+        $this->assertEquals(199.99, $variant->pricing->price);
         $this->assertEquals(['size' => 'L', 'color' => 'Red'], $variant->attrs);
     }
 
@@ -302,10 +263,7 @@ class ProductVariantTest extends TestCase
         new ProductVariant(
             '',
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
@@ -319,10 +277,7 @@ class ProductVariantTest extends TestCase
         new ProductVariant(
             '   ',
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
@@ -336,78 +291,7 @@ class ProductVariantTest extends TestCase
         new ProductVariant(
             self::VARIANT_ID,
             '',
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
-            self::PRODUCT_URL,
-            $this->createImageUrl()
-        );
-    }
-
-    public function testThrowsExceptionForNegativePrice(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The price cannot be negative.');
-
-        new ProductVariant(
-            self::VARIANT_ID,
-            self::SKU,
-            -10.00,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
-            self::PRODUCT_URL,
-            $this->createImageUrl()
-        );
-    }
-
-    public function testThrowsExceptionForNegativeBasePrice(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The basePrice cannot be negative.');
-
-        new ProductVariant(
-            self::VARIANT_ID,
-            self::SKU,
-            self::PRICE,
-            -10.00,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
-            self::PRODUCT_URL,
-            $this->createImageUrl()
-        );
-    }
-
-    public function testThrowsExceptionForNegativePriceTaxExcluded(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The priceTaxExcluded cannot be negative.');
-
-        new ProductVariant(
-            self::VARIANT_ID,
-            self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            -10.00,
-            self::BASE_PRICE_TAX_EXCLUDED,
-            self::PRODUCT_URL,
-            $this->createImageUrl()
-        );
-    }
-
-    public function testThrowsExceptionForNegativeBasePriceTaxExcluded(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The basePriceTaxExcluded cannot be negative.');
-
-        new ProductVariant(
-            self::VARIANT_ID,
-            self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            -10.00,
+            $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
@@ -421,10 +305,7 @@ class ProductVariantTest extends TestCase
         new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             '',
             $this->createImageUrl()
         );
@@ -438,10 +319,7 @@ class ProductVariantTest extends TestCase
         new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             'not-a-url',
             $this->createImageUrl()
         );
@@ -453,10 +331,7 @@ class ProductVariantTest extends TestCase
             new ProductVariant(
                 '',
                 self::SKU,
-                self::PRICE,
-                self::BASE_PRICE,
-                self::PRICE_TAX_EXCLUDED,
-                self::BASE_PRICE_TAX_EXCLUDED,
+                $this->createPricing(),
                 self::PRODUCT_URL,
                 $this->createImageUrl()
             );
@@ -477,16 +352,6 @@ class ProductVariantTest extends TestCase
         $variant->withId('');
     }
 
-    public function testWithPriceValidatesNewValue(): void
-    {
-        $variant = $this->createVariant();
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The price cannot be negative.');
-
-        $variant->withPrice(-1.00);
-    }
-
     public function testWithProductUrlValidatesNewValue(): void
     {
         $variant = $this->createVariant();
@@ -497,21 +362,18 @@ class ProductVariantTest extends TestCase
         $variant->withProductUrl('invalid-url');
     }
 
-    public function testAcceptsZeroPrice(): void
+    public function testAcceptsZeroPrices(): void
     {
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            0.0,
-            0.0,
-            0.0,
-            0.0,
+            new ProductPricing(0.0, 0.0, 0.0, 0.0),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
 
-        $this->assertEquals(0.0, $variant->price);
-        $this->assertEquals(0.0, $variant->basePrice);
+        $this->assertEquals(0.0, $variant->pricing->price);
+        $this->assertEquals(0.0, $variant->pricing->basePrice);
     }
 
     public function testAcceptsHttpUrl(): void
@@ -519,10 +381,7 @@ class ProductVariantTest extends TestCase
         $variant = new ProductVariant(
             self::VARIANT_ID,
             self::SKU,
-            self::PRICE,
-            self::BASE_PRICE,
-            self::PRICE_TAX_EXCLUDED,
-            self::BASE_PRICE_TAX_EXCLUDED,
+            $this->createPricing(),
             'http://shop.example.com/product',
             $this->createImageUrl()
         );

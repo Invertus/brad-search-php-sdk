@@ -16,6 +16,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
@@ -265,13 +266,17 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         string $brand,
         float $price
     ): Product {
-        $variant = new ProductVariant(
-            $id . '-M-RED',
-            'SKU-' . $id . '-M-RED',
+        $variantPricing = new ProductPricing(
             $price,
             $price * 1.3,
             $price * 0.83,
-            $price * 1.08,
+            $price * 1.08
+        );
+
+        $variant = new ProductVariant(
+            $id . '-M-RED',
+            'SKU-' . $id . '-M-RED',
+            $variantPricing,
             'https://shop.lt/produktas-' . $id . '?size=M&color=RED',
             new ImageUrl(
                 'https://cdn.shop.lt/images/' . $id . '-small.jpg',
@@ -280,20 +285,24 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             ['size' => 'M', 'color' => 'RED']
         );
 
+        $productPricing = new ProductPricing($price, $price, $price, $price);
+
         return new Product(
             $id,
-            $price,
+            'SKU-' . $id,
+            $productPricing,
             new ImageUrl(
                 'https://cdn.shop.lt/images/' . $id . '-small.jpg',
                 'https://cdn.shop.lt/images/' . $id . '-medium.jpg'
             ),
-            [$variant],
+            null,
+            null,
             [
                 'name_lt-LT' => $name,
                 'brand_lt-LT' => $brand,
-                'sku' => 'SKU-' . $id,
                 'description_lt-LT' => 'Aukštos kokybės ' . strtolower($name),
                 'categories_lt-LT' => ['Darbo drabužiai', 'Darbo drabužiai > Kelnės'],
+                'variants' => [$variant->jsonSerialize()],
             ]
         );
     }

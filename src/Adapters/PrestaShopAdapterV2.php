@@ -10,6 +10,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 
 /**
  * Transforms PrestaShop product data into V2 ValueObjects for bulk operations.
@@ -80,27 +81,22 @@ class PrestaShopAdapterV2
     public function transformProduct(array $product): Product
     {
         $id = $this->getRequiredField($product, 'remoteId');
-        $price = $this->extractPrice($product, 'price');
+        $sku = $this->getRequiredField($product, 'sku');
+
+        $pricing = new ProductPricing(
+            $this->extractPrice($product, 'price'),
+            $this->extractPrice($product, 'basePrice'),
+            $this->extractPrice($product, 'priceTaxExcluded'),
+            $this->extractPrice($product, 'basePriceTaxExcluded')
+        );
+
         $imageUrl = $this->transformImageUrl($product['imageUrl'] ?? []);
 
-        $additionalFields = [];
-
-        // Add required price fields
-        $additionalFields['sku'] = $this->getRequiredField($product, 'sku');
-        $additionalFields['basePrice'] = $this->extractPrice($product, 'basePrice');
-        $additionalFields['priceTaxExcluded'] = $this->extractPrice($product, 'priceTaxExcluded');
-        $additionalFields['basePriceTaxExcluded'] = $this->extractPrice($product, 'basePriceTaxExcluded');
-
-        // Add optional boolean fields
+        // Extract optional boolean fields
         $inStock = $this->validateBooleanField($product['inStock'] ?? null);
-        if ($inStock !== null) {
-            $additionalFields['inStock'] = $inStock;
-        }
-
         $isNew = $this->validateBooleanField($product['isNew'] ?? null);
-        if ($isNew !== null) {
-            $additionalFields['isNew'] = $isNew;
-        }
+
+        $additionalFields = [];
 
         // Add optional product identifiers
         if (isset($product['ean13']) && $product['ean13'] !== null && $product['ean13'] !== '') {
@@ -152,9 +148,11 @@ class PrestaShopAdapterV2
 
         return new Product(
             id: $id,
-            price: $price,
+            sku: $sku,
+            pricing: $pricing,
             imageUrl: $imageUrl,
-            variants: [],
+            inStock: $inStock,
+            isNew: $isNew,
             additionalFields: $additionalFields
         );
     }
@@ -178,10 +176,12 @@ class PrestaShopAdapterV2
             throw new ValidationException("Variant 'sku' is required");
         }
 
-        $price = $this->extractPrice($variant, 'price');
-        $basePrice = $this->extractPrice($variant, 'basePrice');
-        $priceTaxExcluded = $this->extractPrice($variant, 'priceTaxExcluded');
-        $basePriceTaxExcluded = $this->extractPrice($variant, 'basePriceTaxExcluded');
+        $pricing = new ProductPricing(
+            $this->extractPrice($variant, 'price'),
+            $this->extractPrice($variant, 'basePrice'),
+            $this->extractPrice($variant, 'priceTaxExcluded'),
+            $this->extractPrice($variant, 'basePriceTaxExcluded')
+        );
 
         $productUrl = $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale);
         if ($productUrl === '') {
@@ -195,10 +195,7 @@ class PrestaShopAdapterV2
         return new ProductVariant(
             id: $id,
             sku: $sku,
-            price: $price,
-            basePrice: $basePrice,
-            priceTaxExcluded: $priceTaxExcluded,
-            basePriceTaxExcluded: $basePriceTaxExcluded,
+            pricing: $pricing,
             productUrl: $productUrl,
             imageUrl: $imageUrl,
             attrs: $attrs
@@ -216,7 +213,7 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Transform variants grouped by locale.
+     * Transform variants with all locales embedded in attrs.
      *
      * @param mixed $variants
      * @return array<string, array<int, array<string, mixed>>>
@@ -227,83 +224,103 @@ class PrestaShopAdapterV2
             return [];
         }
 
-        $variantsByLocale = [];
+        $transformedVariants = [];
 
         foreach ($variants as $variant) {
             if (!is_array($variant) || !isset($variant['remoteId']) || $variant['remoteId'] === null) {
                 continue;
             }
 
-            $locales = $this->getAllLocalesFromVariant($variant);
-
-            if (empty($locales)) {
+            // Get product URL from any available locale
+            $productUrl = $this->extractFirstLocaleValue($variant['productUrl']['localizedValues'] ?? []);
+            if ($productUrl === '') {
                 continue;
             }
 
-            foreach ($locales as $locale) {
-                if ($locale === '') {
-                    continue;
-                }
+            $transformedVariant = [
+                'id' => (string) $variant['remoteId'],
+                'sku' => $variant['sku'] ?? '',
+            ];
 
-                $transformedVariant = [
-                    'id' => (string) $variant['remoteId'],
-                    'sku' => $variant['sku'] ?? '',
-                    'productUrl' => $this->getLocaleSpecificUrl($variant['productUrl']['localizedValues'] ?? [], $locale),
-                    'attributes' => $this->transformVariantAttributesForLocale($variant['attributes'] ?? [], $locale),
-                ];
-
-                // Add variant-level prices if available
-                if (isset($variant['price'])) {
-                    $transformedVariant['price'] = $this->extractPrice($variant, 'price');
-                }
-                if (isset($variant['basePrice'])) {
-                    $transformedVariant['basePrice'] = $this->extractPrice($variant, 'basePrice');
-                }
-                if (isset($variant['priceTaxExcluded'])) {
-                    $transformedVariant['priceTaxExcluded'] = $this->extractPrice($variant, 'priceTaxExcluded');
-                }
-                if (isset($variant['basePriceTaxExcluded'])) {
-                    $transformedVariant['basePriceTaxExcluded'] = $this->extractPrice($variant, 'basePriceTaxExcluded');
-                }
-
-                // Add variant-level imageUrl if available
-                if (isset($variant['imageUrl']) && is_array($variant['imageUrl'])) {
-                    $transformedVariant['imageUrl'] = $this->transformImageUrlToArray($variant['imageUrl']);
-                }
-
-                $key = $locale === 'en-US' ? 'variants' : "variants_{$locale}";
-                $variantsByLocale[$key][] = $transformedVariant;
+            // Add variant-level prices if available
+            if (isset($variant['price'])) {
+                $transformedVariant['price'] = $this->extractPrice($variant, 'price');
             }
+            if (isset($variant['basePrice'])) {
+                $transformedVariant['basePrice'] = $this->extractPrice($variant, 'basePrice');
+            }
+            if (isset($variant['priceTaxExcluded'])) {
+                $transformedVariant['priceTaxExcluded'] = $this->extractPrice($variant, 'priceTaxExcluded');
+            }
+            if (isset($variant['basePriceTaxExcluded'])) {
+                $transformedVariant['basePriceTaxExcluded'] = $this->extractPrice($variant, 'basePriceTaxExcluded');
+            }
+
+            $transformedVariant['productUrl'] = $productUrl;
+
+            // Add variant-level imageUrl if available
+            if (isset($variant['imageUrl']) && is_array($variant['imageUrl'])) {
+                $transformedVariant['imageUrl'] = $this->transformImageUrlToArray($variant['imageUrl']);
+            }
+
+            // Transform attrs with numeric indices and locale-keyed values
+            $transformedVariant['attrs'] = $this->transformVariantAttrsWithLocales($variant['attributes'] ?? []);
+
+            $transformedVariants[] = $transformedVariant;
         }
 
-        return $variantsByLocale;
+        if (empty($transformedVariants)) {
+            return [];
+        }
+
+        return ['variants' => $transformedVariants];
     }
 
     /**
-     * Get all locales available in a variant (from attributes and URLs).
+     * Transform variant attributes using remoteId as key and locale-keyed values.
      *
-     * @param array<string, mixed> $variant
-     * @return array<int, string>
+     * Output format: {"123": {"lt-LT": "8"}, "456": {"lt-LT": "Juoda"}}
+     * Where 123 and 456 are attribute remoteIds.
+     *
+     * @param array<int|string, mixed> $attributes
+     * @return array<string, array<string, string>>
      */
-    private function getAllLocalesFromVariant(array $variant): array
+    private function transformVariantAttrsWithLocales(array $attributes): array
     {
-        $locales = [];
+        $attrs = [];
 
-        // Get locales from product URLs
-        if (isset($variant['productUrl']['localizedValues']) && is_array($variant['productUrl']['localizedValues'])) {
-            $locales = array_merge($locales, array_keys($variant['productUrl']['localizedValues']));
-        }
+        foreach ($attributes as $attributeData) {
+            if (
+                !is_array($attributeData) ||
+                !isset($attributeData['remoteId']) ||
+                !isset($attributeData['localizedValues']) ||
+                !is_array($attributeData['localizedValues'])
+            ) {
+                continue;
+            }
 
-        // Get locales from attributes
-        if (isset($variant['attributes']) && is_array($variant['attributes'])) {
-            foreach ($variant['attributes'] as $attributeData) {
-                if (is_array($attributeData) && isset($attributeData['localizedValues']) && is_array($attributeData['localizedValues'])) {
-                    $locales = array_merge($locales, array_keys($attributeData['localizedValues']));
+            $remoteId = (string) $attributeData['remoteId'];
+            if ($remoteId === '') {
+                continue;
+            }
+
+            $localeValues = [];
+            foreach ($attributeData['localizedValues'] as $locale => $value) {
+                if (
+                    !is_string($locale) || $locale === '' ||
+                    $value === null || $value === ''
+                ) {
+                    continue;
                 }
+                $localeValues[$locale] = (string) $value;
+            }
+
+            if (!empty($localeValues)) {
+                $attrs[$remoteId] = $localeValues;
             }
         }
 
-        return array_unique($locales);
+        return $attrs;
     }
 
     /**

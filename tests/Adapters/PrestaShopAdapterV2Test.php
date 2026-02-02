@@ -10,6 +10,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use PHPUnit\Framework\TestCase;
 
 class PrestaShopAdapterV2Test extends TestCase
@@ -124,16 +125,17 @@ class PrestaShopAdapterV2Test extends TestCase
 
         $this->assertInstanceOf(Product::class, $product);
         $this->assertEquals('1807', $product->id);
-        $this->assertEquals(99.99, $product->price);
+        $this->assertEquals('M0E20000000EAAK', $product->sku);
+        $this->assertInstanceOf(ProductPricing::class, $product->pricing);
+        $this->assertEquals(99.99, $product->pricing->price);
+        $this->assertEquals(109.99, $product->pricing->basePrice);
+        $this->assertEquals(82.64, $product->pricing->priceTaxExcluded);
+        $this->assertEquals(90.90, $product->pricing->basePriceTaxExcluded);
         $this->assertInstanceOf(ImageUrl::class, $product->imageUrl);
         $this->assertEquals('http://prestashop/5309-small_default/sneakers.jpg', $product->imageUrl->small);
         $this->assertEquals('http://prestashop/5309-medium_default/sneakers.jpg', $product->imageUrl->medium);
 
         // Check additional fields
-        $this->assertEquals('M0E20000000EAAK', $product->additionalFields['sku']);
-        $this->assertEquals(109.99, $product->additionalFields['basePrice']);
-        $this->assertEquals(82.64, $product->additionalFields['priceTaxExcluded']);
-        $this->assertEquals(90.90, $product->additionalFields['basePriceTaxExcluded']);
         $this->assertEquals('Sneakers "101H" Springa multi', $product->additionalFields['name']);
         $this->assertEquals('Springa', $product->additionalFields['brand']);
         $this->assertEquals('http://prestashop/sneakers/1807-sneakers.html', $product->additionalFields['productUrl']);
@@ -230,12 +232,14 @@ class PrestaShopAdapterV2Test extends TestCase
                             'priceTaxExcluded' => 82.64,
                             'basePriceTaxExcluded' => 82.64,
                             'attributes' => [
-                                'Size' => [
+                                [
+                                    'remoteId' => '201',
                                     'localizedValues' => [
                                         'en-US' => '34',
                                     ],
                                 ],
-                                'Color' => [
+                                [
+                                    'remoteId' => '202',
                                     'localizedValues' => [
                                         'en-US' => 'multi',
                                     ],
@@ -272,7 +276,8 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertEquals(99.99, $variant['basePrice']);
         $this->assertEquals(82.64, $variant['priceTaxExcluded']);
         $this->assertEquals(82.64, $variant['basePriceTaxExcluded']);
-        $this->assertEquals(['size' => '34', 'color' => 'multi'], $variant['attributes']);
+        // attrs uses remoteId as keys with locale values
+        $this->assertEquals(['201' => ['en-US' => '34'], '202' => ['en-US' => 'multi']], $variant['attrs']);
         $this->assertArrayHasKey('imageUrl', $variant);
         $this->assertEquals('http://prestashop/5309-var1-small.jpg', $variant['imageUrl']['small']);
     }
@@ -301,7 +306,8 @@ class PrestaShopAdapterV2Test extends TestCase
                             'remoteId' => '26911',
                             'sku' => 'VARIANT-SKU',
                             'attributes' => [
-                                'Color' => [
+                                [
+                                    'remoteId' => '301',
                                     'localizedValues' => [
                                         'en-US' => 'Red',
                                         'lt-LT' => 'Raudona',
@@ -323,15 +329,20 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        // en-US variant
+        // All locales are now in a single 'variants' array with attrs containing all locale values
         $this->assertArrayHasKey('variants', $product->additionalFields);
         $this->assertCount(1, $product->additionalFields['variants']);
-        $this->assertEquals('Red', $product->additionalFields['variants'][0]['attributes']['color']);
 
-        // lt-LT variant
-        $this->assertArrayHasKey('variants_lt-LT', $product->additionalFields);
-        $this->assertCount(1, $product->additionalFields['variants_lt-LT']);
-        $this->assertEquals('Raudona', $product->additionalFields['variants_lt-LT'][0]['attributes']['color']);
+        // attrs now contains all locales for the attribute
+        $variant = $product->additionalFields['variants'][0];
+        $this->assertEquals('26911', $variant['id']);
+        $this->assertEquals('VARIANT-SKU', $variant['sku']);
+        $this->assertEquals([
+            '301' => [
+                'en-US' => 'Red',
+                'lt-LT' => 'Raudona',
+            ],
+        ], $variant['attrs']);
     }
 
     public function testTransformProductMethod(): void
@@ -358,8 +369,8 @@ class PrestaShopAdapterV2Test extends TestCase
 
         $this->assertInstanceOf(Product::class, $result);
         $this->assertEquals('1807', $result->id);
-        $this->assertEquals(49.99, $result->price);
-        $this->assertEquals('TEST-SKU', $result->additionalFields['sku']);
+        $this->assertEquals('TEST-SKU', $result->sku);
+        $this->assertEquals(49.99, $result->pricing->price);
     }
 
     public function testTransformVariantMethod(): void
@@ -394,12 +405,14 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertInstanceOf(ProductVariant::class, $result);
         $this->assertEquals('12345', $result->id);
         $this->assertEquals('VARIANT-SKU-001', $result->sku);
-        $this->assertEquals(29.99, $result->price);
-        $this->assertEquals(39.99, $result->basePrice);
-        $this->assertEquals(24.79, $result->priceTaxExcluded);
-        $this->assertEquals(33.05, $result->basePriceTaxExcluded);
+        $this->assertInstanceOf(ProductPricing::class, $result->pricing);
+        $this->assertEquals(29.99, $result->pricing->price);
+        $this->assertEquals(39.99, $result->pricing->basePrice);
+        $this->assertEquals(24.79, $result->pricing->priceTaxExcluded);
+        $this->assertEquals(33.05, $result->pricing->basePriceTaxExcluded);
         $this->assertEquals('http://example.com/product/variant', $result->productUrl);
         $this->assertInstanceOf(ImageUrl::class, $result->imageUrl);
+        // transformVariant still uses named attrs for locale-specific extraction
         $this->assertEquals(['size' => 'Large'], $result->attrs);
     }
 
@@ -596,10 +609,8 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        $this->assertArrayHasKey('inStock', $product->additionalFields);
-        $this->assertTrue($product->additionalFields['inStock']);
-        $this->assertArrayHasKey('isNew', $product->additionalFields);
-        $this->assertFalse($product->additionalFields['isNew']);
+        $this->assertTrue($product->inStock);
+        $this->assertFalse($product->isNew);
     }
 
     public function testTransformProductWithOptionalIdentifiers(): void
@@ -839,6 +850,225 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertEquals('http://example.com/medium.jpg', $product->imageUrl->medium);
         $this->assertEquals('http://example.com/large.jpg', $product->imageUrl->large);
         $this->assertEquals('http://example.com/thumbnail.jpg', $product->imageUrl->thumbnail);
+    }
+
+    public function testDarboDrabuziaiClientMapping(): void
+    {
+        // Input: PrestaShop data matching real DarboDrabuziai client format (lt-LT locale)
+        // This test verifies the exact JSON structure that will be sent to the sync API
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => 'prod-123',
+                    'sku' => 'MAIN-SKU',
+                    'price' => 9.99,
+                    'basePrice' => 12.99,
+                    'priceTaxExcluded' => 8.26,
+                    'basePriceTaxExcluded' => 10.74,
+                    'localizedNames' => [
+                        'lt-LT' => 'Darbo pirštinės',
+                    ],
+                    'brand' => [
+                        'localizedNames' => [
+                            'lt-LT' => 'SafetyFirst',
+                        ],
+                    ],
+                    'imageUrl' => [
+                        'small' => 'https://www.darbodrabuziai.lt/img/main-s.jpg',
+                        'medium' => 'https://www.darbodrabuziai.lt/img/main.jpg',
+                    ],
+                    'productUrl' => [
+                        'lt-LT' => 'https://www.darbodrabuziai.lt/produktai/pirstines',
+                    ],
+                    'categories' => [],
+                    'variants' => [
+                        [
+                            'remoteId' => '4107',
+                            'sku' => 'GLOVES-4107',
+                            'price' => 1.64,
+                            'basePrice' => 2.05,
+                            'priceTaxExcluded' => 1.36,
+                            'basePriceTaxExcluded' => 1.69,
+                            'productUrl' => [
+                                'localizedValues' => [
+                                    'lt-LT' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4107',
+                                ],
+                            ],
+                            'imageUrl' => [
+                                'small' => 'https://www.darbodrabuziai.lt/img/4107-s.jpg',
+                                'medium' => 'https://www.darbodrabuziai.lt/img/4107.jpg',
+                            ],
+                            'attributes' => [
+                                [
+                                    'remoteId' => '101',
+                                    'localizedValues' => [
+                                        'lt-LT' => '8',
+                                    ],
+                                ],
+                                [
+                                    'remoteId' => '102',
+                                    'localizedValues' => [
+                                        'lt-LT' => 'Juoda',
+                                    ],
+                                ],
+                            ],
+                        ],
+                        [
+                            'remoteId' => '4108',
+                            'sku' => 'GLOVES-4108',
+                            'price' => 1.64,
+                            'basePrice' => 2.05,
+                            'priceTaxExcluded' => 1.36,
+                            'basePriceTaxExcluded' => 1.69,
+                            'productUrl' => [
+                                'localizedValues' => [
+                                    'lt-LT' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4108',
+                                ],
+                            ],
+                            'imageUrl' => [
+                                'small' => 'https://www.darbodrabuziai.lt/img/4108-s.jpg',
+                                'medium' => 'https://www.darbodrabuziai.lt/img/4108.jpg',
+                            ],
+                            'attributes' => [
+                                [
+                                    'remoteId' => '101',
+                                    'localizedValues' => [
+                                        'lt-LT' => '9',
+                                    ],
+                                ],
+                                [
+                                    'remoteId' => '102',
+                                    'localizedValues' => [
+                                        'lt-LT' => 'Juoda',
+                                    ],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+
+        $product = $result['products'][0];
+
+        // Verify product fields
+        $this->assertEquals('prod-123', $product->id);
+        $this->assertEquals('MAIN-SKU', $product->sku);
+        $this->assertEquals(9.99, $product->pricing->price);
+        $this->assertEquals(12.99, $product->pricing->basePrice);
+        $this->assertEquals(8.26, $product->pricing->priceTaxExcluded);
+        $this->assertEquals(10.74, $product->pricing->basePriceTaxExcluded);
+
+        // Verify localized fields
+        $this->assertEquals('Darbo pirštinės', $product->additionalFields['name_lt-LT']);
+        $this->assertEquals('SafetyFirst', $product->additionalFields['brand_lt-LT']);
+        $this->assertEquals('https://www.darbodrabuziai.lt/produktai/pirstines', $product->additionalFields['productUrl_lt-LT']);
+
+        // Verify variants structure - now just 'variants', not 'variants_lt-LT'
+        $this->assertArrayHasKey('variants', $product->additionalFields);
+        $variants = $product->additionalFields['variants'];
+        $this->assertCount(2, $variants);
+
+        // Verify first variant
+        $variant1 = $variants[0];
+        $this->assertEquals('4107', $variant1['id']);
+        $this->assertEquals('GLOVES-4107', $variant1['sku']);
+        $this->assertEquals(1.64, $variant1['price']);
+        $this->assertEquals(2.05, $variant1['basePrice']);
+        $this->assertEquals(1.36, $variant1['priceTaxExcluded']);
+        $this->assertEquals(1.69, $variant1['basePriceTaxExcluded']);
+        $this->assertEquals('https://www.darbodrabuziai.lt/produktai/pirstines/4107', $variant1['productUrl']);
+        $this->assertEquals('https://www.darbodrabuziai.lt/img/4107-s.jpg', $variant1['imageUrl']['small']);
+        $this->assertEquals('https://www.darbodrabuziai.lt/img/4107.jpg', $variant1['imageUrl']['medium']);
+
+        // Verify attrs with remoteId as keys and locale values
+        $this->assertArrayHasKey('attrs', $variant1);
+        $this->assertEquals(['lt-LT' => '8'], $variant1['attrs']['101']);
+        $this->assertEquals(['lt-LT' => 'Juoda'], $variant1['attrs']['102']);
+
+        // Verify second variant
+        $variant2 = $variants[1];
+        $this->assertEquals('4108', $variant2['id']);
+        $this->assertEquals('GLOVES-4108', $variant2['sku']);
+        $this->assertEquals(['lt-LT' => '9'], $variant2['attrs']['101']);
+        $this->assertEquals(['lt-LT' => 'Juoda'], $variant2['attrs']['102']);
+
+        // Verify full JSON serialization matches expected API format
+        $request = $result['request'];
+        $json = $request->jsonSerialize();
+
+        $productPayload = $json['operations'][0]['payload']['products'][0];
+
+        // Expected JSON structure (matching user-provided format)
+        $expectedProduct = [
+            'id' => 'prod-123',
+            'sku' => 'MAIN-SKU',
+            'price' => 9.99,
+            'basePrice' => 12.99,
+            'priceTaxExcluded' => 8.26,
+            'basePriceTaxExcluded' => 10.74,
+            'imageUrl' => [
+                'small' => 'https://www.darbodrabuziai.lt/img/main-s.jpg',
+                'medium' => 'https://www.darbodrabuziai.lt/img/main.jpg',
+            ],
+            'name_lt-LT' => 'Darbo pirštinės',
+            'brand_lt-LT' => 'SafetyFirst',
+            'productUrl_lt-LT' => 'https://www.darbodrabuziai.lt/produktai/pirstines',
+            'variants' => [
+                [
+                    'id' => '4107',
+                    'sku' => 'GLOVES-4107',
+                    'price' => 1.64,
+                    'basePrice' => 2.05,
+                    'priceTaxExcluded' => 1.36,
+                    'basePriceTaxExcluded' => 1.69,
+                    'productUrl' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4107',
+                    'imageUrl' => [
+                        'small' => 'https://www.darbodrabuziai.lt/img/4107-s.jpg',
+                        'medium' => 'https://www.darbodrabuziai.lt/img/4107.jpg',
+                    ],
+                    'attrs' => [
+                        '101' => ['lt-LT' => '8'],
+                        '102' => ['lt-LT' => 'Juoda'],
+                    ],
+                ],
+                [
+                    'id' => '4108',
+                    'sku' => 'GLOVES-4108',
+                    'price' => 1.64,
+                    'basePrice' => 2.05,
+                    'priceTaxExcluded' => 1.36,
+                    'basePriceTaxExcluded' => 1.69,
+                    'productUrl' => 'https://www.darbodrabuziai.lt/produktai/pirstines/4108',
+                    'imageUrl' => [
+                        'small' => 'https://www.darbodrabuziai.lt/img/4108-s.jpg',
+                        'medium' => 'https://www.darbodrabuziai.lt/img/4108.jpg',
+                    ],
+                    'attrs' => [
+                        '101' => ['lt-LT' => '9'],
+                        '102' => ['lt-LT' => 'Juoda'],
+                    ],
+                ],
+            ],
+        ];
+
+        // Verify key fields match expected structure
+        $this->assertEquals($expectedProduct['id'], $productPayload['id']);
+        $this->assertEquals($expectedProduct['sku'], $productPayload['sku']);
+        $this->assertEquals($expectedProduct['price'], $productPayload['price']);
+        $this->assertEquals($expectedProduct['basePrice'], $productPayload['basePrice']);
+        $this->assertEquals($expectedProduct['priceTaxExcluded'], $productPayload['priceTaxExcluded']);
+        $this->assertEquals($expectedProduct['basePriceTaxExcluded'], $productPayload['basePriceTaxExcluded']);
+        $this->assertEquals($expectedProduct['imageUrl'], $productPayload['imageUrl']);
+        $this->assertEquals($expectedProduct['name_lt-LT'], $productPayload['name_lt-LT']);
+        $this->assertEquals($expectedProduct['brand_lt-LT'], $productPayload['brand_lt-LT']);
+        $this->assertEquals($expectedProduct['productUrl_lt-LT'], $productPayload['productUrl_lt-LT']);
+        $this->assertEquals($expectedProduct['variants'], $productPayload['variants']);
     }
 
     /**

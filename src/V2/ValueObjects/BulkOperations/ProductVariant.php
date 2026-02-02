@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -19,10 +20,7 @@ final readonly class ProductVariant extends ValueObject
     /**
      * @param string $id Unique identifier for the variant
      * @param string $sku Stock Keeping Unit
-     * @param float $price Current price
-     * @param float $basePrice Original/base price
-     * @param float $priceTaxExcluded Price without tax
-     * @param float $basePriceTaxExcluded Base price without tax
+     * @param ProductPricing $pricing Variant pricing information
      * @param string $productUrl URL to the product variant page
      * @param ImageUrl $imageUrl Image URLs for the variant
      * @param array<string, mixed> $attrs Variant-specific attributes (e.g., size, color)
@@ -30,20 +28,13 @@ final readonly class ProductVariant extends ValueObject
     public function __construct(
         public string $id,
         public string $sku,
-        public float $price,
-        public float $basePrice,
-        public float $priceTaxExcluded,
-        public float $basePriceTaxExcluded,
+        public ProductPricing $pricing,
         public string $productUrl,
         public ImageUrl $imageUrl,
         public array $attrs = []
     ) {
         $this->validateId($id);
         $this->validateSku($sku);
-        $this->validatePrice($price, 'price');
-        $this->validatePrice($basePrice, 'basePrice');
-        $this->validatePrice($priceTaxExcluded, 'priceTaxExcluded');
-        $this->validatePrice($basePriceTaxExcluded, 'basePriceTaxExcluded');
         $this->validateProductUrl($productUrl);
     }
 
@@ -55,10 +46,7 @@ final readonly class ProductVariant extends ValueObject
         return new self(
             $id,
             $this->sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
+            $this->pricing,
             $this->productUrl,
             $this->imageUrl,
             $this->attrs
@@ -73,10 +61,7 @@ final readonly class ProductVariant extends ValueObject
         return new self(
             $this->id,
             $sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
+            $this->pricing,
             $this->productUrl,
             $this->imageUrl,
             $this->attrs
@@ -84,71 +69,14 @@ final readonly class ProductVariant extends ValueObject
     }
 
     /**
-     * Returns a new instance with a different price.
+     * Returns a new instance with different pricing.
      */
-    public function withPrice(float $price): self
+    public function withPricing(ProductPricing $pricing): self
     {
         return new self(
             $this->id,
             $this->sku,
-            $price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
-            $this->productUrl,
-            $this->imageUrl,
-            $this->attrs
-        );
-    }
-
-    /**
-     * Returns a new instance with a different base price.
-     */
-    public function withBasePrice(float $basePrice): self
-    {
-        return new self(
-            $this->id,
-            $this->sku,
-            $this->price,
-            $basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
-            $this->productUrl,
-            $this->imageUrl,
-            $this->attrs
-        );
-    }
-
-    /**
-     * Returns a new instance with a different price tax excluded.
-     */
-    public function withPriceTaxExcluded(float $priceTaxExcluded): self
-    {
-        return new self(
-            $this->id,
-            $this->sku,
-            $this->price,
-            $this->basePrice,
-            $priceTaxExcluded,
-            $this->basePriceTaxExcluded,
-            $this->productUrl,
-            $this->imageUrl,
-            $this->attrs
-        );
-    }
-
-    /**
-     * Returns a new instance with a different base price tax excluded.
-     */
-    public function withBasePriceTaxExcluded(float $basePriceTaxExcluded): self
-    {
-        return new self(
-            $this->id,
-            $this->sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $basePriceTaxExcluded,
+            $pricing,
             $this->productUrl,
             $this->imageUrl,
             $this->attrs
@@ -163,10 +91,7 @@ final readonly class ProductVariant extends ValueObject
         return new self(
             $this->id,
             $this->sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
+            $this->pricing,
             $productUrl,
             $this->imageUrl,
             $this->attrs
@@ -181,10 +106,7 @@ final readonly class ProductVariant extends ValueObject
         return new self(
             $this->id,
             $this->sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
+            $this->pricing,
             $this->productUrl,
             $imageUrl,
             $this->attrs
@@ -201,10 +123,7 @@ final readonly class ProductVariant extends ValueObject
         return new self(
             $this->id,
             $this->sku,
-            $this->price,
-            $this->basePrice,
-            $this->priceTaxExcluded,
-            $this->basePriceTaxExcluded,
+            $this->pricing,
             $this->productUrl,
             $this->imageUrl,
             $attrs
@@ -230,10 +149,10 @@ final readonly class ProductVariant extends ValueObject
         return [
             'id' => $this->id,
             'sku' => $this->sku,
-            'price' => $this->price,
-            'basePrice' => $this->basePrice,
-            'priceTaxExcluded' => $this->priceTaxExcluded,
-            'basePriceTaxExcluded' => $this->basePriceTaxExcluded,
+            'price' => $this->pricing->price,
+            'basePrice' => $this->pricing->basePrice,
+            'priceTaxExcluded' => $this->pricing->priceTaxExcluded,
+            'basePriceTaxExcluded' => $this->pricing->basePriceTaxExcluded,
             'productUrl' => $this->productUrl,
             'imageUrl' => $this->imageUrl->jsonSerialize(),
             'attrs' => $this->attrs,
@@ -264,20 +183,6 @@ final readonly class ProductVariant extends ValueObject
                 'The variant SKU cannot be empty.',
                 'sku',
                 $sku
-            );
-        }
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    private function validatePrice(float $price, string $fieldName): void
-    {
-        if ($price < 0) {
-            throw new InvalidArgumentException(
-                sprintf('The %s cannot be negative.', $fieldName),
-                $fieldName,
-                $price
             );
         }
     }

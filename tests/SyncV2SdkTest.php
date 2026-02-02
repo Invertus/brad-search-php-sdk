@@ -1492,12 +1492,14 @@ class SyncV2SdkTest extends TestCase
     {
         $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Product 1']
         );
 
@@ -1546,7 +1548,8 @@ class SyncV2SdkTest extends TestCase
     {
         $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
@@ -1590,7 +1593,8 @@ class SyncV2SdkTest extends TestCase
     {
         $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
@@ -1618,7 +1622,8 @@ class SyncV2SdkTest extends TestCase
     {
         $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
@@ -1646,12 +1651,14 @@ class SyncV2SdkTest extends TestCase
     {
         $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Test Product']
         );
 
@@ -1676,23 +1683,27 @@ class SyncV2SdkTest extends TestCase
     {
         $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-123',
-            99.99,
+            'SKU-123',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small.jpg',
                 'https://cdn.example.com/medium.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Product 1']
         );
 
         $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-124',
-            149.99,
+            'SKU-124',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(149.99, 149.99, 123.97, 123.97),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small2.jpg',
                 'https://cdn.example.com/medium2.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Product 2']
         );
 
@@ -2289,23 +2300,27 @@ class SyncV2SdkTest extends TestCase
     {
         $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-1',
-            99.99,
+            'SKU-1',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small1.jpg',
                 'https://cdn.example.com/medium1.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Product 1']
         );
 
         $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
             'prod-2',
-            149.99,
+            'SKU-2',
+            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(149.99, 149.99, 123.97, 123.97),
             new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
                 'https://cdn.example.com/small2.jpg',
                 'https://cdn.example.com/medium2.jpg'
             ),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Product 2']
         );
 

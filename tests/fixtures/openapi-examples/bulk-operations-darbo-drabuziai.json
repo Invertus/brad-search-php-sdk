@@ -5,33 +5,60 @@
             "payload": {
                 "products": [
                     {
-                        "id": "12345",
-                        "price": 99.99,
+                        "id": "prod-123",
+                        "sku": "MAIN-SKU",
+                        "price": 9.99,
+                        "basePrice": 12.99,
+                        "priceTaxExcluded": 8.26,
+                        "basePriceTaxExcluded": 10.74,
                         "imageUrl": {
-                            "small": "https://cdn.shop.lt/images/12345-small.jpg",
-                            "medium": "https://cdn.shop.lt/images/12345-medium.jpg"
+                            "small": "https://www.darbodrabuziai.lt/img/main-s.jpg",
+                            "medium": "https://www.darbodrabuziai.lt/img/main.jpg"
                         },
-                        "name_lt-LT": "Darbo drabužis Premium",
-                        "brand_lt-LT": "WorkWear Pro",
-                        "sku": "SKU-12345",
-                        "description_lt-LT": "Aukštos kokybės darbo drabužis",
-                        "categories_lt-LT": ["Darbo drabužiai", "Darbo drabužiai > Kelnės"],
+                        "name_lt-LT": "Darbo pirštinės",
+                        "brand_lt-LT": "SafetyFirst",
+                        "productUrl_lt-LT": "https://www.darbodrabuziai.lt/produktai/pirstines",
                         "variants": [
                             {
-                                "id": "12345-M-RED",
-                                "sku": "SKU-12345-M-RED",
-                                "price": 99.99,
-                                "basePrice": 129.99,
-                                "priceTaxExcluded": 82.64,
-                                "basePriceTaxExcluded": 107.43,
-                                "productUrl": "https://shop.lt/produktas-12345?size=M&color=RED",
+                                "id": "4107",
+                                "sku": "GLOVES-4107",
+                                "price": 1.64,
+                                "basePrice": 2.05,
+                                "priceTaxExcluded": 1.36,
+                                "basePriceTaxExcluded": 1.69,
+                                "productUrl": "https://www.darbodrabuziai.lt/produktai/pirstines/4107",
                                 "imageUrl": {
-                                    "small": "https://cdn.shop.lt/images/12345-small.jpg",
-                                    "medium": "https://cdn.shop.lt/images/12345-medium.jpg"
+                                    "small": "https://www.darbodrabuziai.lt/img/4107-s.jpg",
+                                    "medium": "https://www.darbodrabuziai.lt/img/4107.jpg"
                                 },
                                 "attrs": {
-                                    "size": "M",
-                                    "color": "RED"
+                                    "101": {
+                                        "lt-LT": "8"
+                                    },
+                                    "102": {
+                                        "lt-LT": "Juoda"
+                                    }
+                                }
+                            },
+                            {
+                                "id": "4108",
+                                "sku": "GLOVES-4108",
+                                "price": 1.64,
+                                "basePrice": 2.05,
+                                "priceTaxExcluded": 1.36,
+                                "basePriceTaxExcluded": 1.69,
+                                "productUrl": "https://www.darbodrabuziai.lt/produktai/pirstines/4108",
+                                "imageUrl": {
+                                    "small": "https://www.darbodrabuziai.lt/img/4108-s.jpg",
+                                    "medium": "https://www.darbodrabuziai.lt/img/4108.jpg"
+                                },
+                                "attrs": {
+                                    "101": {
+                                        "lt-LT": "9"
+                                    },
+                                    "102": {
+                                        "lt-LT": "Juoda"
+                                    }
                                 }
                             }
                         ]

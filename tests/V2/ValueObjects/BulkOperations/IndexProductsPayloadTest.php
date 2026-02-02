@@ -8,6 +8,7 @@ use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
 use PHPUnit\Framework\TestCase;
@@ -22,11 +23,17 @@ class IndexProductsPayloadTest extends TestCase
         return new ImageUrl(self::SMALL_IMAGE, self::MEDIUM_IMAGE);
     }
 
+    private function createPricing(): ProductPricing
+    {
+        return new ProductPricing(99.99, 99.99, 82.64, 82.64);
+    }
+
     private function createProduct(string $id = 'prod-123'): Product
     {
         return new Product(
             $id,
-            99.99,
+            'SKU-' . $id,
+            $this->createPricing(),
             $this->createImageUrl()
         );
     }
@@ -72,7 +79,11 @@ class IndexProductsPayloadTest extends TestCase
             'products' => [
                 [
                     'id' => 'prod-123',
+                    'sku' => 'SKU-prod-123',
                     'price' => 99.99,
+                    'basePrice' => 99.99,
+                    'priceTaxExcluded' => 82.64,
+                    'basePriceTaxExcluded' => 82.64,
                     'imageUrl' => [
                         'small' => self::SMALL_IMAGE,
                         'medium' => self::MEDIUM_IMAGE,

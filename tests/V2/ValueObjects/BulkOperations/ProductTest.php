@@ -6,8 +6,8 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\BulkOperations;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
-use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
 use PHPUnit\Framework\TestCase;
@@ -15,7 +15,11 @@ use PHPUnit\Framework\TestCase;
 class ProductTest extends TestCase
 {
     private const PRODUCT_ID = 'prod-123';
+    private const SKU = 'SKU-123';
     private const PRICE = 99.99;
+    private const BASE_PRICE = 129.99;
+    private const PRICE_TAX_EXCLUDED = 82.64;
+    private const BASE_PRICE_TAX_EXCLUDED = 107.43;
     private const SMALL_IMAGE = 'https://cdn.example.com/images/small.jpg';
     private const MEDIUM_IMAGE = 'https://cdn.example.com/images/medium.jpg';
 
@@ -24,58 +28,59 @@ class ProductTest extends TestCase
         return new ImageUrl(self::SMALL_IMAGE, self::MEDIUM_IMAGE);
     }
 
+    private function createPricing(): ProductPricing
+    {
+        return new ProductPricing(
+            self::PRICE,
+            self::BASE_PRICE,
+            self::PRICE_TAX_EXCLUDED,
+            self::BASE_PRICE_TAX_EXCLUDED
+        );
+    }
+
     private function createProduct(): Product
     {
         return new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl()
-        );
-    }
-
-    private function createVariant(): ProductVariant
-    {
-        return new ProductVariant(
-            'variant-1',
-            'SKU-001',
-            99.99,
-            129.99,
-            82.64,
-            107.43,
-            'https://shop.example.com/variant-1',
-            $this->createImageUrl(),
-            ['size' => 'M']
         );
     }
 
     public function testConstructorWithRequiredValues(): void
     {
         $imageUrl = $this->createImageUrl();
+        $pricing = $this->createPricing();
         $product = new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $pricing,
             $imageUrl
         );
 
         $this->assertEquals(self::PRODUCT_ID, $product->id);
-        $this->assertEquals(self::PRICE, $product->price);
+        $this->assertEquals(self::SKU, $product->sku);
+        $this->assertSame($pricing, $product->pricing);
         $this->assertSame($imageUrl, $product->imageUrl);
-        $this->assertEquals([], $product->variants);
+        $this->assertNull($product->inStock);
+        $this->assertNull($product->isNew);
         $this->assertEquals([], $product->additionalFields);
     }
 
-    public function testConstructorWithVariants(): void
+    public function testConstructorWithBooleanFields(): void
     {
-        $variant = $this->createVariant();
         $product = new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl(),
-            [$variant]
+            true,
+            false
         );
 
-        $this->assertCount(1, $product->variants);
-        $this->assertSame($variant, $product->variants[0]);
+        $this->assertTrue($product->inStock);
+        $this->assertFalse($product->isNew);
     }
 
     public function testConstructorWithAdditionalFields(): void
@@ -83,13 +88,14 @@ class ProductTest extends TestCase
         $fields = [
             'name_lt-LT' => 'Produkto pavadinimas',
             'brand_lt-LT' => 'Markė',
-            'sku' => 'SKU-123',
         ];
         $product = new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl(),
-            [],
+            null,
+            null,
             $fields
         );
 
@@ -116,7 +122,11 @@ class ProductTest extends TestCase
 
         $expected = [
             'id' => self::PRODUCT_ID,
+            'sku' => self::SKU,
             'price' => self::PRICE,
+            'basePrice' => self::BASE_PRICE,
+            'priceTaxExcluded' => self::PRICE_TAX_EXCLUDED,
+            'basePriceTaxExcluded' => self::BASE_PRICE_TAX_EXCLUDED,
             'imageUrl' => [
                 'small' => self::SMALL_IMAGE,
                 'medium' => self::MEDIUM_IMAGE,
@@ -126,53 +136,54 @@ class ProductTest extends TestCase
         $this->assertEquals($expected, $product->jsonSerialize());
     }
 
+    public function testJsonSerializeWithBooleanFields(): void
+    {
+        $product = new Product(
+            self::PRODUCT_ID,
+            self::SKU,
+            $this->createPricing(),
+            $this->createImageUrl(),
+            true,
+            false
+        );
+
+        $serialized = $product->jsonSerialize();
+
+        $this->assertTrue($serialized['inStock']);
+        $this->assertFalse($serialized['isNew']);
+    }
+
+    public function testJsonSerializeOmitsNullBooleanFields(): void
+    {
+        $product = $this->createProduct();
+
+        $serialized = $product->jsonSerialize();
+
+        $this->assertArrayNotHasKey('inStock', $serialized);
+        $this->assertArrayNotHasKey('isNew', $serialized);
+    }
+
     public function testJsonSerializeWithAdditionalFields(): void
     {
         $fields = [
             'name_lt-LT' => 'Produktas',
-            'sku' => 'SKU-123',
         ];
         $product = new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl(),
-            [],
+            null,
+            null,
             $fields
         );
 
         $serialized = $product->jsonSerialize();
 
         $this->assertEquals(self::PRODUCT_ID, $serialized['id']);
+        $this->assertEquals(self::SKU, $serialized['sku']);
         $this->assertEquals(self::PRICE, $serialized['price']);
         $this->assertEquals('Produktas', $serialized['name_lt-LT']);
-        $this->assertEquals('SKU-123', $serialized['sku']);
-        $this->assertArrayNotHasKey('variants', $serialized);
-    }
-
-    public function testJsonSerializeWithVariants(): void
-    {
-        $variant = $this->createVariant();
-        $product = new Product(
-            self::PRODUCT_ID,
-            self::PRICE,
-            $this->createImageUrl(),
-            [$variant]
-        );
-
-        $serialized = $product->jsonSerialize();
-
-        $this->assertArrayHasKey('variants', $serialized);
-        $this->assertCount(1, $serialized['variants']);
-        $this->assertEquals('variant-1', $serialized['variants'][0]['id']);
-    }
-
-    public function testJsonSerializeOmitsEmptyVariants(): void
-    {
-        $product = $this->createProduct();
-
-        $serialized = $product->jsonSerialize();
-
-        $this->assertArrayNotHasKey('variants', $serialized);
     }
 
     public function testToArrayReturnsJsonSerializeOutput(): void
@@ -190,6 +201,7 @@ class ProductTest extends TestCase
         $decoded = json_decode($json, true);
 
         $this->assertEquals(self::PRODUCT_ID, $decoded['id']);
+        $this->assertEquals(self::SKU, $decoded['sku']);
         $this->assertEquals(self::PRICE, $decoded['price']);
     }
 
@@ -204,15 +216,26 @@ class ProductTest extends TestCase
         $this->assertEquals($newId, $newProduct->id);
     }
 
-    public function testWithPriceReturnsNewInstance(): void
+    public function testWithSkuReturnsNewInstance(): void
     {
         $product = $this->createProduct();
-        $newPrice = 149.99;
-        $newProduct = $product->withPrice($newPrice);
+        $newSku = 'NEW-SKU-456';
+        $newProduct = $product->withSku($newSku);
 
         $this->assertNotSame($product, $newProduct);
-        $this->assertEquals(self::PRICE, $product->price);
-        $this->assertEquals($newPrice, $newProduct->price);
+        $this->assertEquals(self::SKU, $product->sku);
+        $this->assertEquals($newSku, $newProduct->sku);
+    }
+
+    public function testWithPricingReturnsNewInstance(): void
+    {
+        $product = $this->createProduct();
+        $newPricing = new ProductPricing(149.99, 179.99, 123.97, 148.76);
+        $newProduct = $product->withPricing($newPricing);
+
+        $this->assertNotSame($product, $newProduct);
+        $this->assertEquals(self::PRICE, $product->pricing->price);
+        $this->assertEquals(149.99, $newProduct->pricing->price);
     }
 
     public function testWithImageUrlReturnsNewInstance(): void
@@ -228,54 +251,24 @@ class ProductTest extends TestCase
         $this->assertSame($newImageUrl, $newProduct->imageUrl);
     }
 
-    public function testWithVariantsReturnsNewInstance(): void
+    public function testWithInStockReturnsNewInstance(): void
     {
         $product = $this->createProduct();
-        $variants = [$this->createVariant()];
-        $newProduct = $product->withVariants($variants);
+        $newProduct = $product->withInStock(true);
 
         $this->assertNotSame($product, $newProduct);
-        $this->assertEquals([], $product->variants);
-        $this->assertCount(1, $newProduct->variants);
+        $this->assertNull($product->inStock);
+        $this->assertTrue($newProduct->inStock);
     }
 
-    public function testWithAddedVariantReturnsNewInstance(): void
+    public function testWithIsNewReturnsNewInstance(): void
     {
         $product = $this->createProduct();
-        $variant = $this->createVariant();
-        $newProduct = $product->withAddedVariant($variant);
+        $newProduct = $product->withIsNew(true);
 
         $this->assertNotSame($product, $newProduct);
-        $this->assertEquals([], $product->variants);
-        $this->assertCount(1, $newProduct->variants);
-        $this->assertSame($variant, $newProduct->variants[0]);
-    }
-
-    public function testWithAddedVariantAddsToExistingVariants(): void
-    {
-        $variant1 = $this->createVariant();
-        $variant2 = new ProductVariant(
-            'variant-2',
-            'SKU-002',
-            149.99,
-            179.99,
-            123.97,
-            148.76,
-            'https://shop.example.com/variant-2',
-            $this->createImageUrl(),
-            ['size' => 'L']
-        );
-
-        $product = new Product(
-            self::PRODUCT_ID,
-            self::PRICE,
-            $this->createImageUrl(),
-            [$variant1]
-        );
-        $newProduct = $product->withAddedVariant($variant2);
-
-        $this->assertCount(1, $product->variants);
-        $this->assertCount(2, $newProduct->variants);
+        $this->assertNull($product->isNew);
+        $this->assertTrue($newProduct->isNew);
     }
 
     public function testWithAdditionalFieldsReturnsNewInstance(): void
@@ -292,44 +285,47 @@ class ProductTest extends TestCase
     public function testWithAddedFieldReturnsNewInstance(): void
     {
         $product = $this->createProduct();
-        $newProduct = $product->withAddedField('sku', 'SKU-123');
+        $newProduct = $product->withAddedField('name_lt-LT', 'Produktas');
 
         $this->assertNotSame($product, $newProduct);
         $this->assertEquals([], $product->additionalFields);
-        $this->assertEquals(['sku' => 'SKU-123'], $newProduct->additionalFields);
+        $this->assertEquals(['name_lt-LT' => 'Produktas'], $newProduct->additionalFields);
     }
 
     public function testWithAddedFieldAddsToExistingFields(): void
     {
         $product = new Product(
             self::PRODUCT_ID,
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl(),
-            [],
+            null,
+            null,
             ['name_lt-LT' => 'Produktas']
         );
-        $newProduct = $product->withAddedField('sku', 'SKU-123');
+        $newProduct = $product->withAddedField('brand_lt-LT', 'Markė');
 
         $this->assertEquals(['name_lt-LT' => 'Produktas'], $product->additionalFields);
         $this->assertEquals(
-            ['name_lt-LT' => 'Produktas', 'sku' => 'SKU-123'],
+            ['name_lt-LT' => 'Produktas', 'brand_lt-LT' => 'Markė'],
             $newProduct->additionalFields
         );
     }
 
     public function testChainedWithMethods(): void
     {
-        $variant = $this->createVariant();
         $product = $this->createProduct()
-            ->withPrice(199.99)
-            ->withAddedVariant($variant)
+            ->withPricing(new ProductPricing(199.99, 249.99, 165.29, 206.61))
+            ->withInStock(true)
+            ->withIsNew(false)
             ->withAddedField('name_lt-LT', 'Produktas')
-            ->withAddedField('sku', 'SKU-123');
+            ->withAddedField('brand_lt-LT', 'Markė');
 
-        $this->assertEquals(199.99, $product->price);
-        $this->assertCount(1, $product->variants);
+        $this->assertEquals(199.99, $product->pricing->price);
+        $this->assertTrue($product->inStock);
+        $this->assertFalse($product->isNew);
         $this->assertEquals('Produktas', $product->additionalFields['name_lt-LT']);
-        $this->assertEquals('SKU-123', $product->additionalFields['sku']);
+        $this->assertEquals('Markė', $product->additionalFields['brand_lt-LT']);
     }
 
     public function testThrowsExceptionForEmptyId(): void
@@ -339,7 +335,8 @@ class ProductTest extends TestCase
 
         new Product(
             '',
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl()
         );
     }
@@ -351,33 +348,35 @@ class ProductTest extends TestCase
 
         new Product(
             '   ',
-            self::PRICE,
+            self::SKU,
+            $this->createPricing(),
             $this->createImageUrl()
         );
     }
 
-    public function testThrowsExceptionForNegativePrice(): void
+    public function testThrowsExceptionForEmptySku(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The product price cannot be negative.');
+        $this->expectExceptionMessage('The product SKU cannot be empty.');
 
         new Product(
             self::PRODUCT_ID,
-            -10.00,
+            '',
+            $this->createPricing(),
             $this->createImageUrl()
         );
     }
 
-    public function testThrowsExceptionForInvalidVariantType(): void
+    public function testThrowsExceptionForWhitespaceOnlySku(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Variant at index 0 must be an instance of ProductVariant.');
+        $this->expectExceptionMessage('The product SKU cannot be empty.');
 
         new Product(
             self::PRODUCT_ID,
-            self::PRICE,
-            $this->createImageUrl(),
-            ['not-a-variant']
+            '   ',
+            $this->createPricing(),
+            $this->createImageUrl()
         );
     }
 
@@ -386,7 +385,8 @@ class ProductTest extends TestCase
         try {
             new Product(
                 '',
-                self::PRICE,
+                self::SKU,
+                $this->createPricing(),
                 $this->createImageUrl()
             );
             $this->fail('Expected InvalidArgumentException was not thrown');
@@ -406,66 +406,31 @@ class ProductTest extends TestCase
         $product->withId('');
     }
 
-    public function testWithPriceValidatesNewValue(): void
+    public function testWithSkuValidatesNewValue(): void
     {
         $product = $this->createProduct();
 
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The product price cannot be negative.');
+        $this->expectExceptionMessage('The product SKU cannot be empty.');
 
-        $product->withPrice(-1.00);
-    }
-
-    public function testWithVariantsValidatesItems(): void
-    {
-        $product = $this->createProduct();
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Variant at index 0 must be an instance of ProductVariant.');
-
-        $product->withVariants(['invalid']);
-    }
-
-    public function testAcceptsZeroPrice(): void
-    {
-        $product = new Product(
-            self::PRODUCT_ID,
-            0.0,
-            $this->createImageUrl()
-        );
-
-        $this->assertEquals(0.0, $product->price);
+        $product->withSku('');
     }
 
     public function testJsonSerializeMatchesDarboDrabuziaiExample(): void
     {
-        $variant = new ProductVariant(
-            '12345-M-RED',
-            'SKU-12345-M-RED',
-            99.99,
-            129.99,
-            82.64,
-            107.43,
-            'https://shop.lt/produktas-12345?size=M&color=RED',
-            new ImageUrl(
-                'https://cdn.shop.lt/images/12345-small.jpg',
-                'https://cdn.shop.lt/images/12345-medium.jpg'
-            ),
-            ['size' => 'M', 'color' => 'RED']
-        );
-
         $product = new Product(
             '12345',
-            99.99,
+            'SKU-12345',
+            new ProductPricing(99.99, 129.99, 82.64, 107.43),
             new ImageUrl(
                 'https://cdn.shop.lt/images/12345-small.jpg',
                 'https://cdn.shop.lt/images/12345-medium.jpg'
             ),
-            [$variant],
+            null,
+            null,
             [
                 'name_lt-LT' => 'Darbo drabužis Premium',
                 'brand_lt-LT' => 'WorkWear Pro',
-                'sku' => 'SKU-12345',
                 'description_lt-LT' => 'Aukštos kokybės darbo drabužis',
                 'categories_lt-LT' => ['Darbo drabužiai', 'Darbo drabužiai > Kelnės'],
             ]
@@ -474,14 +439,13 @@ class ProductTest extends TestCase
         $serialized = $product->jsonSerialize();
 
         $this->assertEquals('12345', $serialized['id']);
+        $this->assertEquals('SKU-12345', $serialized['sku']);
         $this->assertEquals(99.99, $serialized['price']);
+        $this->assertEquals(129.99, $serialized['basePrice']);
+        $this->assertEquals(82.64, $serialized['priceTaxExcluded']);
+        $this->assertEquals(107.43, $serialized['basePriceTaxExcluded']);
         $this->assertEquals('Darbo drabužis Premium', $serialized['name_lt-LT']);
         $this->assertEquals('WorkWear Pro', $serialized['brand_lt-LT']);
-        $this->assertEquals('SKU-12345', $serialized['sku']);
         $this->assertArrayHasKey('imageUrl', $serialized);
-        $this->assertArrayHasKey('variants', $serialized);
-        $this->assertCount(1, $serialized['variants']);
-        $this->assertEquals('12345-M-RED', $serialized['variants'][0]['id']);
-        $this->assertEquals(['size' => 'M', 'color' => 'RED'], $serialized['variants'][0]['attrs']);
     }
 }
