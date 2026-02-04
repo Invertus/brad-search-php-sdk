@@ -506,18 +506,13 @@ class PrestaShopAdapterV2Test extends TestCase
                     ],
                     'features' => [
                         [
-                            'localizedNames' => [
-                                'en-US' => 'Material',
-                            ],
+                            'remoteId' => '5',
                             'localizedValues' => [
                                 'en-US' => 'Cotton',
                             ],
                         ],
                         [
-                            'localizedNames' => [
-                                'en-US' => 'Weight',
-                                'lt-LT' => 'Svoris',
-                            ],
+                            'remoteId' => '12',
                             'localizedValues' => [
                                 'en-US' => '200g',
                                 'lt-LT' => '200g',
@@ -533,13 +528,19 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        $this->assertArrayHasKey('features', $product->additionalFields);
-        $this->assertCount(2, $product->additionalFields['features']);
-        $this->assertEquals('Material', $product->additionalFields['features'][0]['name']);
-        $this->assertEquals('Cotton', $product->additionalFields['features'][0]['value']);
+        // Features as flat fields
+        $this->assertArrayHasKey('feature_5_en-US', $product->additionalFields);
+        $this->assertEquals('Cotton', $product->additionalFields['feature_5_en-US']);
 
-        $this->assertArrayHasKey('features_lt-LT', $product->additionalFields);
-        $this->assertCount(1, $product->additionalFields['features_lt-LT']);
+        $this->assertArrayHasKey('feature_12_en-US', $product->additionalFields);
+        $this->assertEquals('200g', $product->additionalFields['feature_12_en-US']);
+
+        $this->assertArrayHasKey('feature_12_lt-LT', $product->additionalFields);
+        $this->assertEquals('200g', $product->additionalFields['feature_12_lt-LT']);
+
+        // Old format should not exist
+        $this->assertArrayNotHasKey('features', $product->additionalFields);
+        $this->assertArrayNotHasKey('features_lt-LT', $product->additionalFields);
     }
 
     public function testTransformProductWithTags(): void

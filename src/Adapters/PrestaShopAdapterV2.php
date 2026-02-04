@@ -544,46 +544,44 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Transform features to localized fields.
+     * Transform features to flat locale-specific fields.
+     *
+     * Input format (requires remoteId from PrestaShop plugin):
+     * [
+     *     'remoteId' => '5',
+     *     'localizedValues' => [
+     *         'en-US' => 'Cotton',
+     *         'lt-LT' => 'Medvilnė',
+     *     ],
+     * ]
+     *
+     * Output format:
+     * $result['feature_5_en-US'] = 'Cotton';
+     * $result['feature_5_lt-LT'] = 'Medvilnė';
      *
      * @param array<string, mixed> $result
      * @param array<int, mixed> $features
      */
     private function transformFeatures(array &$result, array $features): void
     {
-        $featuresByLocale = [];
-
         foreach ($features as $feature) {
-            if (!is_array($feature) || !isset($feature['localizedNames']) || !isset($feature['localizedValues'])) {
+            if (!is_array($feature) || !isset($feature['remoteId']) || !isset($feature['localizedValues'])) {
                 continue;
             }
 
-            if (!is_array($feature['localizedNames']) || !is_array($feature['localizedValues'])) {
+            if (!is_array($feature['localizedValues'])) {
                 continue;
             }
 
-            foreach ($feature['localizedNames'] as $locale => $name) {
-                if (
-                    $locale === null || $name === null || $name === '' ||
-                    !isset($feature['localizedValues'][$locale]) ||
-                    $feature['localizedValues'][$locale] === null ||
-                    $feature['localizedValues'][$locale] === ''
-                ) {
+            $featureId = (string) $feature['remoteId'];
+
+            foreach ($feature['localizedValues'] as $locale => $value) {
+                if ($locale === null || $value === null || $value === '') {
                     continue;
                 }
 
-                $featuresByLocale[$locale][] = [
-                    'name' => $name,
-                    'value' => $feature['localizedValues'][$locale],
-                ];
-            }
-        }
-
-        foreach ($featuresByLocale as $locale => $localeFeatures) {
-            if ($locale === 'en-US') {
-                $result['features'] = $localeFeatures;
-            } else {
-                $result["features_{$locale}"] = $localeFeatures;
+                $fieldName = "feature_{$featureId}_{$locale}";
+                $result[$fieldName] = $value;
             }
         }
     }
