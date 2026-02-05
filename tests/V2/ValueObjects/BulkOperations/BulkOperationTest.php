@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\BulkOperations;
 
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\DeleteProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
@@ -179,5 +180,51 @@ class BulkOperationTest extends TestCase
         $this->assertIsString($serialized['type']);
         $this->assertIsArray($serialized['payload']);
         $this->assertArrayHasKey('products', $serialized['payload']);
+    }
+
+    public function testDeleteProductsFactoryMethod(): void
+    {
+        $productIds = ['prod-1', 'prod-2'];
+        $operation = BulkOperation::deleteProducts($productIds);
+
+        $this->assertEquals(BulkOperationType::DELETE_PRODUCTS, $operation->type);
+        $this->assertInstanceOf(DeleteProductsPayload::class, $operation->payload);
+        $this->assertCount(2, $operation->payload->productIds);
+    }
+
+    public function testDeleteProductsJsonSerialize(): void
+    {
+        $operation = BulkOperation::deleteProducts(['prod-123', 'prod-456']);
+
+        $expected = [
+            'type' => 'delete_products',
+            'payload' => [
+                'product_ids' => ['prod-123', 'prod-456'],
+            ],
+        ];
+
+        $this->assertEquals($expected, $operation->jsonSerialize());
+    }
+
+    public function testWithPayloadAcceptsDeleteProductsPayload(): void
+    {
+        $operation = $this->createOperation();
+        $deletePayload = new DeleteProductsPayload(['prod-1']);
+        $newOperation = $operation->withPayload($deletePayload);
+
+        $this->assertNotSame($operation, $newOperation);
+        $this->assertInstanceOf(DeleteProductsPayload::class, $newOperation->payload);
+    }
+
+    public function testConstructorAcceptsDeleteProductsPayload(): void
+    {
+        $payload = new DeleteProductsPayload(['prod-1']);
+        $operation = new BulkOperation(
+            BulkOperationType::DELETE_PRODUCTS,
+            $payload
+        );
+
+        $this->assertEquals(BulkOperationType::DELETE_PRODUCTS, $operation->type);
+        $this->assertSame($payload, $operation->payload);
     }
 }

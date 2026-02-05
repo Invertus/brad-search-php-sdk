@@ -15,11 +15,11 @@ final readonly class BulkOperation extends ValueObject
 {
     /**
      * @param BulkOperationType $type The type of bulk operation
-     * @param IndexProductsPayload $payload The operation payload
+     * @param IndexProductsPayload|DeleteProductsPayload $payload The operation payload
      */
     public function __construct(
         public BulkOperationType $type,
-        public IndexProductsPayload $payload
+        public IndexProductsPayload|DeleteProductsPayload $payload
     ) {
     }
 
@@ -37,6 +37,19 @@ final readonly class BulkOperation extends ValueObject
     }
 
     /**
+     * Creates a delete_products operation.
+     *
+     * @param array<int, string> $productIds Product IDs to delete
+     */
+    public static function deleteProducts(array $productIds): self
+    {
+        return new self(
+            BulkOperationType::DELETE_PRODUCTS,
+            new DeleteProductsPayload($productIds)
+        );
+    }
+
+    /**
      * Returns a new instance with a different type.
      */
     public function withType(BulkOperationType $type): self
@@ -47,7 +60,7 @@ final readonly class BulkOperation extends ValueObject
     /**
      * Returns a new instance with a different payload.
      */
-    public function withPayload(IndexProductsPayload $payload): self
+    public function withPayload(IndexProductsPayload|DeleteProductsPayload $payload): self
     {
         return new self($this->type, $payload);
     }

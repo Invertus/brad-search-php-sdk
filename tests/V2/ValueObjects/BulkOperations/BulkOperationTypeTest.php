@@ -40,5 +40,18 @@ class BulkOperationTypeTest extends TestCase
         $cases = BulkOperationType::cases();
 
         $this->assertContains(BulkOperationType::INDEX_PRODUCTS, $cases);
+        $this->assertContains(BulkOperationType::DELETE_PRODUCTS, $cases);
+    }
+
+    public function testDeleteProductsValue(): void
+    {
+        $this->assertEquals('delete_products', BulkOperationType::DELETE_PRODUCTS->value);
+    }
+
+    public function testCanCreateDeleteProductsFromString(): void
+    {
+        $type = BulkOperationType::from('delete_products');
+
+        $this->assertEquals(BulkOperationType::DELETE_PRODUCTS, $type);
     }
 }
