@@ -383,9 +383,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             ],
             // Step 8: Activate v2
             [
-                'previous_version' => 1,
-                'new_version' => 2,
+                'status' => 'success',
+                'old_index' => 'darbo_drabuziai-v1',
+                'new_index' => 'darbo_drabuziai-v2',
                 'alias_name' => 'darbo_drabuziai',
+                'message' => 'Alias swapped successfully',
             ],
             // Step 9: Verify Activation (Get Index Info)
             [
@@ -688,9 +690,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             ],
             // Version activate response
             [
-                'previous_version' => 1,
-                'new_version' => 2,
+                'status' => 'success',
+                'old_index' => 'darbo_drabuziai-v1',
+                'new_index' => 'darbo_drabuziai-v2',
                 'alias_name' => 'darbo_drabuziai',
+                'message' => 'Alias swapped successfully',
             ],
         ];
 
@@ -756,11 +760,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Step 4: Sync to v2
             ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created']]],
             // Step 5: Activate v2
-            ['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'darbo_drabuziai'],
+            ['status' => 'success', 'old_index' => 'darbo_drabuziai-v1', 'new_index' => 'darbo_drabuziai-v2', 'alias_name' => 'darbo_drabuziai', 'message' => 'Alias swapped successfully'],
             // Step 6: Verify v2 active
             ['alias_name' => 'darbo_drabuziai', 'active_version' => 2, 'active_index' => 'darbo_drabuziai_v2', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
             // Step 7: ROLLBACK - Activate v1 due to issues
-            ['previous_version' => 2, 'new_version' => 1, 'alias_name' => 'darbo_drabuziai'],
+            ['status' => 'success', 'old_index' => 'darbo_drabuziai-v2', 'new_index' => 'darbo_drabuziai-v1', 'alias_name' => 'darbo_drabuziai', 'message' => 'Alias swapped successfully'],
             // Step 8: Verify rollback
             ['alias_name' => 'darbo_drabuziai', 'active_version' => 1, 'active_index' => 'darbo_drabuziai_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
             // Step 9: Cleanup v2
@@ -825,7 +829,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $configResponse = ['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name', 'position' => 1, 'match_mode' => 'fuzzy']]];
         $bulkResponse = ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created']]];
         $infoResponse = ['alias_name' => 'test', 'active_version' => 1, 'active_index' => 'test_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]]];
-        $activateResponse = ['previous_version' => 0, 'new_version' => 1, 'alias_name' => 'test'];
+        $activateResponse = ['status' => 'success', 'old_index' => 'test-v0', 'new_index' => 'test-v1', 'alias_name' => 'test', 'message' => 'Success'];
         $deleteResponse = ['status' => 'deleted', 'message' => 'Deleted'];
 
         $mockResponses = [
@@ -988,7 +992,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
      */
     public function testVersionActivationRequestFormat(): void
     {
-        $mockResponses = [['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'test']];
+        $mockResponses = [['status' => 'success', 'old_index' => 'test-v1', 'new_index' => 'test-v2', 'alias_name' => 'test', 'message' => 'Success']];
         $sdk = $this->createSdkWithRequestCapture($mockResponses);
 
         $sdk->activateIndexVersion(2);

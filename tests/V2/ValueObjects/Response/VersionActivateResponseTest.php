@@ -15,26 +15,50 @@ class VersionActivateResponseTest extends TestCase
     public function testConstructorWithValidValues(): void
     {
         $response = new VersionActivateResponse(
+            status: 'success',
+            oldIndex: '193d520f-6732-49ac-98ba-e26fdcf676a5-v1',
+            newIndex: '193d520f-6732-49ac-98ba-e26fdcf676a5-v2',
+            aliasName: '193d520f-6732-49ac-98ba-e26fdcf676a5',
+            message: 'Alias swapped successfully',
             previousVersion: 1,
-            newVersion: 2,
-            aliasName: 'products'
+            newVersion: 2
         );
 
+        $this->assertEquals('success', $response->status);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5-v1', $response->oldIndex);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5-v2', $response->newIndex);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5', $response->aliasName);
+        $this->assertEquals('Alias swapped successfully', $response->message);
         $this->assertEquals(1, $response->previousVersion);
         $this->assertEquals(2, $response->newVersion);
-        $this->assertEquals('products', $response->aliasName);
     }
 
     public function testExtendsValueObject(): void
     {
-        $response = new VersionActivateResponse(1, 2, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v1',
+            'app-v2',
+            'app',
+            'Success',
+            1,
+            2
+        );
 
         $this->assertInstanceOf(ValueObject::class, $response);
     }
 
     public function testImplementsJsonSerializable(): void
     {
-        $response = new VersionActivateResponse(1, 2, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v1',
+            'app-v2',
+            'app',
+            'Success',
+            1,
+            2
+        );
 
         $this->assertInstanceOf(JsonSerializable::class, $response);
     }
@@ -42,37 +66,76 @@ class VersionActivateResponseTest extends TestCase
     public function testFromArrayWithValidData(): void
     {
         $data = [
-            'previous_version' => 1,
-            'new_version' => 2,
-            'alias_name' => 'app_products',
+            'status' => 'success',
+            'old_index' => '193d520f-6732-49ac-98ba-e26fdcf676a5-v1',
+            'new_index' => '193d520f-6732-49ac-98ba-e26fdcf676a5-v2',
+            'alias_name' => '193d520f-6732-49ac-98ba-e26fdcf676a5',
+            'message' => 'Alias swapped successfully',
         ];
 
         $response = VersionActivateResponse::fromArray($data);
 
+        $this->assertEquals('success', $response->status);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5-v1', $response->oldIndex);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5-v2', $response->newIndex);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5', $response->aliasName);
+        $this->assertEquals('Alias swapped successfully', $response->message);
         $this->assertEquals(1, $response->previousVersion);
         $this->assertEquals(2, $response->newVersion);
-        $this->assertEquals('app_products', $response->aliasName);
     }
 
-    public function testFromArrayThrowsOnMissingPreviousVersion(): void
+    public function testFromArrayParsesVersionNumbers(): void
+    {
+        $data = [
+            'status' => 'success',
+            'old_index' => 'my-app-v42',
+            'new_index' => 'my-app-v43',
+            'alias_name' => 'my-app',
+            'message' => 'Success',
+        ];
+
+        $response = VersionActivateResponse::fromArray($data);
+
+        $this->assertEquals(42, $response->previousVersion);
+        $this->assertEquals(43, $response->newVersion);
+    }
+
+    public function testFromArrayThrowsOnMissingStatus(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Missing required field: previous_version');
+        $this->expectExceptionMessage('Missing required field: status');
 
         VersionActivateResponse::fromArray([
-            'new_version' => 2,
-            'alias_name' => 'test',
+            'old_index' => 'app-v1',
+            'new_index' => 'app-v2',
+            'alias_name' => 'app',
+            'message' => 'Success',
         ]);
     }
 
-    public function testFromArrayThrowsOnMissingNewVersion(): void
+    public function testFromArrayThrowsOnMissingOldIndex(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Missing required field: new_version');
+        $this->expectExceptionMessage('Missing required field: old_index');
 
         VersionActivateResponse::fromArray([
-            'previous_version' => 1,
-            'alias_name' => 'test',
+            'status' => 'success',
+            'new_index' => 'app-v2',
+            'alias_name' => 'app',
+            'message' => 'Success',
+        ]);
+    }
+
+    public function testFromArrayThrowsOnMissingNewIndex(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Missing required field: new_index');
+
+        VersionActivateResponse::fromArray([
+            'status' => 'success',
+            'old_index' => 'app-v1',
+            'alias_name' => 'app',
+            'message' => 'Success',
         ]);
     }
 
@@ -82,9 +145,76 @@ class VersionActivateResponseTest extends TestCase
         $this->expectExceptionMessage('Missing required field: alias_name');
 
         VersionActivateResponse::fromArray([
-            'previous_version' => 1,
-            'new_version' => 2,
+            'status' => 'success',
+            'old_index' => 'app-v1',
+            'new_index' => 'app-v2',
+            'message' => 'Success',
         ]);
+    }
+
+    public function testFromArrayThrowsOnMissingMessage(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Missing required field: message');
+
+        VersionActivateResponse::fromArray([
+            'status' => 'success',
+            'old_index' => 'app-v1',
+            'new_index' => 'app-v2',
+            'alias_name' => 'app',
+        ]);
+    }
+
+    public function testFromArrayThrowsOnInvalidOldIndexFormat(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot parse version from index name');
+
+        VersionActivateResponse::fromArray([
+            'status' => 'success',
+            'old_index' => 'app-without-version',
+            'new_index' => 'app-v2',
+            'alias_name' => 'app',
+            'message' => 'Success',
+        ]);
+    }
+
+    public function testFromArrayThrowsOnInvalidNewIndexFormat(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Cannot parse version from index name');
+
+        VersionActivateResponse::fromArray([
+            'status' => 'success',
+            'old_index' => 'app-v1',
+            'new_index' => 'app-no-version',
+            'alias_name' => 'app',
+            'message' => 'Success',
+        ]);
+    }
+
+    public function testRejectsEmptyStatus(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('status cannot be empty');
+
+        new VersionActivateResponse('', 'app-v1', 'app-v2', 'app', 'Success', 1, 2);
+    }
+
+    public function testRejectsEmptyOldIndex(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('old_index cannot be empty');
+
+        new VersionActivateResponse('success', '', 'app-v2', 'app', 'Success', 1, 2);
+    }
+
+    public function testRejectsEmptyNewIndex(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('new_index cannot be empty');
+
+        new VersionActivateResponse('success', 'app-v1', '', 'app', 'Success', 1, 2);
     }
 
     public function testRejectsEmptyAliasName(): void
@@ -92,7 +222,15 @@ class VersionActivateResponseTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('alias_name cannot be empty');
 
-        new VersionActivateResponse(1, 2, '');
+        new VersionActivateResponse('success', 'app-v1', 'app-v2', '', 'Success', 1, 2);
+    }
+
+    public function testRejectsEmptyMessage(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('message cannot be empty');
+
+        new VersionActivateResponse('success', 'app-v1', 'app-v2', 'app', '', 1, 2);
     }
 
     public function testRejectsNegativePreviousVersion(): void
@@ -100,7 +238,7 @@ class VersionActivateResponseTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('previous_version must be non-negative');
 
-        new VersionActivateResponse(-1, 2, 'test');
+        new VersionActivateResponse('success', 'app-v1', 'app-v2', 'app', 'Success', -1, 2);
     }
 
     public function testRejectsNegativeNewVersion(): void
@@ -108,17 +246,29 @@ class VersionActivateResponseTest extends TestCase
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('new_version must be non-negative');
 
-        new VersionActivateResponse(1, -2, 'test');
+        new VersionActivateResponse('success', 'app-v1', 'app-v2', 'app', 'Success', 1, -2);
     }
 
     public function testJsonSerializeReturnsCorrectStructure(): void
     {
-        $response = new VersionActivateResponse(1, 2, 'products');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v1',
+            'app-v2',
+            'app',
+            'Success',
+            1,
+            2
+        );
 
         $expected = [
+            'status' => 'success',
+            'old_index' => 'app-v1',
+            'new_index' => 'app-v2',
+            'alias_name' => 'app',
+            'message' => 'Success',
             'previous_version' => 1,
             'new_version' => 2,
-            'alias_name' => 'products',
         ];
 
         $this->assertEquals($expected, $response->jsonSerialize());
@@ -126,51 +276,90 @@ class VersionActivateResponseTest extends TestCase
 
     public function testToArrayReturnsJsonSerializeOutput(): void
     {
-        $response = new VersionActivateResponse(1, 2, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v1',
+            'app-v2',
+            'app',
+            'Success',
+            1,
+            2
+        );
 
         $this->assertEquals($response->jsonSerialize(), $response->toArray());
     }
 
     /**
-     * Test parsing of OpenAPI example response.
+     * Test parsing of actual Golang API response.
      */
-    public function testMatchesOpenApiExampleResponse(): void
+    public function testMatchesGolangApiResponse(): void
     {
         $apiResponse = [
-            'previous_version' => 1,
-            'new_version' => 3,
-            'alias_name' => 'app_12345_products',
+            'status' => 'success',
+            'old_index' => '193d520f-6732-49ac-98ba-e26fdcf676a5-v1',
+            'new_index' => '193d520f-6732-49ac-98ba-e26fdcf676a5-v2',
+            'alias_name' => '193d520f-6732-49ac-98ba-e26fdcf676a5',
+            'message' => 'Alias swapped successfully',
         ];
 
         $response = VersionActivateResponse::fromArray($apiResponse);
 
+        $this->assertEquals('success', $response->status);
         $this->assertEquals(1, $response->previousVersion);
-        $this->assertEquals(3, $response->newVersion);
-        $this->assertEquals('app_12345_products', $response->aliasName);
+        $this->assertEquals(2, $response->newVersion);
+        $this->assertEquals('193d520f-6732-49ac-98ba-e26fdcf676a5', $response->aliasName);
     }
 
     public function testJsonEncodeProducesValidJson(): void
     {
-        $response = new VersionActivateResponse(1, 2, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v1',
+            'app-v2',
+            'app',
+            'Success',
+            1,
+            2
+        );
 
         $json = json_encode($response);
         $decoded = json_decode($json, true);
 
+        $this->assertEquals('success', $decoded['status']);
+        $this->assertEquals('app-v1', $decoded['old_index']);
+        $this->assertEquals('app-v2', $decoded['new_index']);
+        $this->assertEquals('app', $decoded['alias_name']);
+        $this->assertEquals('Success', $decoded['message']);
         $this->assertEquals(1, $decoded['previous_version']);
         $this->assertEquals(2, $decoded['new_version']);
-        $this->assertEquals('test', $decoded['alias_name']);
     }
 
     public function testAcceptsVersionZero(): void
     {
-        $response = new VersionActivateResponse(0, 1, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v0',
+            'app-v1',
+            'app',
+            'Success',
+            0,
+            1
+        );
 
         $this->assertEquals(0, $response->previousVersion);
     }
 
     public function testSameVersionAllowed(): void
     {
-        $response = new VersionActivateResponse(2, 2, 'test');
+        $response = new VersionActivateResponse(
+            'success',
+            'app-v2',
+            'app-v2',
+            'app',
+            'Success',
+            2,
+            2
+        );
 
         $this->assertEquals(2, $response->previousVersion);
         $this->assertEquals(2, $response->newVersion);
@@ -178,9 +367,33 @@ class VersionActivateResponseTest extends TestCase
 
     public function testRollbackScenario(): void
     {
-        $response = new VersionActivateResponse(3, 1, 'test');
+        $data = [
+            'status' => 'success',
+            'old_index' => 'app-v3',
+            'new_index' => 'app-v1',
+            'alias_name' => 'app',
+            'message' => 'Rolled back to version 1',
+        ];
+
+        $response = VersionActivateResponse::fromArray($data);
 
         $this->assertEquals(3, $response->previousVersion);
         $this->assertEquals(1, $response->newVersion);
+    }
+
+    public function testParsesMultiDigitVersions(): void
+    {
+        $data = [
+            'status' => 'success',
+            'old_index' => 'app-v99',
+            'new_index' => 'app-v100',
+            'alias_name' => 'app',
+            'message' => 'Success',
+        ];
+
+        $response = VersionActivateResponse::fromArray($data);
+
+        $this->assertEquals(99, $response->previousVersion);
+        $this->assertEquals(100, $response->newVersion);
     }
 }

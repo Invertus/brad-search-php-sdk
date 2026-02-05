@@ -11,24 +11,43 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * Represents the response from index version activation API endpoint.
  *
  * This immutable ValueObject contains the response data after activating an index version:
- * - previousVersion: The version that was active before
- * - newVersion: The newly activated version
+ * - status: Response status (e.g., "success")
+ * - oldIndex: Full name of the previously active index (e.g., "app-id-v1")
+ * - newIndex: Full name of the newly activated index (e.g., "app-id-v2")
  * - aliasName: The alias name that now points to the new version
+ * - message: Success message
+ * - previousVersion: Parsed version number from oldIndex
+ * - newVersion: Parsed version number from newIndex
  */
 final readonly class VersionActivateResponse extends ValueObject
 {
     public function __construct(
+        public string $status,
+        public string $oldIndex,
+        public string $newIndex,
+        public string $aliasName,
+        public string $message,
         public int $previousVersion,
-        public int $newVersion,
-        public string $aliasName
+        public int $newVersion
     ) {
+        $this->validateNotEmpty($status, 'status');
+        $this->validateNotEmpty($oldIndex, 'old_index');
+        $this->validateNotEmpty($newIndex, 'new_index');
+        $this->validateNotEmpty($aliasName, 'alias_name');
+        $this->validateNotEmpty($message, 'message');
         $this->validateNonNegative($previousVersion, 'previous_version');
         $this->validateNonNegative($newVersion, 'new_version');
-        $this->validateNotEmpty($aliasName, 'alias_name');
     }
 
     /**
      * Creates a VersionActivateResponse from an API response array.
+     *
+     * API returns:
+     * - status: "success"
+     * - old_index: "193d520f-6732-49ac-98ba-e26fdcf676a5-v1"
+     * - new_index: "193d520f-6732-49ac-98ba-e26fdcf676a5-v2"
+     * - alias_name: "193d520f-6732-49ac-98ba-e26fdcf676a5"
+     * - message: "Alias swapped successfully"
      *
      * @param array<string, mixed> $data Raw API response data
      *
@@ -39,15 +58,51 @@ final readonly class VersionActivateResponse extends ValueObject
     public static function fromArray(array $data): self
     {
         self::validateRequiredFields($data, [
-            'previous_version',
-            'new_version',
+            'status',
+            'old_index',
+            'new_index',
             'alias_name',
+            'message',
         ]);
 
+        // Parse version numbers from index names
+        // "193d520f-6732-49ac-98ba-e26fdcf676a5-v1" -> 1
+        $previousVersion = self::parseVersionFromIndexName((string) $data['old_index']);
+        $newVersion = self::parseVersionFromIndexName((string) $data['new_index']);
+
         return new self(
-            previousVersion: (int) $data['previous_version'],
-            newVersion: (int) $data['new_version'],
-            aliasName: (string) $data['alias_name']
+            status: (string) $data['status'],
+            oldIndex: (string) $data['old_index'],
+            newIndex: (string) $data['new_index'],
+            aliasName: (string) $data['alias_name'],
+            message: (string) $data['message'],
+            previousVersion: $previousVersion,
+            newVersion: $newVersion
+        );
+    }
+
+    /**
+     * Parse version number from index name.
+     *
+     * Examples:
+     * - "193d520f-6732-49ac-98ba-e26fdcf676a5-v1" -> 1
+     * - "app-id-v42" -> 42
+     *
+     * @param string $indexName Full index name
+     * @return int Version number
+     * @throws InvalidArgumentException If version cannot be parsed
+     */
+    private static function parseVersionFromIndexName(string $indexName): int
+    {
+        // Extract version suffix: "app-id-v1" -> "v1"
+        if (preg_match('/-v(\d+)$/', $indexName, $matches)) {
+            return (int) $matches[1];
+        }
+
+        throw new InvalidArgumentException(
+            sprintf('Cannot parse version from index name: %s', $indexName),
+            'index_name',
+            $indexName
         );
     }
 
@@ -57,9 +112,13 @@ final readonly class VersionActivateResponse extends ValueObject
     public function jsonSerialize(): array
     {
         return [
+            'status' => $this->status,
+            'old_index' => $this->oldIndex,
+            'new_index' => $this->newIndex,
+            'alias_name' => $this->aliasName,
+            'message' => $this->message,
             'previous_version' => $this->previousVersion,
             'new_version' => $this->newVersion,
-            'alias_name' => $this->aliasName,
         ];
     }
 

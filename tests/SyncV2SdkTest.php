@@ -368,9 +368,11 @@ class SyncV2SdkTest extends TestCase
         $version = 2;
 
         $apiResponse = [
-            'previous_version' => 1,
-            'new_version' => 2,
+            'status' => 'success',
+            'old_index' => 'app_550e8400-v1',
+            'new_index' => 'app_550e8400-v2',
             'alias_name' => 'app_550e8400',
+            'message' => 'Alias swapped successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -402,7 +404,13 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'test']);
+            ->willReturn([
+                'status' => 'success',
+                'old_index' => 'test-v1',
+                'new_index' => 'test-v2',
+                'alias_name' => 'test',
+                'message' => 'Success',
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->activateIndexVersion(2);
@@ -418,7 +426,13 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/index/activate'),
                 $this->anything()
             )
-            ->willReturn(['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'test']);
+            ->willReturn([
+                'status' => 'success',
+                'old_index' => 'test-v1',
+                'new_index' => 'test-v2',
+                'alias_name' => 'test',
+                'message' => 'Success',
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->activateIndexVersion(2);
@@ -436,7 +450,13 @@ class SyncV2SdkTest extends TestCase
                 $this->anything(),
                 ['version' => 'v' . $version]
             )
-            ->willReturn(['previous_version' => 4, 'new_version' => 5, 'alias_name' => 'test']);
+            ->willReturn([
+                'status' => 'success',
+                'old_index' => 'test-v4',
+                'new_index' => 'test-v5',
+                'alias_name' => 'test',
+                'message' => 'Success',
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->activateIndexVersion($version);
