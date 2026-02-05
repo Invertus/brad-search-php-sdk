@@ -23,6 +23,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 class SyncV2Sdk
 {
     private readonly HttpClient $httpClient;
+
     private readonly string $baseApiPath;
 
     public function __construct(
@@ -55,8 +56,7 @@ class SyncV2Sdk
     /**
      * Create a versioned index with the given request.
      *
-     * @param IndexCreateRequest $request The index creation request
-     *
+     * @param  IndexCreateRequest  $request  The index creation request
      * @return IndexCreationResponse Typed response object
      */
     public function createIndex(IndexCreateRequest $request): IndexCreationResponse
@@ -101,8 +101,7 @@ class SyncV2Sdk
     /**
      * Activate a specific index version for zero-downtime migrations and rollbacks.
      *
-     * @param int $version The version number to activate
-     *
+     * @param  int  $version  The version number to activate
      * @return VersionActivateResponse Typed response containing previous_version,
      *                                 new_version, alias_name
      */
@@ -110,7 +109,7 @@ class SyncV2Sdk
     {
         $response = $this->httpClient->post(
             $this->baseApiPath . 'index/activate',
-            ['version' => $version]
+            ['version' => 'v' . $version]
         );
 
         return VersionActivateResponse::fromArray($response);
@@ -119,8 +118,7 @@ class SyncV2Sdk
     /**
      * Delete a specific index version.
      *
-     * @param int $version The version number to delete
-     *
+     * @param  int  $version  The version number to delete
      * @return array<string, mixed> Raw API response with status and message
      */
     public function deleteIndexVersion(int $version): array
@@ -133,8 +131,7 @@ class SyncV2Sdk
     /**
      * Set query configuration for search behavior.
      *
-     * @param QueryConfigurationRequest $config The query configuration request
-     *
+     * @param  QueryConfigurationRequest  $config  The query configuration request
      * @return QueryConfigurationResponse Typed response containing status, index_name, cache_ttl_hours
      */
     public function setConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
@@ -164,8 +161,7 @@ class SyncV2Sdk
     /**
      * Update query configuration.
      *
-     * @param QueryConfigurationRequest $config Configuration request to update
-     *
+     * @param  QueryConfigurationRequest  $config  Configuration request to update
      * @return QueryConfigurationResponse Typed response
      */
     public function updateConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
@@ -193,8 +189,7 @@ class SyncV2Sdk
     /**
      * Set search synonyms for a specific language.
      *
-     * @param SynonymConfiguration $config The synonym configuration
-     *
+     * @param  SynonymConfiguration  $config  The synonym configuration
      * @return SynonymResponse Typed response containing language, synonym_count, requires_reindex
      */
     public function setSynonyms(SynonymConfiguration $config): SynonymResponse
@@ -210,8 +205,7 @@ class SyncV2Sdk
     /**
      * Get search synonyms for a specific language.
      *
-     * @param string $language Language code (e.g., "en", "lt")
-     *
+     * @param  string  $language  Language code (e.g., "en", "lt")
      * @return SynonymResponse Typed response with synonyms data
      */
     public function getSynonyms(string $language): SynonymResponse
@@ -226,8 +220,7 @@ class SyncV2Sdk
     /**
      * Delete search synonyms for a specific language.
      *
-     * @param string $language Language code (e.g., "en", "lt")
-     *
+     * @param  string  $language  Language code (e.g., "en", "lt")
      * @return array<string, mixed> Raw API response
      */
     public function deleteSynonyms(string $language): array
@@ -240,8 +233,7 @@ class SyncV2Sdk
     /**
      * Perform bulk product operations (index, update, delete).
      *
-     * @param BulkOperationsRequest $request The bulk operations request
-     *
+     * @param  BulkOperationsRequest  $request  The bulk operations request
      * @return BulkOperationsResponse Typed response with operation results
      */
     public function bulkOperations(BulkOperationsRequest $request): BulkOperationsResponse
@@ -257,8 +249,7 @@ class SyncV2Sdk
     /**
      * Create search settings.
      *
-     * @param SearchSettingsRequest $settings Search settings configuration
-     *
+     * @param  SearchSettingsRequest  $settings  Search settings configuration
      * @return SettingsResponse Typed response
      */
     public function createSearchSettings(SearchSettingsRequest $settings): SettingsResponse
@@ -274,8 +265,7 @@ class SyncV2Sdk
     /**
      * Get search settings for a specific application.
      *
-     * @param string $appId Application ID
-     *
+     * @param  string  $appId  Application ID
      * @return array<string, mixed> Raw API response with settings data
      */
     public function getSearchSettings(string $appId): array
@@ -288,9 +278,8 @@ class SyncV2Sdk
     /**
      * Update search settings for a specific application.
      *
-     * @param string $appId Application ID
-     * @param SearchSettingsRequest $settings Search settings to update
-     *
+     * @param  string  $appId  Application ID
+     * @param  SearchSettingsRequest  $settings  Search settings to update
      * @return SettingsResponse Typed response
      */
     public function updateSearchSettings(string $appId, SearchSettingsRequest $settings): SettingsResponse
@@ -306,8 +295,7 @@ class SyncV2Sdk
     /**
      * Delete search settings for a specific application.
      *
-     * @param string $appId Application ID
-     *
+     * @param  string  $appId  Application ID
      * @return array<string, mixed> Raw API response
      */
     public function deleteSearchSettings(string $appId): array
