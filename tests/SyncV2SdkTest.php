@@ -12,6 +12,12 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
+use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
@@ -46,134 +52,6 @@ class SyncV2SdkTest extends TestCase
             {
                 return $this->mockedHttpClient;
             }
-
-            // Raw array returning methods for testing (bypassing typed responses)
-            public function createIndexRaw(IndexCreateRequest $request): array
-            {
-                return $this->mockedHttpClient->post(
-                    $this->getBaseApiPath() . 'index',
-                    $request->jsonSerialize()
-                );
-            }
-
-            public function getIndexInfoRaw(): array
-            {
-                return $this->mockedHttpClient->get(
-                    $this->getBaseApiPath() . 'index/info'
-                );
-            }
-
-            public function listIndexVersionsRaw(): array
-            {
-                return $this->mockedHttpClient->get(
-                    $this->getBaseApiPath() . 'index/versions'
-                );
-            }
-
-            public function activateIndexVersionRaw(int $version): array
-            {
-                return $this->mockedHttpClient->post(
-                    $this->getBaseApiPath() . 'index/activate',
-                    ['version' => $version]
-                );
-            }
-
-            public function deleteIndexVersion(int $version): array
-            {
-                return $this->mockedHttpClient->delete(
-                    $this->getBaseApiPath() . 'index/version/' . $version
-                );
-            }
-
-            public function setConfigurationRaw(QueryConfigurationRequest $config): array
-            {
-                return $this->mockedHttpClient->post(
-                    $this->getBaseApiPath() . 'configuration',
-                    $config->jsonSerialize()
-                );
-            }
-
-            public function getConfigurationRaw(): array
-            {
-                return $this->mockedHttpClient->get(
-                    $this->getBaseApiPath() . 'configuration'
-                );
-            }
-
-            public function updateConfigurationRaw(QueryConfigurationRequest $config): array
-            {
-                return $this->mockedHttpClient->put(
-                    $this->getBaseApiPath() . 'configuration',
-                    $config->jsonSerialize()
-                );
-            }
-
-            public function deleteConfiguration(): array
-            {
-                return $this->mockedHttpClient->delete(
-                    $this->getBaseApiPath() . 'configuration'
-                );
-            }
-
-            public function setSynonymsRaw(SynonymConfiguration $config): array
-            {
-                return $this->mockedHttpClient->post(
-                    $this->getBaseApiPath() . 'synonyms',
-                    $config->jsonSerialize()
-                );
-            }
-
-            public function getSynonymsRaw(string $language): array
-            {
-                return $this->mockedHttpClient->get(
-                    $this->getBaseApiPath() . 'synonyms?language=' . $language
-                );
-            }
-
-            public function deleteSynonyms(string $language): array
-            {
-                return $this->mockedHttpClient->delete(
-                    $this->getBaseApiPath() . 'synonyms?language=' . $language
-                );
-            }
-
-            public function bulkOperationsRaw(BulkOperationsRequest $request): array
-            {
-                return $this->mockedHttpClient->post(
-                    $this->getBaseApiPath() . 'sync/bulk-operations',
-                    $request->jsonSerialize()
-                );
-            }
-
-            public function createSearchSettingsRaw(SearchSettingsRequest $settings): array
-            {
-                return $this->mockedHttpClient->post(
-                    'api/v2/configuration',
-                    $settings->jsonSerialize()
-                );
-            }
-
-            public function getSearchSettings(string $appId): array
-            {
-                return $this->mockedHttpClient->get(
-                    'api/v2/configuration/' . $appId
-                );
-            }
-
-            public function updateSearchSettingsRaw(string $appId, SearchSettingsRequest $settings): array
-            {
-                return $this->mockedHttpClient->put(
-                    'api/v2/configuration/' . $appId,
-                    $settings->jsonSerialize()
-                );
-            }
-
-            public function deleteSearchSettings(string $appId): array
-            {
-                return $this->mockedHttpClient->delete(
-                    'api/v2/configuration/' . $appId
-                );
-            }
         };
     }
 
@@ -189,11 +67,12 @@ class SyncV2SdkTest extends TestCase
         );
 
         $apiResponse = [
-            'status' => 'created',
-            'version' => 1,
-            'index_name' => 'app_550e8400_v1',
+            'status' => 'success',
+            'physical_index_name' => 'app_550e8400_v1',
             'alias_name' => 'app_550e8400',
-            'active' => true,
+            'version' => 1,
+            'fields_created' => 3,
+            'message' => 'Index created successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -207,14 +86,14 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndexRaw($request);
+        $result = $sdk->createIndex($request);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('created', $result['status']);
-        $this->assertEquals(1, $result['version']);
-        $this->assertEquals('app_550e8400_v1', $result['index_name']);
-        $this->assertEquals('app_550e8400', $result['alias_name']);
-        $this->assertTrue($result['active']);
+        $this->assertInstanceOf(IndexCreationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals(1, $result->version);
+        $this->assertEquals('app_550e8400_v1', $result->physicalIndexName);
+        $this->assertEquals('app_550e8400', $result->aliasName);
+        $this->assertEquals(3, $result->fieldsCreated);
     }
 
     public function testCreateIndexWithMinimalRequest(): void
@@ -225,11 +104,12 @@ class SyncV2SdkTest extends TestCase
         );
 
         $apiResponse = [
-            'status' => 'created',
-            'version' => 1,
-            'index_name' => 'app_550e8400_v1',
+            'status' => 'success',
+            'physical_index_name' => 'app_550e8400_v1',
             'alias_name' => 'app_550e8400',
-            'active' => true,
+            'version' => 1,
+            'fields_created' => 1,
+            'message' => 'Index created successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -243,40 +123,10 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndexRaw($request);
+        $result = $sdk->createIndex($request);
 
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-    }
-
-    public function testCreateIndexReturnsRawApiResponse(): void
-    {
-        $request = new IndexCreateRequest(
-            ['lt-LT'],
-            [new FieldDefinition('id', FieldType::KEYWORD)]
-        );
-
-        $apiResponse = [
-            'status' => 'created',
-            'version' => 2,
-            'index_name' => 'app_550e8400_v2',
-            'alias_name' => 'app_550e8400',
-            'active' => false,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createIndexRaw($request);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(IndexCreationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
     }
 
     public function testAppIdIncludedInUrlPath(): void
@@ -294,10 +144,17 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['status' => 'created']);
+            ->willReturn([
+                'status' => 'success',
+                'physical_index_name' => 'app_550e8400_v1',
+                'alias_name' => 'app_550e8400',
+                'version' => 1,
+                'fields_created' => 1,
+                'message' => 'Index created',
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndexRaw($request);
+        $sdk->createIndex($request);
     }
 
     public function testRequestSerializedCorrectly(): void
@@ -326,10 +183,17 @@ class SyncV2SdkTest extends TestCase
                 $this->anything(),
                 $expectedPayload
             )
-            ->willReturn(['status' => 'created']);
+            ->willReturn([
+                'status' => 'success',
+                'physical_index_name' => 'app_550e8400_v1',
+                'alias_name' => 'app_550e8400',
+                'version' => 1,
+                'fields_created' => 2,
+                'message' => 'Index created',
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndexRaw($request);
+        $sdk->createIndex($request);
     }
 
     public function testGetIndexInfoSuccess(): void
@@ -338,7 +202,22 @@ class SyncV2SdkTest extends TestCase
             'alias_name' => 'app_550e8400',
             'active_version' => 2,
             'active_index' => 'app_550e8400_v2',
-            'all_versions' => [1, 2],
+            'all_versions' => [
+                [
+                    'version' => 1,
+                    'index_name' => 'app_550e8400_v1',
+                    'document_count' => 100,
+                    'created_at' => '2024-01-01T00:00:00Z',
+                    'is_active' => false,
+                ],
+                [
+                    'version' => 2,
+                    'index_name' => 'app_550e8400_v2',
+                    'document_count' => 150,
+                    'created_at' => '2024-01-02T00:00:00Z',
+                    'is_active' => true,
+                ],
+            ],
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -349,37 +228,13 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getIndexInfoRaw();
+        $result = $sdk->getIndexInfo();
 
-        $this->assertIsArray($result);
-        $this->assertEquals('app_550e8400', $result['alias_name']);
-        $this->assertEquals(2, $result['active_version']);
-        $this->assertEquals('app_550e8400_v2', $result['active_index']);
-        $this->assertEquals([1, 2], $result['all_versions']);
-    }
-
-    public function testGetIndexInfoReturnsRawApiResponse(): void
-    {
-        $apiResponse = [
-            'alias_name' => 'app_550e8400',
-            'active_version' => 1,
-            'active_index' => 'app_550e8400_v1',
-            'all_versions' => [1],
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getIndexInfoRaw();
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(IndexInfoResponse::class, $result);
+        $this->assertEquals('app_550e8400', $result->aliasName);
+        $this->assertEquals(2, $result->activeVersion);
+        $this->assertEquals('app_550e8400_v2', $result->activeIndex);
+        $this->assertCount(2, $result->allVersions);
     }
 
     public function testGetIndexInfoAppIdIncludedInUrlPath(): void
@@ -389,10 +244,23 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringContains(self::APP_ID))
-            ->willReturn(['alias_name' => 'test']);
+            ->willReturn([
+                'alias_name' => 'test',
+                'active_version' => 1,
+                'active_index' => 'test_v1',
+                'all_versions' => [
+                    [
+                        'version' => 1,
+                        'index_name' => 'test_v1',
+                        'document_count' => 0,
+                        'created_at' => '2024-01-01T00:00:00Z',
+                        'is_active' => true,
+                    ],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfoRaw();
+        $sdk->getIndexInfo();
     }
 
     public function testGetIndexInfoUsesCorrectEndpoint(): void
@@ -402,18 +270,46 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringEndsWith('/index/info'))
-            ->willReturn(['alias_name' => 'test']);
+            ->willReturn([
+                'alias_name' => 'test',
+                'active_version' => 1,
+                'active_index' => 'test_v1',
+                'all_versions' => [
+                    [
+                        'version' => 1,
+                        'index_name' => 'test_v1',
+                        'document_count' => 0,
+                        'created_at' => '2024-01-01T00:00:00Z',
+                        'is_active' => true,
+                    ],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfoRaw();
+        $sdk->getIndexInfo();
     }
 
     public function testListIndexVersionsSuccess(): void
     {
         $apiResponse = [
-            'versions' => [
-                ['version' => 1, 'created_at' => '2024-01-01T00:00:00Z'],
-                ['version' => 2, 'created_at' => '2024-01-02T00:00:00Z'],
+            'alias_name' => 'app_550e8400',
+            'active_version' => 2,
+            'active_index' => 'app_550e8400_v2',
+            'all_versions' => [
+                [
+                    'version' => 1,
+                    'index_name' => 'app_550e8400_v1',
+                    'document_count' => 100,
+                    'created_at' => '2024-01-01T00:00:00Z',
+                    'is_active' => false,
+                ],
+                [
+                    'version' => 2,
+                    'index_name' => 'app_550e8400_v2',
+                    'document_count' => 150,
+                    'created_at' => '2024-01-02T00:00:00Z',
+                    'is_active' => true,
+                ],
             ],
         ];
 
@@ -425,32 +321,10 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->listIndexVersionsRaw();
+        $result = $sdk->listIndexVersions();
 
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('versions', $result);
-        $this->assertCount(2, $result['versions']);
-    }
-
-    public function testListIndexVersionsReturnsRawApiResponse(): void
-    {
-        $apiResponse = [
-            'versions' => [1, 2, 3],
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->listIndexVersionsRaw();
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(IndexInfoResponse::class, $result);
+        $this->assertCount(2, $result->allVersions);
     }
 
     public function testListIndexVersionsAppIdIncludedInUrlPath(): void
@@ -460,10 +334,15 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringContains(self::APP_ID))
-            ->willReturn(['versions' => []]);
+            ->willReturn([
+                'alias_name' => 'test',
+                'active_version' => 1,
+                'active_index' => 'test_v1',
+                'all_versions' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->listIndexVersionsRaw();
+        $sdk->listIndexVersions();
     }
 
     public function testListIndexVersionsUsesCorrectEndpoint(): void
@@ -473,10 +352,15 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringEndsWith('/index/versions'))
-            ->willReturn(['versions' => []]);
+            ->willReturn([
+                'alias_name' => 'test',
+                'active_version' => 1,
+                'active_index' => 'test_v1',
+                'all_versions' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->listIndexVersionsRaw();
+        $sdk->listIndexVersions();
     }
 
     public function testActivateIndexVersionSuccess(): void
@@ -495,42 +379,17 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/index/activate',
-                ['version' => $version]
+                ['version' => 'v' . $version]
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->activateIndexVersionRaw($version);
+        $result = $sdk->activateIndexVersion($version);
 
-        $this->assertIsArray($result);
-        $this->assertEquals(1, $result['previous_version']);
-        $this->assertEquals(2, $result['new_version']);
-        $this->assertEquals('app_550e8400', $result['alias_name']);
-    }
-
-    public function testActivateIndexVersionReturnsRawApiResponse(): void
-    {
-        $version = 3;
-
-        $apiResponse = [
-            'previous_version' => 2,
-            'new_version' => 3,
-            'alias_name' => 'app_550e8400',
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->activateIndexVersionRaw($version);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(VersionActivateResponse::class, $result);
+        $this->assertEquals(1, $result->previousVersion);
+        $this->assertEquals(2, $result->newVersion);
+        $this->assertEquals('app_550e8400', $result->aliasName);
     }
 
     public function testActivateIndexVersionAppIdIncludedInUrlPath(): void
@@ -543,10 +402,10 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['previous_version' => 1, 'new_version' => 2]);
+            ->willReturn(['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersionRaw(2);
+        $sdk->activateIndexVersion(2);
     }
 
     public function testActivateIndexVersionUsesCorrectEndpoint(): void
@@ -559,10 +418,10 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/index/activate'),
                 $this->anything()
             )
-            ->willReturn(['previous_version' => 1, 'new_version' => 2]);
+            ->willReturn(['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersionRaw(2);
+        $sdk->activateIndexVersion(2);
     }
 
     public function testActivateIndexVersionSendsCorrectRequestBody(): void
@@ -575,12 +434,12 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 $this->anything(),
-                ['version' => $version]
+                ['version' => 'v' . $version]
             )
-            ->willReturn(['previous_version' => 4, 'new_version' => 5]);
+            ->willReturn(['previous_version' => 4, 'new_version' => 5, 'alias_name' => 'test']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->activateIndexVersionRaw($version);
+        $sdk->activateIndexVersion($version);
     }
 
     public function testDeleteIndexVersionSuccess(): void
@@ -685,6 +544,10 @@ class SyncV2SdkTest extends TestCase
             'status' => 'success',
             'index_name' => 'app_550e8400',
             'cache_ttl_hours' => 24,
+            'search_fields' => [
+                ['field' => 'title', 'position' => 1, 'match_mode' => 'fuzzy'],
+                ['field' => 'description', 'position' => 2, 'match_mode' => 'fuzzy'],
+            ],
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -698,12 +561,12 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfigurationRaw($config);
+        $result = $sdk->setConfiguration($config);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals('app_550e8400', $result['index_name']);
-        $this->assertEquals(24, $result['cache_ttl_hours']);
+        $this->assertInstanceOf(QueryConfigurationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals('app_550e8400', $result->indexName);
+        $this->assertEquals(24, $result->cacheTtlHours);
     }
 
     public function testSetConfigurationWithMinimalConfig(): void
@@ -716,6 +579,9 @@ class SyncV2SdkTest extends TestCase
             'status' => 'success',
             'index_name' => 'app_550e8400',
             'cache_ttl_hours' => 24,
+            'search_fields' => [
+                ['field' => 'title', 'position' => 1, 'match_mode' => 'fuzzy'],
+            ],
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -729,37 +595,10 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfigurationRaw($config);
+        $result = $sdk->setConfiguration($config);
 
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-    }
-
-    public function testSetConfigurationReturnsRawApiResponse(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-        ]);
-
-        $apiResponse = [
-            'status' => 'success',
-            'index_name' => 'app_550e8400',
-            'cache_ttl_hours' => 12,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setConfigurationRaw($config);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(QueryConfigurationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
     }
 
     public function testSetConfigurationAppIdIncludedInUrlPath(): void
@@ -776,10 +615,17 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [
+                    ['field' => 'title', 'position' => 1, 'match_mode' => 'fuzzy'],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfigurationRaw($config);
+        $sdk->setConfiguration($config);
     }
 
     public function testSetConfigurationUsesCorrectEndpoint(): void
@@ -796,40 +642,29 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/configuration'),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [
+                    ['field' => 'title', 'position' => 1, 'match_mode' => 'fuzzy'],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfigurationRaw($config);
-    }
-
-    public function testSetConfigurationPassesConfigWithCorrectSerialization(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, MatchMode::PHRASE_PREFIX),
-            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
-        ]);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                $config->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfigurationRaw($config);
+        $sdk->setConfiguration($config);
     }
 
     public function testGetConfigurationSuccess(): void
     {
         $apiResponse = [
-            'search_fields' => ['title', 'description'],
-            'fuzzy_matching' => true,
+            'status' => 'success',
+            'index_name' => 'app_550e8400',
             'cache_ttl_hours' => 24,
+            'search_fields' => [
+                ['field' => 'title', 'position' => 1, 'match_mode' => 'fuzzy'],
+                ['field' => 'description', 'position' => 2, 'match_mode' => 'fuzzy'],
+            ],
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -840,34 +675,13 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getConfigurationRaw();
+        $result = $sdk->getConfiguration();
 
-        $this->assertIsArray($result);
-        $this->assertEquals(['title', 'description'], $result['search_fields']);
-        $this->assertTrue($result['fuzzy_matching']);
-        $this->assertEquals(24, $result['cache_ttl_hours']);
-    }
-
-    public function testGetConfigurationReturnsRawApiResponse(): void
-    {
-        $apiResponse = [
-            'search_fields' => ['title'],
-            'fuzzy_matching' => false,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getConfigurationRaw();
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(QueryConfigurationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals('app_550e8400', $result->indexName);
+        $this->assertEquals(24, $result->cacheTtlHours);
+        $this->assertCount(2, $result->searchFields);
     }
 
     public function testGetConfigurationAppIdIncludedInUrlPath(): void
@@ -877,10 +691,15 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringContains(self::APP_ID))
-            ->willReturn(['search_fields' => []]);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getConfigurationRaw();
+        $sdk->getConfiguration();
     }
 
     public function testGetConfigurationUsesCorrectEndpoint(): void
@@ -890,24 +709,30 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with($this->stringEndsWith('/configuration'))
-            ->willReturn(['search_fields' => []]);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getConfigurationRaw();
+        $sdk->getConfiguration();
     }
 
     public function testUpdateConfigurationSuccess(): void
     {
         $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, MatchMode::FUZZY),
-            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
+            new SearchFieldConfig('title', 2, MatchMode::EXACT),
         ]);
 
         $apiResponse = [
             'status' => 'success',
             'index_name' => 'app_550e8400',
             'cache_ttl_hours' => 12,
+            'search_fields' => [
+                ['field' => 'title', 'position' => 2, 'match_mode' => 'exact'],
+            ],
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -921,68 +746,11 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfigurationRaw($config);
+        $result = $sdk->updateConfiguration($config);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals('app_550e8400', $result['index_name']);
-        $this->assertEquals(12, $result['cache_ttl_hours']);
-    }
-
-    public function testUpdateConfigurationWithMinimalConfig(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-        ]);
-
-        $apiResponse = [
-            'status' => 'success',
-            'index_name' => 'app_550e8400',
-            'cache_ttl_hours' => 24,
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->with(
-                'api/v2/applications/' . self::APP_ID . '/configuration',
-                $config->jsonSerialize()
-            )
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfigurationRaw($config);
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-    }
-
-    public function testUpdateConfigurationReturnsRawApiResponse(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-        ]);
-
-        $apiResponse = [
-            'status' => 'success',
-            'index_name' => 'app_550e8400',
-            'cache_ttl_hours' => 48,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateConfigurationRaw($config);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(QueryConfigurationResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals(12, $result->cacheTtlHours);
     }
 
     public function testUpdateConfigurationAppIdIncludedInUrlPath(): void
@@ -999,10 +767,15 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfigurationRaw($config);
+        $sdk->updateConfiguration($config);
     }
 
     public function testUpdateConfigurationUsesCorrectEndpoint(): void
@@ -1019,32 +792,15 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/configuration'),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'index_name' => 'app_550e8400',
+                'cache_ttl_hours' => 24,
+                'search_fields' => [],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfigurationRaw($config);
-    }
-
-    public function testUpdateConfigurationPassesConfigAsJsonSerialized(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, MatchMode::PHRASE_PREFIX),
-            new SearchFieldConfig('brand', 3, MatchMode::EXACT),
-        ]);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->with(
-                $this->anything(),
-                $config->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateConfigurationRaw($config);
+        $sdk->updateConfiguration($config);
     }
 
     public function testDeleteConfigurationSuccess(): void
@@ -1066,29 +822,6 @@ class SyncV2SdkTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertEquals('deleted', $result['status']);
-        $this->assertArrayHasKey('message', $result);
-    }
-
-    public function testDeleteConfigurationReturnsRawApiResponse(): void
-    {
-        $apiResponse = [
-            'status' => 'deleted',
-            'message' => 'Configuration deleted successfully',
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('delete')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->deleteConfiguration();
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
     }
 
     public function testDeleteConfigurationAppIdIncludedInUrlPath(): void
@@ -1119,11 +852,10 @@ class SyncV2SdkTest extends TestCase
 
     public function testSetSynonymsSuccess(): void
     {
-        $synonyms = [
-            ['laptop', 'notebook', 'portable computer'],
-            ['phone', 'mobile', 'smartphone'],
-        ];
-        $config = new SynonymConfiguration('en', $synonyms);
+        $config = new SynonymConfiguration('en', [
+            ['happy', 'joyful', 'cheerful'],
+            ['sad', 'unhappy', 'sorrowful'],
+        ]);
 
         $apiResponse = [
             'language' => 'en',
@@ -1137,82 +869,22 @@ class SyncV2SdkTest extends TestCase
             ->method('post')
             ->with(
                 'api/v2/applications/' . self::APP_ID . '/synonyms',
-                [
-                    'language' => 'en',
-                    'synonyms' => $synonyms,
-                ]
+                $config->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonymsRaw($config);
+        $result = $sdk->setSynonyms($config);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('en', $result['language']);
-        $this->assertEquals(2, $result['synonym_count']);
-        $this->assertTrue($result['requires_reindex']);
-    }
-
-    public function testSetSynonymsWithSingleSynonymGroup(): void
-    {
-        $synonyms = [['test', 'trial']];
-        $config = new SynonymConfiguration('en', $synonyms);
-
-        $apiResponse = [
-            'language' => 'en',
-            'synonym_count' => 1,
-            'requires_reindex' => false,
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                'api/v2/applications/' . self::APP_ID . '/synonyms',
-                [
-                    'language' => 'en',
-                    'synonyms' => $synonyms,
-                ]
-            )
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonymsRaw($config);
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('language', $result);
-        $this->assertEquals(1, $result['synonym_count']);
-    }
-
-    public function testSetSynonymsReturnsRawApiResponse(): void
-    {
-        $config = new SynonymConfiguration('lt', [['kompiuteris', 'PC']]);
-
-        $apiResponse = [
-            'language' => 'lt',
-            'synonym_count' => 1,
-            'requires_reindex' => true,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->setSynonymsRaw($config);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(SynonymResponse::class, $result);
+        $this->assertEquals('en', $result->language);
+        $this->assertEquals(2, $result->synonymCount);
+        $this->assertTrue($result->requiresReindex);
     }
 
     public function testSetSynonymsAppIdIncludedInUrlPath(): void
     {
-        $config = new SynonymConfiguration('en', [['test', 'trial']]);
+        $config = new SynonymConfiguration('en', [['happy', 'joyful']]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1222,15 +894,19 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['language' => 'en', 'synonym_count' => 1]);
+            ->willReturn([
+                'language' => 'en',
+                'synonym_count' => 1,
+                'requires_reindex' => false,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonymsRaw($config);
+        $sdk->setSynonyms($config);
     }
 
     public function testSetSynonymsUsesCorrectEndpoint(): void
     {
-        $config = new SynonymConfiguration('en', [['test', 'trial']]);
+        $config = new SynonymConfiguration('en', [['happy', 'joyful']]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1240,35 +916,14 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/synonyms'),
                 $this->anything()
             )
-            ->willReturn(['language' => 'en', 'synonym_count' => 1]);
+            ->willReturn([
+                'language' => 'en',
+                'synonym_count' => 1,
+                'requires_reindex' => false,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonymsRaw($config);
-    }
-
-    public function testSetSynonymsSendsCorrectRequestBody(): void
-    {
-        $synonyms = [
-            ['computer', 'rechner'],
-            ['handy', 'smartphone', 'mobiltelefon'],
-        ];
-        $config = new SynonymConfiguration('de', $synonyms);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                [
-                    'language' => 'de',
-                    'synonyms' => $synonyms,
-                ]
-            )
-            ->willReturn(['language' => 'de', 'synonym_count' => 2]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonymsRaw($config);
+        $sdk->setSynonyms($config);
     }
 
     public function testGetSynonymsSuccess(): void
@@ -1277,9 +932,11 @@ class SyncV2SdkTest extends TestCase
 
         $apiResponse = [
             'language' => 'en',
+            'synonym_count' => 2,
+            'requires_reindex' => false,
             'synonyms' => [
-                ['laptop', 'notebook', 'portable computer'],
-                ['phone', 'mobile', 'smartphone'],
+                ['happy', 'joyful', 'cheerful'],
+                ['sad', 'unhappy', 'sorrowful'],
             ],
         ];
 
@@ -1291,105 +948,49 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonymsRaw($language);
+        $result = $sdk->getSynonyms($language);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('en', $result['language']);
-        $this->assertArrayHasKey('synonyms', $result);
-        $this->assertCount(2, $result['synonyms']);
-    }
-
-    public function testGetSynonymsReturnsRawApiResponse(): void
-    {
-        $language = 'lt';
-
-        $apiResponse = [
-            'language' => 'lt',
-            'synonyms' => [['kompiuteris', 'PC']],
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonymsRaw($language);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(SynonymResponse::class, $result);
+        $this->assertEquals('en', $result->language);
+        $this->assertEquals(2, $result->synonymCount);
+        $this->assertFalse($result->requiresReindex);
+        $this->assertCount(2, $result->synonyms);
     }
 
     public function testGetSynonymsAppIdIncludedInUrlPath(): void
     {
-        $language = 'en';
-
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
             ->method('get')
             ->with($this->stringContains(self::APP_ID))
-            ->willReturn(['language' => 'en', 'synonyms' => []]);
+            ->willReturn([
+                'language' => 'en',
+                'synonym_count' => 0,
+                'requires_reindex' => false,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonymsRaw($language);
+        $sdk->getSynonyms('en');
     }
 
-    public function testGetSynonymsUsesCorrectEndpoint(): void
+    public function testGetSynonymsIncludesLanguageInUrl(): void
     {
-        $language = 'en';
+        $language = 'lt';
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
             ->method('get')
-            ->with($this->stringContains('/synonyms?language='))
-            ->willReturn(['language' => 'en', 'synonyms' => []]);
+            ->with($this->stringContains('language=' . $language))
+            ->willReturn([
+                'language' => 'lt',
+                'synonym_count' => 0,
+                'requires_reindex' => false,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonymsRaw($language);
-    }
-
-    public function testGetSynonymsIncludesLanguageInQueryString(): void
-    {
-        $language = 'de';
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->with('api/v2/applications/' . self::APP_ID . '/synonyms?language=de')
-            ->willReturn(['language' => 'de', 'synonyms' => []]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSynonymsRaw($language);
-    }
-
-    public function testGetSynonymsWithEmptyResult(): void
-    {
-        $language = 'fr';
-
-        $apiResponse = [
-            'language' => 'fr',
-            'synonyms' => [],
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->with('api/v2/applications/' . self::APP_ID . '/synonyms?language=' . $language)
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSynonymsRaw($language);
-
-        $this->assertIsArray($result);
-        $this->assertEquals('fr', $result['language']);
-        $this->assertEmpty($result['synonyms']);
+        $sdk->getSynonyms($language);
     }
 
     public function testDeleteSynonymsSuccess(): void
@@ -1398,7 +999,6 @@ class SyncV2SdkTest extends TestCase
 
         $apiResponse = [
             'status' => 'deleted',
-            'language' => 'en',
             'message' => 'Synonyms deleted successfully',
         ];
 
@@ -1414,39 +1014,10 @@ class SyncV2SdkTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertEquals('deleted', $result['status']);
-        $this->assertEquals('en', $result['language']);
-        $this->assertArrayHasKey('message', $result);
-    }
-
-    public function testDeleteSynonymsReturnsRawApiResponse(): void
-    {
-        $language = 'lt';
-
-        $apiResponse = [
-            'status' => 'deleted',
-            'language' => 'lt',
-            'message' => 'Synonyms deleted successfully',
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('delete')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->deleteSynonyms($language);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
     }
 
     public function testDeleteSynonymsAppIdIncludedInUrlPath(): void
     {
-        $language = 'en';
-
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
@@ -1455,33 +1026,18 @@ class SyncV2SdkTest extends TestCase
             ->willReturn(['status' => 'deleted']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->deleteSynonyms($language);
+        $sdk->deleteSynonyms('en');
     }
 
-    public function testDeleteSynonymsUsesCorrectEndpoint(): void
+    public function testDeleteSynonymsIncludesLanguageInUrl(): void
     {
-        $language = 'en';
+        $language = 'lt';
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
             ->method('delete')
-            ->with($this->stringContains('/synonyms?language='))
-            ->willReturn(['status' => 'deleted']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->deleteSynonyms($language);
-    }
-
-    public function testDeleteSynonymsIncludesLanguageInQueryString(): void
-    {
-        $language = 'de';
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('delete')
-            ->with('api/v2/applications/' . self::APP_ID . '/synonyms?language=de')
+            ->with($this->stringContains('language=' . $language))
             ->willReturn(['status' => 'deleted']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
@@ -1490,36 +1046,32 @@ class SyncV2SdkTest extends TestCase
 
     public function testBulkOperationsSuccess(): void
     {
-        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
+        $products = [
+            new Product(
+                id: '1',
+                sku: 'SKU-001',
+                pricing: new ProductPricing(10.00, 12.00, 8.00, 10.00),
+                imageUrl: new ImageUrl('https://example.com/img1-small.jpg', 'https://example.com/img1-medium.jpg')
             ),
-            null,
-            null,
-            ['name_lt-LT' => 'Product 1']
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
-        $request = new BulkOperationsRequest([$operation]);
+            new Product(
+                id: '2',
+                sku: 'SKU-002',
+                pricing: new ProductPricing(20.00, 24.00, 16.00, 20.00),
+                imageUrl: new ImageUrl('https://example.com/img2-small.jpg', 'https://example.com/img2-medium.jpg')
+            ),
+        ];
+        $request = new BulkOperationsRequest([
+            BulkOperation::indexProducts($products)
+        ]);
 
         $apiResponse = [
             'status' => 'success',
-            'message' => 'All 1 operations completed successfully',
-            'total_operations' => 1,
-            'successful_operations' => 1,
+            'total_operations' => 2,
+            'successful_operations' => 2,
             'failed_operations' => 0,
-            'processing_time_ms' => 2156,
             'results' => [
-                [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                    'message' => 'Operation completed',
-                    'count' => 1,
-                ],
+                ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
             ],
         ];
 
@@ -1534,75 +1086,28 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperationsRaw($request);
+        $result = $sdk->bulkOperations($request);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals(1, $result['total_operations']);
-        $this->assertEquals(1, $result['successful_operations']);
-        $this->assertEquals(0, $result['failed_operations']);
-        $this->assertCount(1, $result['results']);
-    }
-
-    public function testBulkOperationsReturnsRawApiResponse(): void
-    {
-        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
-            )
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
-        $request = new BulkOperationsRequest([$operation]);
-
-        $apiResponse = [
-            'status' => 'success',
-            'message' => 'All 1 operations completed successfully',
-            'total_operations' => 1,
-            'successful_operations' => 1,
-            'failed_operations' => 0,
-            'processing_time_ms' => 500,
-            'results' => [
-                [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                ],
-            ],
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperationsRaw($request);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(BulkOperationsResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals(2, $result->totalOperations);
+        $this->assertEquals(2, $result->successfulOperations);
+        $this->assertEquals(0, $result->failedOperations);
     }
 
     public function testBulkOperationsAppIdIncludedInUrlPath(): void
     {
-        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
-            )
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
-        $request = new BulkOperationsRequest([$operation]);
+        $products = [
+            new Product(
+                id: '1',
+                sku: 'SKU-001',
+                pricing: new ProductPricing(10.00, 12.00, 8.00, 10.00),
+                imageUrl: new ImageUrl('https://example.com/img1-small.jpg', 'https://example.com/img1-medium.jpg')
+            ),
+        ];
+        $request = new BulkOperationsRequest([
+            BulkOperation::indexProducts($products)
+        ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1612,26 +1117,33 @@ class SyncV2SdkTest extends TestCase
                 $this->stringContains(self::APP_ID),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'total_operations' => 1,
+                'successful_operations' => 1,
+                'failed_operations' => 0,
+                'results' => [
+                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperationsRaw($request);
+        $sdk->bulkOperations($request);
     }
 
     public function testBulkOperationsUsesCorrectEndpoint(): void
     {
-        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
-            )
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
-        $request = new BulkOperationsRequest([$operation]);
+        $products = [
+            new Product(
+                id: '1',
+                sku: 'SKU-001',
+                pricing: new ProductPricing(10.00, 12.00, 8.00, 10.00),
+                imageUrl: new ImageUrl('https://example.com/img1-small.jpg', 'https://example.com/img1-medium.jpg')
+            ),
+        ];
+        $request = new BulkOperationsRequest([
+            BulkOperation::indexProducts($products)
+        ]);
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1641,103 +1153,30 @@ class SyncV2SdkTest extends TestCase
                 $this->stringEndsWith('/sync/bulk-operations'),
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'success',
+                'total_operations' => 1,
+                'successful_operations' => 1,
+                'failed_operations' => 0,
+                'results' => [
+                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                ],
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperationsRaw($request);
-    }
-
-    public function testBulkOperationsSendsCorrectRequestBody(): void
-    {
-        $product = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
-            ),
-            null,
-            null,
-            ['name_lt-LT' => 'Test Product']
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product]);
-        $request = new BulkOperationsRequest([$operation]);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                $request->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->bulkOperationsRaw($request);
-    }
-
-    public function testBulkOperationsWithMultipleProducts(): void
-    {
-        $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-123',
-            'SKU-123',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small.jpg',
-                'https://cdn.example.com/medium.jpg'
-            ),
-            null,
-            null,
-            ['name_lt-LT' => 'Product 1']
-        );
-
-        $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-124',
-            'SKU-124',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(149.99, 149.99, 123.97, 123.97),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small2.jpg',
-                'https://cdn.example.com/medium2.jpg'
-            ),
-            null,
-            null,
-            ['name_lt-LT' => 'Product 2']
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product1, $product2]);
-        $request = new BulkOperationsRequest([$operation]);
-
-        $apiResponse = [
-            'status' => 'success',
-            'total_operations' => 1,
-            'successful_operations' => 1,
-            'failed_operations' => 0,
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperationsRaw($request);
-
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
+        $sdk->bulkOperations($request);
     }
 
     public function testCreateSearchSettingsSuccess(): void
     {
-        $settings = new SearchSettingsRequest(self::APP_ID);
+        $settings = new SearchSettingsRequest(
+            appId: self::APP_ID
+        );
 
         $apiResponse = [
-            'status' => 'success',
+            'status' => 'created',
             'app_id' => self::APP_ID,
-            'message' => 'Search settings created successfully',
+            'message' => 'Settings created successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1751,66 +1190,18 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettingsRaw($settings);
+        $result = $sdk->createSearchSettings($settings);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals(self::APP_ID, $result['app_id']);
-    }
-
-    public function testCreateSearchSettingsWithMinimalSettings(): void
-    {
-        $settings = new SearchSettingsRequest('minimal_app');
-
-        $apiResponse = [
-            'status' => 'success',
-            'message' => 'Search settings created successfully',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                'api/v2/configuration',
-                $settings->jsonSerialize()
-            )
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettingsRaw($settings);
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-    }
-
-    public function testCreateSearchSettingsReturnsRawApiResponse(): void
-    {
-        $settings = new SearchSettingsRequest(self::APP_ID);
-
-        $apiResponse = [
-            'status' => 'success',
-            'app_id' => self::APP_ID,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->createSearchSettingsRaw($settings);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
+        $this->assertInstanceOf(SettingsResponse::class, $result);
+        $this->assertEquals('created', $result->status);
+        $this->assertEquals(self::APP_ID, $result->appId);
     }
 
     public function testCreateSearchSettingsUsesCorrectEndpoint(): void
     {
-        $settings = new SearchSettingsRequest(self::APP_ID);
+        $settings = new SearchSettingsRequest(
+            appId: self::APP_ID
+        );
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -1820,28 +1211,13 @@ class SyncV2SdkTest extends TestCase
                 'api/v2/configuration',
                 $this->anything()
             )
-            ->willReturn(['status' => 'success']);
+            ->willReturn([
+                'status' => 'created',
+                'app_id' => self::APP_ID,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettingsRaw($settings);
-    }
-
-    public function testCreateSearchSettingsPassesSettingsAsJsonSerialized(): void
-    {
-        $settings = new SearchSettingsRequest(self::APP_ID);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                $settings->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettingsRaw($settings);
+        $sdk->createSearchSettings($settings);
     }
 
     public function testGetSearchSettingsSuccess(): void
@@ -1849,9 +1225,9 @@ class SyncV2SdkTest extends TestCase
         $appId = self::APP_ID;
 
         $apiResponse = [
+            'status' => 'success',
             'app_id' => $appId,
-            'search_fields' => ['title', 'description'],
-            'fuzzy_matching' => true,
+            'api_key' => 'test-api-key',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1865,48 +1241,8 @@ class SyncV2SdkTest extends TestCase
         $result = $sdk->getSearchSettings($appId);
 
         $this->assertIsArray($result);
+        $this->assertEquals('success', $result['status']);
         $this->assertEquals($appId, $result['app_id']);
-        $this->assertEquals(['title', 'description'], $result['search_fields']);
-        $this->assertTrue($result['fuzzy_matching']);
-    }
-
-    public function testGetSearchSettingsReturnsRawApiResponse(): void
-    {
-        $appId = self::APP_ID;
-
-        $apiResponse = [
-            'app_id' => $appId,
-            'search_fields' => ['title'],
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSearchSettings($appId);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
-    }
-
-    public function testGetSearchSettingsAppIdIncludedInUrlPath(): void
-    {
-        $appId = self::APP_ID;
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->with($this->stringContains($appId))
-            ->willReturn(['app_id' => $appId]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSearchSettings($appId);
     }
 
     public function testGetSearchSettingsUsesCorrectEndpoint(): void
@@ -1918,7 +1254,7 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('get')
             ->with('api/v2/configuration/' . $appId)
-            ->willReturn(['app_id' => $appId]);
+            ->willReturn(['status' => 'success', 'app_id' => $appId]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
         $sdk->getSearchSettings($appId);
@@ -1927,12 +1263,14 @@ class SyncV2SdkTest extends TestCase
     public function testUpdateSearchSettingsSuccess(): void
     {
         $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
+        $settings = new SearchSettingsRequest(
+            appId: $appId
+        );
 
         $apiResponse = [
             'status' => 'success',
             'app_id' => $appId,
-            'message' => 'Search settings updated successfully',
+            'message' => 'Settings updated successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1946,88 +1284,19 @@ class SyncV2SdkTest extends TestCase
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
+        $result = $sdk->updateSearchSettings($appId, $settings);
 
-        $this->assertIsArray($result);
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals($appId, $result['app_id']);
-    }
-
-    public function testUpdateSearchSettingsWithMinimalSettings(): void
-    {
-        $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
-
-        $apiResponse = [
-            'status' => 'success',
-            'app_id' => $appId,
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->with(
-                'api/v2/configuration/' . $appId,
-                $settings->jsonSerialize()
-            )
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
-
-        $this->assertIsArray($result);
-        $this->assertArrayHasKey('status', $result);
-    }
-
-    public function testUpdateSearchSettingsReturnsRawApiResponse(): void
-    {
-        $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
-
-        $apiResponse = [
-            'status' => 'success',
-            'app_id' => $appId,
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettingsRaw($appId, $settings);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
-    }
-
-    public function testUpdateSearchSettingsAppIdIncludedInUrlPath(): void
-    {
-        $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->with(
-                $this->stringContains($appId),
-                $this->anything()
-            )
-            ->willReturn(['status' => 'success', 'app_id' => $appId]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettingsRaw($appId, $settings);
+        $this->assertInstanceOf(SettingsResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals($appId, $result->appId);
     }
 
     public function testUpdateSearchSettingsUsesCorrectEndpoint(): void
     {
         $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
+        $settings = new SearchSettingsRequest(
+            appId: $appId
+        );
 
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
@@ -2037,29 +1306,13 @@ class SyncV2SdkTest extends TestCase
                 'api/v2/configuration/' . $appId,
                 $this->anything()
             )
-            ->willReturn(['status' => 'success', 'app_id' => $appId]);
+            ->willReturn([
+                'status' => 'success',
+                'app_id' => $appId,
+            ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettingsRaw($appId, $settings);
-    }
-
-    public function testUpdateSearchSettingsPassesSettingsAsJsonSerialized(): void
-    {
-        $appId = self::APP_ID;
-        $settings = new SearchSettingsRequest($appId);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('put')
-            ->with(
-                $this->anything(),
-                $settings->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success', 'app_id' => $appId]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettingsRaw($appId, $settings);
+        $sdk->updateSearchSettings($appId, $settings);
     }
 
     public function testDeleteSearchSettingsSuccess(): void
@@ -2068,7 +1321,7 @@ class SyncV2SdkTest extends TestCase
 
         $apiResponse = [
             'status' => 'deleted',
-            'message' => 'Search settings deleted successfully',
+            'message' => 'Settings deleted successfully',
         ];
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -2083,46 +1336,6 @@ class SyncV2SdkTest extends TestCase
 
         $this->assertIsArray($result);
         $this->assertEquals('deleted', $result['status']);
-        $this->assertArrayHasKey('message', $result);
-    }
-
-    public function testDeleteSearchSettingsReturnsRawApiResponse(): void
-    {
-        $appId = self::APP_ID;
-
-        $apiResponse = [
-            'status' => 'deleted',
-            'message' => 'Search settings deleted successfully',
-            'extra_field' => 'extra_value',
-        ];
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('delete')
-            ->willReturn($apiResponse);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->deleteSearchSettings($appId);
-
-        $this->assertEquals($apiResponse, $result);
-        $this->assertArrayHasKey('extra_field', $result);
-        $this->assertEquals('extra_value', $result['extra_field']);
-    }
-
-    public function testDeleteSearchSettingsAppIdIncludedInUrlPath(): void
-    {
-        $appId = self::APP_ID;
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('delete')
-            ->with($this->stringContains($appId))
-            ->willReturn(['status' => 'deleted']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->deleteSearchSettings($appId);
     }
 
     public function testDeleteSearchSettingsUsesCorrectEndpoint(): void
@@ -2148,274 +1361,11 @@ class SyncV2SdkTest extends TestCase
         $this->assertEquals(self::APP_ID, $sdk->getAppId());
     }
 
-    public function testGetBaseApiPathIncludesAppId(): void
+    public function testGetBaseApiPathReturnsCorrectPath(): void
     {
         $httpClientMock = $this->createMock(HttpClient::class);
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
 
-        $expectedPath = 'api/v2/applications/' . self::APP_ID . '/';
-        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
-    }
-
-    public function testGetBaseApiPathFollowsCorrectV2Format(): void
-    {
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-
-        $basePath = $sdk->getBaseApiPath();
-
-        $this->assertStringStartsWith('api/v2/', $basePath);
-        $this->assertStringContainsString('/applications/', $basePath);
-        $this->assertStringEndsWith('/', $basePath);
-    }
-
-    public function testSdkConstructorConfiguresCorrectBaseApiPath(): void
-    {
-        $config = new SyncConfigV2(self::APP_ID, self::API_URL, self::TOKEN);
-        $sdk = new SyncV2Sdk($config);
-
-        $expectedPath = 'api/v2/applications/' . self::APP_ID . '/';
-        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
-    }
-
-    public function testSdkWithDifferentAppIdHasCorrectPath(): void
-    {
-        $differentAppId = '12345678-1234-1234-1234-123456789012';
-        $config = new SyncConfigV2($differentAppId, self::API_URL, self::TOKEN);
-        $sdk = new SyncV2Sdk($config);
-
-        $expectedPath = 'api/v2/applications/' . $differentAppId . '/';
-        $this->assertEquals($expectedPath, $sdk->getBaseApiPath());
-        $this->assertEquals($differentAppId, $sdk->getAppId());
-    }
-
-    public function testAllEndpointsUseV2ApiVersion(): void
-    {
-        $httpClientMock = $this->createMock(HttpClient::class);
-
-        // Track all called endpoints
-        $calledEndpoints = [];
-
-        $httpClientMock
-            ->method('get')
-            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
-                $calledEndpoints[] = $endpoint;
-                return ['status' => 'success'];
-            });
-
-        $httpClientMock
-            ->method('post')
-            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
-                $calledEndpoints[] = $endpoint;
-                return ['status' => 'success'];
-            });
-
-        $httpClientMock
-            ->method('put')
-            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
-                $calledEndpoints[] = $endpoint;
-                return ['status' => 'success'];
-            });
-
-        $httpClientMock
-            ->method('delete')
-            ->willReturnCallback(function (string $endpoint) use (&$calledEndpoints) {
-                $calledEndpoints[] = $endpoint;
-                return ['status' => 'deleted'];
-            });
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-
-        // Call various methods to collect endpoints
-        $request = new IndexCreateRequest(
-            ['lt-LT'],
-            [new FieldDefinition('id', FieldType::KEYWORD)]
-        );
-        $sdk->createIndexRaw($request);
-        $sdk->getIndexInfoRaw();
-        $sdk->listIndexVersionsRaw();
-        $sdk->getConfigurationRaw();
-        $sdk->getSynonymsRaw('en');
-
-        // Verify all endpoints use v2 API
-        foreach ($calledEndpoints as $endpoint) {
-            $this->assertStringContainsString('api/v2/', $endpoint);
-        }
-    }
-
-    public function testDataIntegrityForNestedStructures(): void
-    {
-        $request = new IndexCreateRequest(
-            ['lt-LT'],
-            [
-                new FieldDefinition('categories', FieldType::TEXT),
-                new FieldDefinition('variants', FieldType::VARIANTS, [
-                    new VariantAttribute('color', FieldType::KEYWORD, true),
-                    new VariantAttribute('size', FieldType::KEYWORD, true),
-                ]),
-            ]
-        );
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                $request->jsonSerialize()
-            )
-            ->willReturn(['status' => 'created']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createIndexRaw($request);
-    }
-
-    public function testMultipleLanguageSynonymsPassedCorrectly(): void
-    {
-        $synonyms = [
-            ['laptop', 'notebook', 'portable computer', 'portable PC'],
-            ['phone', 'mobile', 'smartphone', 'cellphone', 'cell'],
-            ['TV', 'television', 'telly', 'flat screen'],
-        ];
-        $config = new SynonymConfiguration('en', $synonyms);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->anything(),
-                [
-                    'language' => 'en',
-                    'synonyms' => $synonyms,
-                ]
-            )
-            ->willReturn(['language' => 'en', 'synonym_count' => 3]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setSynonymsRaw($config);
-    }
-
-    public function testBulkOperationsWithIndexProductsOperation(): void
-    {
-        $product1 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-1',
-            'SKU-1',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(99.99, 99.99, 82.64, 82.64),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small1.jpg',
-                'https://cdn.example.com/medium1.jpg'
-            ),
-            null,
-            null,
-            ['name_lt-LT' => 'Product 1']
-        );
-
-        $product2 = new \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product(
-            'prod-2',
-            'SKU-2',
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing(149.99, 149.99, 123.97, 123.97),
-            new \BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl(
-                'https://cdn.example.com/small2.jpg',
-                'https://cdn.example.com/medium2.jpg'
-            ),
-            null,
-            null,
-            ['name_lt-LT' => 'Product 2']
-        );
-
-        $operation = \BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation::indexProducts([$product1, $product2]);
-        $request = new BulkOperationsRequest([$operation]);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
-                $request->jsonSerialize()
-            )
-            ->willReturn([
-                'status' => 'success',
-                'total_operations' => 1,
-                'successful_operations' => 1,
-                'failed_operations' => 0,
-            ]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->bulkOperationsRaw($request);
-
-        $this->assertEquals('success', $result['status']);
-        $this->assertEquals(1, $result['total_operations']);
-    }
-
-    public function testSearchSettingsEndpointsDoNotIncludeAppIdInBasePath(): void
-    {
-        $settings = new SearchSettingsRequest(self::APP_ID);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                $this->callback(function (string $endpoint) {
-                    // Search settings use global endpoint without app_id in base path
-                    return $endpoint === 'api/v2/configuration';
-                }),
-                $this->anything()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->createSearchSettingsRaw($settings);
-    }
-
-    public function testGetSearchSettingsIncludesAppIdInUrl(): void
-    {
-        $targetAppId = 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee';
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->with('api/v2/configuration/' . $targetAppId)
-            ->willReturn(['app_id' => $targetAppId]);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSearchSettings($targetAppId);
-    }
-
-    public function testConfigurationMethodsUseAppIdBasePath(): void
-    {
-        $config = new QueryConfigurationRequest([
-            new SearchFieldConfig('title', 1, MatchMode::FUZZY),
-            new SearchFieldConfig('description', 2, MatchMode::FUZZY),
-        ]);
-
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('post')
-            ->with(
-                'api/v2/applications/' . self::APP_ID . '/configuration',
-                $config->jsonSerialize()
-            )
-            ->willReturn(['status' => 'success']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->setConfigurationRaw($config);
-    }
-
-    public function testIndexMethodsUseAppIdBasePath(): void
-    {
-        $httpClientMock = $this->createMock(HttpClient::class);
-        $httpClientMock
-            ->expects($this->once())
-            ->method('get')
-            ->with('api/v2/applications/' . self::APP_ID . '/index/info')
-            ->willReturn(['alias_name' => 'test']);
-
-        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getIndexInfoRaw();
+        $this->assertEquals('api/v2/applications/' . self::APP_ID . '/', $sdk->getBaseApiPath());
     }
 }

@@ -61,7 +61,7 @@ class SyncV2Sdk
      */
     public function createIndex(IndexCreateRequest $request): IndexCreationResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'index',
             $request->jsonSerialize()
         );
@@ -77,7 +77,7 @@ class SyncV2Sdk
      */
     public function getIndexInfo(): IndexInfoResponse
     {
-        $response = $this->httpClient->get(
+        $response = $this->getHttpClient()->get(
             $this->baseApiPath . 'index/info'
         );
 
@@ -91,7 +91,7 @@ class SyncV2Sdk
      */
     public function listIndexVersions(): IndexInfoResponse
     {
-        $response = $this->httpClient->get(
+        $response = $this->getHttpClient()->get(
             $this->baseApiPath . 'index/versions'
         );
 
@@ -107,7 +107,7 @@ class SyncV2Sdk
      */
     public function activateIndexVersion(int $version): VersionActivateResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'index/activate',
             ['version' => 'v' . $version]
         );
@@ -123,7 +123,7 @@ class SyncV2Sdk
      */
     public function deleteIndexVersion(int $version): array
     {
-        return $this->httpClient->delete(
+        return $this->getHttpClient()->delete(
             $this->baseApiPath . 'index/version/' . $version
         );
     }
@@ -136,7 +136,7 @@ class SyncV2Sdk
      */
     public function setConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'configuration',
             $config->jsonSerialize()
         );
@@ -151,7 +151,7 @@ class SyncV2Sdk
      */
     public function getConfiguration(): QueryConfigurationResponse
     {
-        $response = $this->httpClient->get(
+        $response = $this->getHttpClient()->get(
             $this->baseApiPath . 'configuration'
         );
 
@@ -166,7 +166,7 @@ class SyncV2Sdk
      */
     public function updateConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse
     {
-        $response = $this->httpClient->put(
+        $response = $this->getHttpClient()->put(
             $this->baseApiPath . 'configuration',
             $config->jsonSerialize()
         );
@@ -181,7 +181,7 @@ class SyncV2Sdk
      */
     public function deleteConfiguration(): array
     {
-        return $this->httpClient->delete(
+        return $this->getHttpClient()->delete(
             $this->baseApiPath . 'configuration'
         );
     }
@@ -194,7 +194,7 @@ class SyncV2Sdk
      */
     public function setSynonyms(SynonymConfiguration $config): SynonymResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'synonyms',
             $config->jsonSerialize()
         );
@@ -210,7 +210,7 @@ class SyncV2Sdk
      */
     public function getSynonyms(string $language): SynonymResponse
     {
-        $response = $this->httpClient->get(
+        $response = $this->getHttpClient()->get(
             $this->baseApiPath . 'synonyms?language=' . $language
         );
 
@@ -225,7 +225,7 @@ class SyncV2Sdk
      */
     public function deleteSynonyms(string $language): array
     {
-        return $this->httpClient->delete(
+        return $this->getHttpClient()->delete(
             $this->baseApiPath . 'synonyms?language=' . $language
         );
     }
@@ -238,7 +238,7 @@ class SyncV2Sdk
      */
     public function bulkOperations(BulkOperationsRequest $request): BulkOperationsResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'sync/bulk-operations',
             $request->jsonSerialize()
         );
@@ -254,7 +254,7 @@ class SyncV2Sdk
      */
     public function createSearchSettings(SearchSettingsRequest $settings): SettingsResponse
     {
-        $response = $this->httpClient->post(
+        $response = $this->getHttpClient()->post(
             'api/v2/configuration',
             $settings->jsonSerialize()
         );
@@ -270,7 +270,7 @@ class SyncV2Sdk
      */
     public function getSearchSettings(string $appId): array
     {
-        return $this->httpClient->get(
+        return $this->getHttpClient()->get(
             'api/v2/configuration/' . $appId
         );
     }
@@ -284,7 +284,7 @@ class SyncV2Sdk
      */
     public function updateSearchSettings(string $appId, SearchSettingsRequest $settings): SettingsResponse
     {
-        $response = $this->httpClient->put(
+        $response = $this->getHttpClient()->put(
             'api/v2/configuration/' . $appId,
             $settings->jsonSerialize()
         );
@@ -300,7 +300,7 @@ class SyncV2Sdk
      */
     public function deleteSearchSettings(string $appId): array
     {
-        return $this->httpClient->delete(
+        return $this->getHttpClient()->delete(
             'api/v2/configuration/' . $appId
         );
     }
