@@ -1,0 +1,479 @@
+{
+  "name": "brad-search-php-sdk",
+  "description": "Refactor the Brad Search PHP SDK v2 endpoint implementation to use strict, immutable ValueObjects instead of raw arrays. Ensures type safety, validation at construction time, and precise alignment with the OpenAPI v2 specification.",
+  "branchName": "feature/v2-endpoint",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Create base ValueObject infrastructure",
+      "description": "As a developer, I want a base infrastructure for immutable ValueObjects so that all domain objects follow consistent patterns.",
+      "acceptanceCriteria": [
+        "Create `src/V2/ValueObjects/` directory structure",
+        "Create base `JsonSerializable` interface implementation pattern",
+        "Create `InvalidArgumentException` subclasses for validation errors (e.g., `InvalidFieldTypeException`, `InvalidLocaleException`)",
+        "All ValueObjects use `readonly` properties",
+        "All ValueObjects implement `JsonSerializable` returning API-compatible structure",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-002",
+      "title": "Create LocalizedField helper",
+      "description": "As a developer, I want a LocalizedField helper so that I can easily generate locale-suffixed field names (e.g., `name_lt-LT`).",
+      "acceptanceCriteria": [
+        "Create `LocalizedField` class in `src/V2/ValueObjects/Common/`",
+        "Constructor accepts base field name and locale (e.g., `new LocalizedField('name', 'lt-LT')`)",
+        "Validates locale format matches pattern `^[a-z]{2}-[A-Z]{2}$`",
+        "Provides `toString()` method returning suffixed name (e.g., `name_lt-LT`)",
+        "Provides `getBaseName()` and `getLocale()` accessors",
+        "Supports `withLocale()` method for immutable locale changes",
+        "Unit tests verify locale validation and string generation",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-003",
+      "title": "Create FieldDefinition ValueObject and Builder",
+      "description": "As a developer, I want FieldDefinition ValueObjects so that index field mappings are type-safe and validated.",
+      "acceptanceCriteria": [
+        "Create `FieldType` enum with values: `text`, `keyword`, `double`, `integer`, `boolean`, `image_url`, `variants`",
+        "Create `FieldDefinition` immutable ValueObject with properties: `name`, `type`",
+        "Create `VariantAttribute` ValueObject with: `id`, `type`, `locale_aware`",
+        "Create `FieldDefinitionBuilder` with fluent API: `name(string)`, `type(FieldType)`, `addAttribute(VariantAttribute)`, `build()` returns immutable `FieldDefinition`",
+        "Constructor validation: name required, type must be valid enum",
+        "`jsonSerialize()` outputs exact structure matching OpenAPI `FieldDefinition` schema",
+        "Unit test compares output against OpenAPI example for Darbo drabuziai fields",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-004",
+      "title": "Create IndexCreateRequest ValueObject and Builder",
+      "description": "As a developer, I want IndexCreateRequest ValueObject so that index creation requests are validated and match API schema.",
+      "acceptanceCriteria": [
+        "Create `IndexCreateRequest` immutable ValueObject with: `locales`, `fields`",
+        "Create `IndexCreateRequestBuilder` with fluent API: `addLocale(string)`, `addField(FieldDefinition)`, `build()`",
+        "Validates locales match pattern `^[a-z]{2}-[A-Z]{2}$`",
+        "Validates at least one locale and one field required",
+        "`jsonSerialize()` outputs exact structure matching `IndexCreateRequestV2App` schema",
+        "Unit test compares output against OpenAPI 'Darbo drabuziai client' example",
+        "Update `SyncV2Sdk::createIndex()` to accept `IndexCreateRequest`",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-003"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-005",
+      "title": "Create SearchFieldConfig ValueObject and Builder",
+      "description": "As a developer, I want SearchFieldConfig ValueObject so that search field configurations are type-safe.",
+      "acceptanceCriteria": [
+        "Create `MatchMode` enum with values: `exact`, `fuzzy`, `phrase_prefix`",
+        "Create `SearchFieldConfig` immutable ValueObject with: `field`, `position`, `boost_multiplier`, `match_mode`",
+        "Create `SearchFieldConfigBuilder` with fluent API and `with*()` methods",
+        "Validates: position >= 1, boost_multiplier between 0.01 and 100.0",
+        "`match_mode` defaults to `fuzzy` if not specified",
+        "`jsonSerialize()` outputs structure matching `SearchFieldConfigV2` schema",
+        "Unit tests verify validation boundaries and JSON output",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-006",
+      "title": "Create FuzzyMatchingConfig ValueObject",
+      "description": "As a developer, I want FuzzyMatchingConfig ValueObject so that fuzzy matching settings are validated.",
+      "acceptanceCriteria": [
+        "Create `FuzzyMode` enum with values: `auto`, `fixed`",
+        "Create `FuzzyMatchingConfig` immutable ValueObject with: `enabled`, `mode`, `min_similarity`",
+        "Validates: min_similarity between 0 and 2",
+        "Provides `with*()` methods: `withEnabled()`, `withMode()`, `withMinSimilarity()`",
+        "Defaults: `enabled=true`, `mode=auto`, `min_similarity=2`",
+        "`jsonSerialize()` outputs structure matching `FuzzyMatchingConfig` schema",
+        "Unit tests verify defaults and validation",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-007",
+      "title": "Create PopularityBoostConfig ValueObject",
+      "description": "As a developer, I want PopularityBoostConfig ValueObject so that popularity boost settings are validated.",
+      "acceptanceCriteria": [
+        "Create `BoostAlgorithm` enum with values: `logarithmic`, `linear`, `square_root`",
+        "Create `PopularityBoostConfig` immutable ValueObject with: `enabled`, `field`, `algorithm`, `max_boost`",
+        "Validates: max_boost between 1.0 and 10.0",
+        "Provides `with*()` methods for all properties",
+        "Defaults: `algorithm=logarithmic`, `max_boost=2.0`",
+        "`jsonSerialize()` outputs structure matching `PopularityBoostConfig` schema",
+        "Unit tests verify validation and defaults",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-008",
+      "title": "Create QueryConfigurationRequest ValueObject and Builder",
+      "description": "As a developer, I want QueryConfigurationRequest ValueObject so that query configurations are complete and validated.",
+      "acceptanceCriteria": [
+        "Create `MultiWordOperator` enum with values: `and`, `or`",
+        "Create `QueryConfigurationRequest` immutable ValueObject with all properties from schema",
+        "Create `QueryConfigurationRequestBuilder` with fluent API: `addSearchField(SearchFieldConfig)`, `fuzzyMatching(FuzzyMatchingConfig)`, `popularityBoost(PopularityBoostConfig)`, `multiWordOperator()`, `minScore()`, etc.",
+        "Validates: at least one search_field required, min_score between 0.0 and 1.0",
+        "`jsonSerialize()` outputs structure matching `QueryConfigurationRequest` schema",
+        "Unit test compares output against OpenAPI 'advanced' configuration example",
+        "Update `SyncV2Sdk::setConfiguration()` to accept `QueryConfigurationRequest`",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-005",
+        "US-006",
+        "US-007"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-009",
+      "title": "Create SynonymConfiguration ValueObject",
+      "description": "As a developer, I want SynonymConfiguration ValueObject so that synonym settings are validated.",
+      "acceptanceCriteria": [
+        "Create `SynonymConfiguration` immutable ValueObject with: `language`, `synonyms`",
+        "Validates: language matches pattern `^[a-z]{2}$` (ISO 639-1)",
+        "Validates: synonyms array not empty, each entry is non-empty string",
+        "Provides `withLanguage()`, `withSynonyms()`, `addSynonym()` methods",
+        "`jsonSerialize()` outputs structure matching `SynonymConfiguration` schema",
+        "Unit test compares output against OpenAPI 'ecommerce-en' example",
+        "Update `SyncV2Sdk::setSynonyms()` to accept `SynonymConfiguration`",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-010",
+      "title": "Create ImageUrl ValueObject",
+      "description": "As a developer, I want ImageUrl ValueObject so that image URL structures are consistent.",
+      "acceptanceCriteria": [
+        "Create `ImageUrl` immutable ValueObject with: `small`, `medium` (optional: `large`, `thumbnail`)",
+        "Validates URLs are valid format",
+        "Provides `with*()` methods for each size",
+        "`jsonSerialize()` outputs object with size keys matching API examples",
+        "Unit tests verify URL validation and JSON structure",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-011",
+      "title": "Create BulkOperation ValueObjects",
+      "description": "As a developer, I want BulkOperation ValueObjects so that bulk sync operations are type-safe and match the documented structure.",
+      "acceptanceCriteria": [
+        "Create `BulkOperationType` enum with value: `index_products` (extendable for future types)",
+        "Create `ProductVariant` immutable ValueObject with: `id`, `sku`, `price`, `basePrice`, `priceTaxExcluded`, `basePriceTaxExcluded`, `productUrl`, `imageUrl`, `attrs`",
+        "Create `Product` immutable ValueObject with all product fields from example + `variants` collection",
+        "Create `ProductBuilder` with fluent API for complex product construction",
+        "Create `IndexProductsPayload` ValueObject containing products array",
+        "Create `BulkOperation` ValueObject with: `type`, `payload`",
+        "Create `BulkOperationsRequest` ValueObject containing operations array",
+        "`jsonSerialize()` outputs exact structure matching the 'darbo-drabuziai-indexing' example",
+        "Unit test compares output against OpenAPI bulk operations example payload",
+        "Update `SyncV2Sdk::bulkOperations()` to accept `BulkOperationsRequest`",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-002",
+        "US-010"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-012",
+      "title": "Create SearchSettingsRequest ValueObject and Builders",
+      "description": "As a developer, I want SearchSettingsRequest ValueObject so that complex search configurations are type-safe.",
+      "acceptanceCriteria": [
+        "Create `SearchBehaviorType` enum: `exact`, `match`, `fuzzy`, `ngram`, `phrase_prefix`, `phrase`",
+        "Create `SearchBehavior` ValueObject with: `type`, `subfield`, `operator`, `boost`, `fuzziness`, `prefix_length`",
+        "Create `FieldConfig` ValueObject with: `id`, `field_name`, `locale_suffix`, `search_behaviors`",
+        "Create `NestedFieldConfig` ValueObject with: `id`, `path`, `locale_suffix`, `score_mode`, `fields`",
+        "Create `MultiMatchConfig` ValueObject with: `id`, `field_ids`, `type`, `operator`, `boost`",
+        "Create `SearchConfig` ValueObject containing fields, nested_fields, multi_match_configs",
+        "Create `FunctionScoreConfig` ValueObject with: `field`, `modifier`, `factor`, `missing`, `boost_mode`, `max_boost`",
+        "Create `ScoringConfig` ValueObject with: `function_score`, `min_score`",
+        "Create `ResponseConfig` ValueObject with: `source_fields`, `sortable_fields`",
+        "Create `SearchSettingsRequest` ValueObject with all nested configs",
+        "Create `SearchSettingsRequestBuilder` with fluent API for full configuration",
+        "`jsonSerialize()` outputs structure matching `SearchSettingsRequest` schema",
+        "Unit test compares output against OpenAPI 'full configuration' example",
+        "Update `SyncV2Sdk::createSearchSettings()` to accept `SearchSettingsRequest`",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-013",
+      "title": "Create API Response ValueObjects",
+      "description": "As a developer, I want response ValueObjects so that API responses can be parsed into typed objects.",
+      "acceptanceCriteria": [
+        "Create `IndexCreationResponse` ValueObject: `status`, `physical_index_name`, `alias_name`, `version`, `fields_created`, `message`",
+        "Create `IndexInfoResponse` ValueObject with nested `IndexVersion` objects",
+        "Create `VersionActivateResponse` ValueObject",
+        "Create `QueryConfigurationResponse` ValueObject",
+        "Create `SynonymResponse` ValueObject",
+        "Create `BulkOperationsResponse` ValueObject with nested `OperationResult` objects",
+        "Create `ErrorResponse` ValueObject with: `status`, `error`, `details`",
+        "All responses have static `fromArray()` factory method for parsing API responses",
+        "Update SyncV2Sdk methods to return typed response objects instead of arrays",
+        "Unit tests verify parsing of example responses from OpenAPI docs",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-014",
+      "title": "Update SyncV2Sdk to use ValueObjects",
+      "description": "As a developer, I want SyncV2Sdk updated to use ValueObjects so that the public API is fully typed.",
+      "acceptanceCriteria": [
+        "Update `createIndex(IndexCreateRequest $request): IndexCreationResponse`",
+        "Update `setConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse`",
+        "Update `updateConfiguration(QueryConfigurationRequest $config): QueryConfigurationResponse`",
+        "Update `setSynonyms(SynonymConfiguration $synonyms): SynonymResponse`",
+        "Update `bulkOperations(BulkOperationsRequest $operations): BulkOperationsResponse`",
+        "Update `createSearchSettings(SearchSettingsRequest $settings): SettingsResponse`",
+        "Update `updateSearchSettings(string $appId, SearchSettingsRequest $settings): SettingsResponse`",
+        "Remove all array-based method signatures (v2 not released, no backward compatibility needed)",
+        "All existing tests updated to use new ValueObject API",
+        "PHPDoc updated with proper type hints",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-004",
+        "US-008",
+        "US-009",
+        "US-011",
+        "US-012",
+        "US-013"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-015",
+      "title": "Comprehensive API payload verification tests",
+      "description": "As a developer, I want verification tests so that SDK output is guaranteed to match API documentation.",
+      "acceptanceCriteria": [
+        "Create `tests/V2/ApiPayloadVerificationTest.php`",
+        "Test: IndexCreateRequest JSON matches 'Darbo drabuziai client' example exactly",
+        "Test: QueryConfigurationRequest JSON matches 'advanced' example exactly",
+        "Test: SynonymConfiguration JSON matches 'ecommerce-en' example exactly",
+        "Test: BulkOperationsRequest JSON matches 'darbo-drabuziai-indexing' example exactly",
+        "Test: SearchSettingsRequest JSON matches 'full configuration' example exactly",
+        "Each test loads expected JSON from fixtures, builds equivalent via SDK, compares",
+        "Create `tests/fixtures/openapi-examples/` directory with JSON files extracted from OpenAPI",
+        "Tests fail if any structural difference detected between SDK output and documented examples",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-014"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-016",
+      "title": "Full workflow simulation test for Darbo Drabuziai client",
+      "description": "As a developer, I want a full end-to-end workflow simulation test so that I can verify the entire SDK flow works correctly in the order defined by OpenAPI documentation.",
+      "acceptanceCriteria": [
+        "Create `tests/V2/DarboDrabuziaiWorkflowTest.php`",
+        "Step 1 - Create Index v1: Simulate `POST /api/v2/applications/{app_id}/index` with Darbo Drabuziai field definitions (id, name_lt-LT, brand_lt-LT, sku, imageUrl, description_lt-LT, categories_lt-LT, price, variants with attrs)",
+        "Step 2 - Set Configuration: Simulate `POST /api/v2/applications/{app_id}/configuration` with Darbo Drabuziai search config (search_fields with boosting, fuzzy_matching, nested variants search)",
+        "Step 3 - Sync Initial Data: Simulate `POST /api/v2/applications/{app_id}/sync/bulk-operations` with index_products operation containing Darbo Drabuziai products with variants",
+        "Step 4 - Verify Index Info: Simulate `GET /api/v2/applications/{app_id}/index/info` returns v1 as active",
+        "Step 5 - Create Index v2 (Migration): Simulate creating new index version for zero-downtime migration",
+        "Step 6 - Sync Data to v2: Simulate bulk operations to populate v2 index with updated/new products",
+        "Step 7 - Update Configuration: Simulate `PUT /api/v2/applications/{app_id}/configuration` with modified search config",
+        "Step 8 - Activate v2: Simulate `POST /api/v2/applications/{app_id}/index/activate` with version 2",
+        "Step 9 - Verify Activation: Assert response shows previous_version=1, new_version=2",
+        "Step 10 - Cleanup v1: Simulate `DELETE /api/v2/applications/{app_id}/index/version/1`",
+        "Test uses mock HttpClient to capture all requests in sequence",
+        "Test asserts correct API endpoint order matches OpenAPI workflow documentation",
+        "Test asserts all request payloads match expected JSON structure",
+        "Test asserts response parsing works correctly for each step",
+        "Test covers rollback scenario: activate v1 after v2 issues",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-014"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-017",
+      "title": "Create fromJSON factory methods for Search Configuration ValueObjects",
+      "description": "As a developer, I want static fromJSON/fromArray factory methods that parse JSON configuration into ValueObjects so that I can load search configurations from external sources.",
+      "acceptanceCriteria": [
+        "Create `SearchConfigurationRequest` with `fromArray()` and `fromJson()` methods",
+        "Create `QueryConfig` with `fromArray()` method",
+        "Create `QueryField` with `fromArray()` method supporting both text and nested field types",
+        "Create `HighlightConfig` and `HighlightField` ValueObjects with `fromArray()` methods",
+        "Create `VariantEnrichmentConfig` with `fromArray()` method",
+        "Update `ResponseConfig` to include highlight and variant enrichment configs",
+        "Create `QueryFieldType` and `SearchType` enums",
+        "All ValueObjects are immutable with readonly properties",
+        "Unit tests verify JSON parsing matches expected ValueObject structure",
+        "Unit test with exact JSON from user example produces correct ValueObjects",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-001",
+        "US-012"
+      ],
+      "completionNotes": "Completed by agent"
+    },
+    {
+      "id": "US-018",
+      "title": "Create PrestaShopAdapterV2 service for V2 bulk operations",
+      "description": "As a developer, I want a PrestaShopAdapterV2 service that transforms PrestaShop data format into V2 Product and ProductVariant ValueObjects so that PrestaShop data can be synced using the BulkOperationsRequest endpoint.",
+      "acceptanceCriteria": [
+        "Create `PrestaShopAdapterV2` class in `src/Adapters/`",
+        "Method `transform(array $prestaShopData): BulkOperationsRequest`",
+        "Method `transformProduct(array $product): Product` for single product transformation",
+        "Method `transformVariant(array $variant, string $locale): ProductVariant`",
+        "Handles localized fields correctly (name, brand, description, categories)",
+        "Handles variants with locale-specific URLs and attributes",
+        "Creates proper `ImageUrl` ValueObjects from image data",
+        "Returns transformation errors alongside successful products",
+        "Unit tests verify transformation from PrestaShop format to V2 format",
+        "Unit test uses sample PrestaShop data and verifies BulkOperationsRequest structure",
+        "vendor/bin/phpunit passes",
+        "vendor/bin/phpstan analyse passes",
+        "vendor/bin/phpcs src tests passes"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": "",
+      "dependsOn": [
+        "US-010",
+        "US-011"
+      ],
+      "completionNotes": "Completed by agent"
+    }
+  ],
+  "metadata": {
+    "updatedAt": "2026-01-30T12:04:51.473Z"
+  }
+}

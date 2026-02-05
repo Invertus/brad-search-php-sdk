@@ -343,7 +343,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 2, 'items_failed' => 0],
+                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 2, 'items_failed' => 0],
                 ],
             ],
             // Step 4: Verify Index Info
@@ -369,7 +369,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 3, 'items_failed' => 0],
+                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 3, 'items_failed' => 0],
                 ],
             ],
             // Step 7: Update Configuration
@@ -558,7 +558,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
                 ],
             ],
         ];
@@ -676,7 +676,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 2, 'items_failed' => 0],
+                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 2, 'items_failed' => 0],
                 ],
             ],
             // Index info response
@@ -750,11 +750,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Step 1: Create v1
             ['status' => 'success', 'physical_index_name' => 'dd_v1', 'alias_name' => 'dd', 'version' => 1, 'fields_created' => 9, 'message' => 'Created'],
             // Step 2: Sync to v1
-            ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]],
+            ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]],
             // Step 3: Create v2
             ['status' => 'success', 'physical_index_name' => 'dd_v2', 'alias_name' => 'dd', 'version' => 2, 'fields_created' => 9, 'message' => 'Created'],
             // Step 4: Sync to v2
-            ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]],
+            ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]],
             // Step 5: Activate v2
             ['previous_version' => 1, 'new_version' => 2, 'alias_name' => 'darbo_drabuziai'],
             // Step 6: Verify v2 active
@@ -823,7 +823,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         // Full responses for each operation type
         $indexResponse = ['status' => 'success', 'physical_index_name' => 'test_v1', 'alias_name' => 'test', 'version' => 1, 'fields_created' => 9, 'message' => 'Created'];
         $configResponse = ['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name', 'position' => 1, 'match_mode' => 'fuzzy']]];
-        $bulkResponse = ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]];
+        $bulkResponse = ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0]]];
         $infoResponse = ['alias_name' => 'test', 'active_version' => 1, 'active_index' => 'test_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]]];
         $activateResponse = ['previous_version' => 0, 'new_version' => 1, 'alias_name' => 'test'];
         $deleteResponse = ['status' => 'deleted', 'message' => 'Deleted'];
@@ -948,7 +948,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
      */
     public function testBulkOperationsWithMultipleProductsAndVariants(): void
     {
-        $mockResponses = [['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['operation_type' => 'index_products', 'status' => 'success', 'items_processed' => 3, 'items_failed' => 0]]]];
+        $mockResponses = [['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['type' => 'index_products', 'status' => 'success', 'items_processed' => 3, 'items_failed' => 0]]]];
         $sdk = $this->createSdkWithRequestCapture($mockResponses);
 
         $products = [

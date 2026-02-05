@@ -64,7 +64,7 @@ class OperationResultTest extends TestCase
     public function testFromArrayWithValidData(): void
     {
         $data = [
-            'operation_type' => 'index_products',
+            'type' => 'index_products',
             'status' => 'success',
             'items_processed' => 50,
             'items_failed' => 0,
@@ -82,7 +82,7 @@ class OperationResultTest extends TestCase
     {
         $errors = [['id' => 'test', 'error' => 'Failed']];
         $data = [
-            'operation_type' => 'index_products',
+            'type' => 'index_products',
             'status' => 'partial',
             'items_processed' => 10,
             'items_failed' => 1,
@@ -97,7 +97,7 @@ class OperationResultTest extends TestCase
     public function testFromArrayThrowsOnMissingOperationType(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Missing required field: operation_type');
+        $this->expectExceptionMessage('Missing required field: type');
 
         OperationResult::fromArray([
             'status' => 'success',
@@ -112,7 +112,7 @@ class OperationResultTest extends TestCase
         $this->expectExceptionMessage('Missing required field: status');
 
         OperationResult::fromArray([
-            'operation_type' => 'index_products',
+            'type' => 'index_products',
             'items_processed' => 10,
             'items_failed' => 0,
         ]);
@@ -182,7 +182,7 @@ class OperationResultTest extends TestCase
         $result = new OperationResult(BulkOperationType::INDEX_PRODUCTS, 'success', 100, 0);
 
         $expected = [
-            'operation_type' => 'index_products',
+            'type' => 'index_products',
             'status' => 'success',
             'items_processed' => 100,
             'items_failed' => 0,
@@ -224,7 +224,7 @@ class OperationResultTest extends TestCase
     public function testMatchesOpenApiExampleResponse(): void
     {
         $apiResponse = [
-            'operation_type' => 'index_products',
+            'type' => 'index_products',
             'status' => 'success',
             'items_processed' => 150,
             'items_failed' => 0,
@@ -246,7 +246,7 @@ class OperationResultTest extends TestCase
         $json = json_encode($result);
         $decoded = json_decode($json, true);
 
-        $this->assertEquals('index_products', $decoded['operation_type']);
+        $this->assertEquals('index_products', $decoded['type']);
         $this->assertEquals('success', $decoded['status']);
         $this->assertEquals(100, $decoded['items_processed']);
         $this->assertEquals(0, $decoded['items_failed']);

@@ -51,14 +51,14 @@ final readonly class OperationResult extends ValueObject
     public static function fromArray(array $data): self
     {
         self::validateRequiredFields($data, [
-            'operation_type',
+            'type',
             'status',
             'items_processed',
             'items_failed',
         ]);
 
         return new self(
-            operationType: BulkOperationType::from($data['operation_type']),
+            operationType: BulkOperationType::from($data['type']),
             status: (string) $data['status'],
             itemsProcessed: (int) $data['items_processed'],
             itemsFailed: (int) $data['items_failed'],
@@ -88,7 +88,7 @@ final readonly class OperationResult extends ValueObject
     public function jsonSerialize(): array
     {
         $result = [
-            'operation_type' => $this->operationType->value,
+            'type' => $this->operationType->value,
             'status' => $this->status,
             'items_processed' => $this->itemsProcessed,
             'items_failed' => $this->itemsFailed,

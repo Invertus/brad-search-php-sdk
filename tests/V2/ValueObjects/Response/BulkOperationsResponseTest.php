@@ -64,13 +64,13 @@ class BulkOperationsResponseTest extends TestCase
             'failed_operations' => 0,
             'results' => [
                 [
-                    'operation_type' => 'index_products',
+                    'type' => 'index_products',
                     'status' => 'success',
                     'items_processed' => 100,
                     'items_failed' => 0,
                 ],
                 [
-                    'operation_type' => 'index_products',
+                    'type' => 'index_products',
                     'status' => 'success',
                     'items_processed' => 50,
                     'items_failed' => 0,
@@ -256,7 +256,7 @@ class BulkOperationsResponseTest extends TestCase
             'failed_operations' => 0,
             'results' => [
                 [
-                    'operation_type' => 'index_products',
+                    'type' => 'index_products',
                     'status' => 'success',
                     'items_processed' => 150,
                     'items_failed' => 0,

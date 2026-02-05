@@ -1,0 +1,15 @@
+{
+  "id": "30036f8a-76f6-46f1-af2b-b5b264aa3420",
+  "status": "completed",
+  "startedAt": "2026-01-30T12:06:59.963Z",
+  "updatedAt": "2026-01-30T12:07:14.726Z",
+  "agentPlugin": "claude",
+  "trackerPlugin": "json",
+  "prdPath": "./tasks/prd.json",
+  "currentIteration": 0,
+  "maxIterations": 10,
+  "totalTasks": 0,
+  "tasksCompleted": 0,
+  "cwd": "/Users/tomasilginis/Desktop/projects/brad-search-php-sdk",
+  "endedAt": "2026-01-30T12:07:14.726Z"
+}
