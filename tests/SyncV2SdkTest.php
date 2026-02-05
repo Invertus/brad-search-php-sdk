@@ -1070,8 +1070,8 @@ class SyncV2SdkTest extends TestCase
             'successful_operations' => 2,
             'failed_operations' => 0,
             'results' => [
-                ['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
-                ['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                ['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created'],
+                ['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created'],
             ],
         ];
 
@@ -1123,7 +1123,7 @@ class SyncV2SdkTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                    ['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created'],
                 ],
             ]);
 
@@ -1159,7 +1159,7 @@ class SyncV2SdkTest extends TestCase
                 'successful_operations' => 1,
                 'failed_operations' => 0,
                 'results' => [
-                    ['type' => 'index_products', 'status' => 'success', 'items_processed' => 1, 'items_failed' => 0],
+                    ['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created'],
                 ],
             ]);
 

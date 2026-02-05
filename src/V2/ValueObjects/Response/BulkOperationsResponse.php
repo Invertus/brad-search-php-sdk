@@ -10,28 +10,34 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 /**
  * Represents the response from bulk operations API endpoint.
  *
- * This immutable ValueObject contains the response data from bulk operations:
- * - status: Overall operation status
- * - totalOperations: Total number of operations executed
- * - successfulOperations: Number of successful operations
- * - failedOperations: Number of failed operations
- * - results: Array of OperationResult objects for each operation
+ * This immutable ValueObject contains the response data after executing bulk operations:
+ * - status: Overall status (success, partial, error)
+ * - totalOperations: Total number of items processed
+ * - successfulOperations: Number of items that succeeded
+ * - failedOperations: Number of items that failed
+ * - results: Array of per-item results
+ * - warnings: Optional array of non-fatal warnings
+ * - processingTimeMs: Optional processing time in milliseconds
  */
 final readonly class BulkOperationsResponse extends ValueObject
 {
     /**
-     * @param string $status Overall operation status
-     * @param int $totalOperations Total number of operations
-     * @param int $successfulOperations Number of successful operations
-     * @param int $failedOperations Number of failed operations
-     * @param array<OperationResult> $results Array of operation results
+     * @param string $status Overall status
+     * @param int $totalOperations Total items count
+     * @param int $successfulOperations Successful items count
+     * @param int $failedOperations Failed items count
+     * @param array<int, ItemResult> $results Per-item results
+     * @param array<int, string>|null $warnings Optional warnings
+     * @param int|null $processingTimeMs Optional processing time
      */
     public function __construct(
         public string $status,
         public int $totalOperations,
         public int $successfulOperations,
         public int $failedOperations,
-        public array $results
+        public array $results,
+        public ?array $warnings = null,
+        public ?int $processingTimeMs = null
     ) {
         $this->validateNotEmpty($status, 'status');
         $this->validateNonNegative($totalOperations, 'total_operations');
@@ -61,7 +67,7 @@ final readonly class BulkOperationsResponse extends ValueObject
 
         $results = [];
         foreach ($data['results'] as $resultData) {
-            $results[] = OperationResult::fromArray($resultData);
+            $results[] = ItemResult::fromArray($resultData);
         }
 
         return new self(
@@ -69,12 +75,14 @@ final readonly class BulkOperationsResponse extends ValueObject
             totalOperations: (int) $data['total_operations'],
             successfulOperations: (int) $data['successful_operations'],
             failedOperations: (int) $data['failed_operations'],
-            results: $results
+            results: $results,
+            warnings: $data['warnings'] ?? null,
+            processingTimeMs: isset($data['processing_time_ms']) ? (int) $data['processing_time_ms'] : null
         );
     }
 
     /**
-     * Checks if all operations were successful.
+     * Checks if all items were processed successfully.
      */
     public function isFullySuccessful(): bool
     {
@@ -82,7 +90,7 @@ final readonly class BulkOperationsResponse extends ValueObject
     }
 
     /**
-     * Checks if any operations failed.
+     * Checks if any items failed.
      */
     public function hasFailures(): bool
     {
@@ -90,15 +98,28 @@ final readonly class BulkOperationsResponse extends ValueObject
     }
 
     /**
-     * Gets all failed operation results.
+     * Gets all failed item results.
      *
-     * @return array<OperationResult>
+     * @return array<ItemResult>
      */
     public function getFailedResults(): array
     {
         return array_filter(
             $this->results,
-            fn(OperationResult $result) => $result->hasFailures()
+            fn(ItemResult $result) => $result->hasError()
+        );
+    }
+
+    /**
+     * Gets all successful item results.
+     *
+     * @return array<ItemResult>
+     */
+    public function getSuccessfulResults(): array
+    {
+        return array_filter(
+            $this->results,
+            fn(ItemResult $result) => $result->isSuccessful()
         );
     }
 
@@ -107,16 +128,26 @@ final readonly class BulkOperationsResponse extends ValueObject
      */
     public function jsonSerialize(): array
     {
-        return [
+        $result = [
             'status' => $this->status,
             'total_operations' => $this->totalOperations,
             'successful_operations' => $this->successfulOperations,
             'failed_operations' => $this->failedOperations,
             'results' => array_map(
-                fn(OperationResult $result) => $result->jsonSerialize(),
+                fn(ItemResult $item) => $item->jsonSerialize(),
                 $this->results
             ),
         ];
+
+        if ($this->warnings !== null) {
+            $result['warnings'] = $this->warnings;
+        }
+
+        if ($this->processingTimeMs !== null) {
+            $result['processing_time_ms'] = $this->processingTimeMs;
+        }
+
+        return $result;
     }
 
     /**
@@ -152,18 +183,18 @@ final readonly class BulkOperationsResponse extends ValueObject
     }
 
     /**
-     * Validates that all results are OperationResult instances.
+     * Validates that all results are ItemResult instances.
      *
      * @param array<mixed> $results
      *
-     * @throws InvalidArgumentException If any result is not an OperationResult
+     * @throws InvalidArgumentException If any result is not an ItemResult
      */
     private function validateResults(array $results): void
     {
         foreach ($results as $index => $result) {
-            if (!$result instanceof OperationResult) {
+            if (!$result instanceof ItemResult) {
                 throw new InvalidArgumentException(
-                    sprintf('Result at index %d must be an instance of OperationResult.', $index),
+                    sprintf('Result at index %d must be an instance of ItemResult.', $index),
                     'results',
                     $result
                 );

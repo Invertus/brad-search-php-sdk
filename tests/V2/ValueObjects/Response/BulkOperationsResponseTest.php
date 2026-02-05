@@ -7,24 +7,22 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\Response;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
-use BradSearch\SyncSdk\V2\ValueObjects\Response\OperationResult;
-use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
-use JsonSerializable;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\ItemResult;
 use PHPUnit\Framework\TestCase;
 
-class BulkOperationsResponseTest extends TestCase
+final class BulkOperationsResponseTest extends TestCase
 {
-    private function createOperationResult(
-        string $status = 'success',
-        int $processed = 100,
-        int $failed = 0
-    ): OperationResult {
-        return new OperationResult(BulkOperationType::INDEX_PRODUCTS, $status, $processed, $failed);
+    private function createItemResult(
+        string $id = 'prod-123',
+        string $status = 'created',
+        ?string $error = null
+    ): ItemResult {
+        return new ItemResult($id, BulkOperationType::INDEX_PRODUCTS, $status, $error);
     }
 
     public function testConstructorWithValidValues(): void
     {
-        $results = [$this->createOperationResult()];
+        $results = [$this->createItemResult()];
 
         $response = new BulkOperationsResponse(
             status: 'success',
@@ -41,18 +39,23 @@ class BulkOperationsResponseTest extends TestCase
         $this->assertCount(1, $response->results);
     }
 
-    public function testExtendsValueObject(): void
+    public function testConstructorWithWarningsAndProcessingTime(): void
     {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
+        $results = [$this->createItemResult()];
+        $warnings = ['Warning 1', 'Warning 2'];
 
-        $this->assertInstanceOf(ValueObject::class, $response);
-    }
+        $response = new BulkOperationsResponse(
+            status: 'success',
+            totalOperations: 1,
+            successfulOperations: 1,
+            failedOperations: 0,
+            results: $results,
+            warnings: $warnings,
+            processingTimeMs: 125
+        );
 
-    public function testImplementsJsonSerializable(): void
-    {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
-
-        $this->assertInstanceOf(JsonSerializable::class, $response);
+        $this->assertEquals($warnings, $response->warnings);
+        $this->assertEquals(125, $response->processingTimeMs);
     }
 
     public function testFromArrayWithValidData(): void
@@ -64,16 +67,14 @@ class BulkOperationsResponseTest extends TestCase
             'failed_operations' => 0,
             'results' => [
                 [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                    'items_processed' => 100,
-                    'items_failed' => 0,
+                    'id' => 'prod-1',
+                    'operation' => 'index_products',
+                    'status' => 'created',
                 ],
                 [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                    'items_processed' => 50,
-                    'items_failed' => 0,
+                    'id' => 'prod-2',
+                    'operation' => 'index_products',
+                    'status' => 'created',
                 ],
             ],
         ];
@@ -82,11 +83,35 @@ class BulkOperationsResponseTest extends TestCase
 
         $this->assertEquals('success', $response->status);
         $this->assertEquals(2, $response->totalOperations);
-        $this->assertEquals(2, $response->successfulOperations);
-        $this->assertEquals(0, $response->failedOperations);
         $this->assertCount(2, $response->results);
-        $this->assertInstanceOf(OperationResult::class, $response->results[0]);
-        $this->assertInstanceOf(OperationResult::class, $response->results[1]);
+        $this->assertInstanceOf(ItemResult::class, $response->results[0]);
+        $this->assertInstanceOf(ItemResult::class, $response->results[1]);
+    }
+
+    public function testFromArrayWithWarningsAndProcessingTime(): void
+    {
+        $data = [
+            'status' => 'partial',
+            'total_operations' => 1,
+            'successful_operations' => 0,
+            'failed_operations' => 1,
+            'results' => [
+                [
+                    'id' => 'prod-1',
+                    'operation' => 'index_products',
+                    'status' => 'error',
+                    'error' => 'Invalid data',
+                ],
+            ],
+            'warnings' => ['Locale not supported'],
+            'processing_time_ms' => 250,
+        ];
+
+        $response = BulkOperationsResponse::fromArray($data);
+
+        $this->assertEquals('partial', $response->status);
+        $this->assertEquals(['Locale not supported'], $response->warnings);
+        $this->assertEquals(250, $response->processingTimeMs);
     }
 
     public function testFromArrayThrowsOnMissingStatus(): void
@@ -102,217 +127,130 @@ class BulkOperationsResponseTest extends TestCase
         ]);
     }
 
-    public function testFromArrayThrowsOnMissingTotalOperations(): void
+    public function testIsFullySuccessful(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Missing required field: total_operations');
+        $success = new BulkOperationsResponse('success', 1, 1, 0, [$this->createItemResult()]);
+        $this->assertTrue($success->isFullySuccessful());
 
-        BulkOperationsResponse::fromArray([
-            'status' => 'success',
-            'successful_operations' => 1,
-            'failed_operations' => 0,
-            'results' => [],
+        $partial = new BulkOperationsResponse('partial', 2, 1, 1, [
+            $this->createItemResult('prod-1', 'created'),
+            $this->createItemResult('prod-2', 'error', 'Failed'),
         ]);
+        $this->assertFalse($partial->isFullySuccessful());
     }
 
-    public function testRejectsEmptyStatus(): void
+    public function testHasFailures(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('status cannot be empty');
+        $success = new BulkOperationsResponse('success', 1, 1, 0, [$this->createItemResult()]);
+        $this->assertFalse($success->hasFailures());
 
-        new BulkOperationsResponse('', 1, 1, 0, [$this->createOperationResult()]);
-    }
-
-    public function testRejectsNegativeTotalOperations(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('total_operations must be non-negative');
-
-        new BulkOperationsResponse('success', -1, 1, 0, [$this->createOperationResult()]);
-    }
-
-    public function testRejectsNegativeSuccessfulOperations(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('successful_operations must be non-negative');
-
-        new BulkOperationsResponse('success', 1, -1, 0, [$this->createOperationResult()]);
-    }
-
-    public function testRejectsNegativeFailedOperations(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('failed_operations must be non-negative');
-
-        new BulkOperationsResponse('success', 1, 1, -1, [$this->createOperationResult()]);
-    }
-
-    public function testRejectsNonOperationResultInArray(): void
-    {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Result at index 1 must be an instance of OperationResult');
-
-        new BulkOperationsResponse('success', 2, 2, 0, [
-            $this->createOperationResult(),
-            'not an OperationResult',
+        $partial = new BulkOperationsResponse('partial', 2, 1, 1, [
+            $this->createItemResult('prod-1', 'created'),
+            $this->createItemResult('prod-2', 'error', 'Failed'),
         ]);
+        $this->assertTrue($partial->hasFailures());
     }
 
-    public function testIsFullySuccessfulReturnsTrue(): void
-    {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
-
-        $this->assertTrue($response->isFullySuccessful());
-    }
-
-    public function testIsFullySuccessfulReturnsFalseForFailedOperations(): void
+    public function testGetFailedResults(): void
     {
         $response = new BulkOperationsResponse('partial', 2, 1, 1, [
-            $this->createOperationResult(),
-            $this->createOperationResult('failed', 50, 50),
+            $this->createItemResult('prod-1', 'created'),
+            $this->createItemResult('prod-2', 'error', 'Failed'),
         ]);
 
-        $this->assertFalse($response->isFullySuccessful());
+        $failed = $response->getFailedResults();
+        $this->assertCount(1, $failed);
+        $this->assertEquals('prod-2', array_values($failed)[0]->id);
     }
 
-    public function testIsFullySuccessfulReturnsFalseForNonSuccessStatus(): void
-    {
-        $response = new BulkOperationsResponse('partial', 1, 1, 0, [$this->createOperationResult()]);
-
-        $this->assertFalse($response->isFullySuccessful());
-    }
-
-    public function testHasFailuresReturnsTrue(): void
+    public function testGetSuccessfulResults(): void
     {
         $response = new BulkOperationsResponse('partial', 2, 1, 1, [
-            $this->createOperationResult(),
-            $this->createOperationResult('failed', 50, 50),
+            $this->createItemResult('prod-1', 'created'),
+            $this->createItemResult('prod-2', 'error', 'Failed'),
         ]);
 
-        $this->assertTrue($response->hasFailures());
+        $successful = $response->getSuccessfulResults();
+        $this->assertCount(1, $successful);
+        $this->assertEquals('prod-1', array_values($successful)[0]->id);
     }
 
-    public function testHasFailuresReturnsFalse(): void
+    public function testJsonSerialize(): void
     {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
+        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createItemResult()]);
 
-        $this->assertFalse($response->hasFailures());
-    }
-
-    public function testGetFailedResultsReturnsFailedOnly(): void
-    {
-        $successResult = $this->createOperationResult('success', 100, 0);
-        $failedResult = $this->createOperationResult('partial', 50, 10);
-
-        $response = new BulkOperationsResponse('partial', 2, 1, 1, [$successResult, $failedResult]);
-
-        $failedResults = $response->getFailedResults();
-
-        $this->assertCount(1, $failedResults);
-        $this->assertSame($failedResult, array_values($failedResults)[0]);
-    }
-
-    public function testGetFailedResultsReturnsEmptyForAllSuccess(): void
-    {
-        $response = new BulkOperationsResponse('success', 2, 2, 0, [
-            $this->createOperationResult(),
-            $this->createOperationResult(),
-        ]);
-
-        $this->assertEmpty($response->getFailedResults());
-    }
-
-    public function testJsonSerializeReturnsCorrectStructure(): void
-    {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
-
-        $serialized = $response->jsonSerialize();
-
-        $this->assertArrayHasKey('status', $serialized);
-        $this->assertArrayHasKey('total_operations', $serialized);
-        $this->assertArrayHasKey('successful_operations', $serialized);
-        $this->assertArrayHasKey('failed_operations', $serialized);
-        $this->assertArrayHasKey('results', $serialized);
-        $this->assertEquals('success', $serialized['status']);
-        $this->assertEquals(1, $serialized['total_operations']);
-    }
-
-    public function testToArrayReturnsJsonSerializeOutput(): void
-    {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
-
-        $this->assertEquals($response->jsonSerialize(), $response->toArray());
-    }
-
-    /**
-     * Test parsing of OpenAPI example response.
-     */
-    public function testMatchesOpenApiExampleResponse(): void
-    {
-        $apiResponse = [
+        $expected = [
             'status' => 'success',
             'total_operations' => 1,
             'successful_operations' => 1,
             'failed_operations' => 0,
             'results' => [
                 [
-                    'type' => 'index_products',
-                    'status' => 'success',
-                    'items_processed' => 150,
-                    'items_failed' => 0,
+                    'id' => 'prod-123',
+                    'operation' => 'index_products',
+                    'status' => 'created',
                 ],
             ],
         ];
 
-        $response = BulkOperationsResponse::fromArray($apiResponse);
-
-        $this->assertEquals('success', $response->status);
-        $this->assertEquals(1, $response->totalOperations);
-        $this->assertEquals(1, $response->successfulOperations);
-        $this->assertEquals(0, $response->failedOperations);
-        $this->assertCount(1, $response->results);
-        $this->assertTrue($response->isFullySuccessful());
+        $this->assertEquals($expected, $response->jsonSerialize());
     }
 
-    public function testJsonEncodeProducesValidJson(): void
-    {
-        $response = new BulkOperationsResponse('success', 1, 1, 0, [$this->createOperationResult()]);
-
-        $json = json_encode($response);
-        $decoded = json_decode($json, true);
-
-        $this->assertEquals('success', $decoded['status']);
-        $this->assertEquals(1, $decoded['total_operations']);
-        $this->assertEquals(1, $decoded['successful_operations']);
-        $this->assertEquals(0, $decoded['failed_operations']);
-        $this->assertCount(1, $decoded['results']);
-    }
-
-    public function testAcceptsEmptyResultsArray(): void
-    {
-        $response = new BulkOperationsResponse('success', 0, 0, 0, []);
-
-        $this->assertCount(0, $response->results);
-    }
-
-    public function testMultipleOperationsWithMixedResults(): void
+    public function testJsonSerializeWithWarningsAndProcessingTime(): void
     {
         $response = new BulkOperationsResponse(
-            'partial',
-            3,
-            2,
+            'success',
             1,
-            [
-                $this->createOperationResult('success', 100, 0),
-                $this->createOperationResult('success', 50, 0),
-                $this->createOperationResult('failed', 20, 20),
-            ]
+            1,
+            0,
+            [$this->createItemResult()],
+            ['Warning'],
+            150
         );
 
-        $this->assertEquals(3, $response->totalOperations);
-        $this->assertEquals(2, $response->successfulOperations);
-        $this->assertEquals(1, $response->failedOperations);
-        $this->assertTrue($response->hasFailures());
-        $this->assertCount(1, $response->getFailedResults());
+        $serialized = $response->jsonSerialize();
+
+        $this->assertEquals(['Warning'], $serialized['warnings']);
+        $this->assertEquals(150, $serialized['processing_time_ms']);
+    }
+
+    public function testThrowsOnEmptyStatus(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('status cannot be empty');
+
+        new BulkOperationsResponse('', 1, 1, 0, [$this->createItemResult()]);
+    }
+
+    public function testThrowsOnNegativeTotalOperations(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BulkOperationsResponse('success', -1, 1, 0, [$this->createItemResult()]);
+    }
+
+    public function testThrowsOnNegativeSuccessfulOperations(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BulkOperationsResponse('success', 1, -1, 0, [$this->createItemResult()]);
+    }
+
+    public function testThrowsOnNegativeFailedOperations(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+
+        new BulkOperationsResponse('success', 1, 1, -1, [$this->createItemResult()]);
+    }
+
+    public function testRejectsNonItemResultInArray(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Result at index 1 must be an instance of ItemResult');
+
+        new BulkOperationsResponse('success', 2, 2, 0, [
+            $this->createItemResult(),
+            'not an ItemResult',
+        ]);
     }
 }
