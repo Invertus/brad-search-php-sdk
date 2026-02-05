@@ -59,7 +59,7 @@ final readonly class IndexCreationResponse extends ValueObject
             status: (string) $data['status'],
             physicalIndexName: (string) $data['physical_index_name'],
             aliasName: (string) $data['alias_name'],
-            version: (int) $data['version'],
+            version: self::parseVersion($data['version']),
             fieldsCreated: (int) $data['fields_created'],
             message: (string) $data['message']
         );
@@ -110,6 +110,48 @@ final readonly class IndexCreationResponse extends ValueObject
                 $value
             );
         }
+    }
+
+    /**
+     * Parse version from API response.
+     *
+     * The brad-search API returns version as a string with "v" prefix (e.g., "v4").
+     * This method strips the prefix and converts to integer.
+     *
+     * @param mixed $version Version from API (string "v4" or int 4)
+     *
+     * @return int Numeric version (4)
+     *
+     * @throws InvalidArgumentException If version format is invalid
+     */
+    private static function parseVersion(mixed $version): int
+    {
+        // If already an integer, return it
+        if (is_int($version)) {
+            return $version;
+        }
+
+        $versionString = (string) $version;
+
+        // Remove "v" or "V" prefix: "v4" → "4"
+        $versionString = ltrim($versionString, 'vV');
+
+        // Convert to integer
+        $parsed = (int) $versionString;
+
+        // Validate: ensure we got a valid number (not 0 from failed parsing)
+        if ($parsed === 0 && $versionString !== '0') {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Invalid version format: "%s". Expected integer or "vX" format.',
+                    $version
+                ),
+                'version',
+                $version
+            );
+        }
+
+        return $parsed;
     }
 
     /**
