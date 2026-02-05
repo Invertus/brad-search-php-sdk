@@ -40,6 +40,7 @@ class BulkOperationTypeTest extends TestCase
         $cases = BulkOperationType::cases();
 
         $this->assertContains(BulkOperationType::INDEX_PRODUCTS, $cases);
+        $this->assertContains(BulkOperationType::UPDATE_PRODUCTS, $cases);
         $this->assertContains(BulkOperationType::DELETE_PRODUCTS, $cases);
     }
 
@@ -53,5 +54,17 @@ class BulkOperationTypeTest extends TestCase
         $type = BulkOperationType::from('delete_products');
 
         $this->assertEquals(BulkOperationType::DELETE_PRODUCTS, $type);
+    }
+
+    public function testUpdateProductsValue(): void
+    {
+        $this->assertEquals('update_products', BulkOperationType::UPDATE_PRODUCTS->value);
+    }
+
+    public function testCanCreateUpdateProductsFromString(): void
+    {
+        $type = BulkOperationType::from('update_products');
+
+        $this->assertEquals(BulkOperationType::UPDATE_PRODUCTS, $type);
     }
 }

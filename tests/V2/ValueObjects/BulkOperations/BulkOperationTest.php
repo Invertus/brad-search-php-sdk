@@ -9,6 +9,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\DeleteProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
+use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\UpdateProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
@@ -225,6 +226,61 @@ class BulkOperationTest extends TestCase
         );
 
         $this->assertEquals(BulkOperationType::DELETE_PRODUCTS, $operation->type);
+        $this->assertSame($payload, $operation->payload);
+    }
+
+    public function testUpdateProductsFactoryMethod(): void
+    {
+        $updates = [
+            ['id' => '123', 'price' => 29.99],
+            ['id' => '456', 'stock' => 50],
+        ];
+        $operation = BulkOperation::updateProducts($updates);
+
+        $this->assertEquals(BulkOperationType::UPDATE_PRODUCTS, $operation->type);
+        $this->assertInstanceOf(UpdateProductsPayload::class, $operation->payload);
+        $this->assertCount(2, $operation->payload->updates);
+    }
+
+    public function testUpdateProductsJsonSerialize(): void
+    {
+        $operation = BulkOperation::updateProducts([
+            ['id' => '123', 'price' => 29.99],
+            ['id' => '456', 'name' => 'Updated Product'],
+        ]);
+
+        $expected = [
+            'type' => 'update_products',
+            'payload' => [
+                'updates' => [
+                    ['id' => '123', 'price' => 29.99],
+                    ['id' => '456', 'name' => 'Updated Product'],
+                ],
+            ],
+        ];
+
+        $this->assertEquals($expected, $operation->jsonSerialize());
+    }
+
+    public function testWithPayloadAcceptsUpdateProductsPayload(): void
+    {
+        $operation = $this->createOperation();
+        $updatePayload = new UpdateProductsPayload([['id' => '1', 'price' => 19.99]]);
+        $newOperation = $operation->withPayload($updatePayload);
+
+        $this->assertNotSame($operation, $newOperation);
+        $this->assertInstanceOf(UpdateProductsPayload::class, $newOperation->payload);
+    }
+
+    public function testConstructorAcceptsUpdateProductsPayload(): void
+    {
+        $payload = new UpdateProductsPayload([['id' => '1', 'price' => 19.99]]);
+        $operation = new BulkOperation(
+            BulkOperationType::UPDATE_PRODUCTS,
+            $payload
+        );
+
+        $this->assertEquals(BulkOperationType::UPDATE_PRODUCTS, $operation->type);
         $this->assertSame($payload, $operation->payload);
     }
 }

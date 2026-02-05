@@ -10,5 +10,6 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 enum BulkOperationType: string
 {
     case INDEX_PRODUCTS = 'index_products';
+    case UPDATE_PRODUCTS = 'update_products';
     case DELETE_PRODUCTS = 'delete_products';
 }
