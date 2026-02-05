@@ -211,7 +211,7 @@ class SyncV2Sdk
     public function getSynonyms(string $language): SynonymResponse
     {
         $response = $this->getHttpClient()->get(
-            $this->baseApiPath . 'synonyms?language=' . $language
+            $this->baseApiPath . 'synonyms?language=' . urlencode($language)
         );
 
         return SynonymResponse::fromArray($response);
@@ -226,7 +226,7 @@ class SyncV2Sdk
     public function deleteSynonyms(string $language): array
     {
         return $this->getHttpClient()->delete(
-            $this->baseApiPath . 'synonyms?language=' . $language
+            $this->baseApiPath . 'synonyms?language=' . urlencode($language)
         );
     }
 
