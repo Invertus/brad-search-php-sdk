@@ -243,12 +243,6 @@ class SyncV2Sdk
             $request->jsonSerialize()
         );
 
-        // Temporary debug logging
-        file_put_contents('/tmp/brad-search-api-response.log',
-            date('Y-m-d H:i:s') . ' brad-search API response: ' . json_encode($response, JSON_PRETTY_PRINT) . "\n\n",
-            FILE_APPEND
-        );
-
         return BulkOperationsResponse::fromArray($response);
     }
 
