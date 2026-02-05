@@ -165,6 +165,37 @@ final readonly class Product extends ValueObject
     }
 
     /**
+     * Creates a Product instance from an array (e.g., from JSON serialization).
+     *
+     * This is the inverse of jsonSerialize() and allows reconstructing
+     * Product ValueObjects from stored/serialized data.
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        $pricing = ProductPricing::fromArray($data);
+        $imageUrl = ImageUrl::fromArray($data['imageUrl'] ?? []);
+
+        // Extract additional fields (everything except core fields)
+        $coreFields = [
+            'id', 'sku', 'price', 'basePrice', 'priceTaxExcluded',
+            'basePriceTaxExcluded', 'imageUrl', 'inStock', 'isNew',
+        ];
+        $additionalFields = array_diff_key($data, array_flip($coreFields));
+
+        return new self(
+            id: (string) ($data['id'] ?? ''),
+            sku: (string) ($data['sku'] ?? ''),
+            pricing: $pricing,
+            imageUrl: $imageUrl,
+            inStock: $data['inStock'] ?? null,
+            isNew: $data['isNew'] ?? null,
+            additionalFields: $additionalFields
+        );
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function jsonSerialize(): array

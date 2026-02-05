@@ -69,6 +69,21 @@ final readonly class ProductPricing extends ValueObject
     }
 
     /**
+     * Creates a ProductPricing instance from an array (e.g., from JSON serialization).
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            (float) ($data['price'] ?? 0),
+            (float) ($data['basePrice'] ?? 0),
+            (float) ($data['priceTaxExcluded'] ?? 0),
+            (float) ($data['basePriceTaxExcluded'] ?? 0)
+        );
+    }
+
+    /**
      * @return array<string, float>
      */
     public function jsonSerialize(): array

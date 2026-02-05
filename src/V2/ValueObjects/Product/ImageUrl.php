@@ -74,6 +74,21 @@ final readonly class ImageUrl extends ValueObject
     }
 
     /**
+     * Creates an ImageUrl instance from an array (e.g., from JSON serialization).
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromArray(array $data): self
+    {
+        return new self(
+            $data['small'] ?? '',
+            $data['medium'] ?? '',
+            $data['large'] ?? null,
+            $data['thumbnail'] ?? null
+        );
+    }
+
+    /**
      * @return array<string, string>
      */
     public function jsonSerialize(): array
