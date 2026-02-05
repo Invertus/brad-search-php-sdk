@@ -243,6 +243,9 @@ class SyncV2Sdk
             $request->jsonSerialize()
         );
 
+        // Temporary debug logging
+        error_log('[SDK DEBUG] brad-search API response: ' . json_encode($response));
+
         return BulkOperationsResponse::fromArray($response);
     }
 
