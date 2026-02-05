@@ -349,8 +349,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Step 4: Verify Index Info
             [
                 'alias_name' => 'darbo_drabuziai',
-                'active_version' => 1,
-                'active_index' => 'darbo_drabuziai_v1',
+                'physical_index_name' => 'darbo_drabuziai-v1',
+                'current_version' => 'v1',
+                'document_count' => 100,
+                'size_in_bytes' => 512000,
+                'field_count' => 9,
                 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]],
             ],
             // Step 5: Create Index v2
@@ -392,8 +395,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Step 9: Verify Activation (Get Index Info)
             [
                 'alias_name' => 'darbo_drabuziai',
-                'active_version' => 2,
-                'active_index' => 'darbo_drabuziai_v2',
+                'physical_index_name' => 'darbo_drabuziai-v2',
+                'current_version' => 'v2',
+                'document_count' => 150,
+                'size_in_bytes' => 768000,
+                'field_count' => 9,
                 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]],
             ],
             // Step 10: Cleanup v1
@@ -437,8 +443,8 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $indexInfo = $sdk->getIndexInfo();
 
         $this->assertInstanceOf(IndexInfoResponse::class, $indexInfo);
-        $this->assertEquals(1, $indexInfo->activeVersion);
-        $this->assertEquals('darbo_drabuziai_v1', $indexInfo->activeIndex);
+        $this->assertEquals(1, $indexInfo->getActiveVersionNumber());
+        $this->assertEquals('darbo_drabuziai-v1', $indexInfo->physicalIndexName);
 
         // Step 5: Create Index v2 for zero-downtime migration
         $indexResponseV2 = $sdk->createIndex($indexRequest);
@@ -487,8 +493,8 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $indexInfoAfterActivate = $sdk->getIndexInfo();
 
         $this->assertInstanceOf(IndexInfoResponse::class, $indexInfoAfterActivate);
-        $this->assertEquals(2, $indexInfoAfterActivate->activeVersion);
-        $this->assertEquals('darbo_drabuziai_v2', $indexInfoAfterActivate->activeIndex);
+        $this->assertEquals(2, $indexInfoAfterActivate->getActiveVersionNumber());
+        $this->assertEquals('darbo_drabuziai-v2', $indexInfoAfterActivate->physicalIndexName);
         $this->assertCount(2, $indexInfoAfterActivate->allVersions);
         $this->assertEquals(1, $indexInfoAfterActivate->allVersions[0]->version);
         $this->assertEquals(2, $indexInfoAfterActivate->allVersions[1]->version);
@@ -684,8 +690,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Index info response
             [
                 'alias_name' => 'darbo_drabuziai',
-                'active_version' => 1,
-                'active_index' => 'darbo_drabuziai_v1',
+                'physical_index_name' => 'darbo_drabuziai-v1',
+                'current_version' => 'v1',
+                'document_count' => 100,
+                'size_in_bytes' => 512000,
+                'field_count' => 9,
                 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]],
             ],
             // Version activate response
@@ -730,8 +739,8 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $indexInfo = $sdk->getIndexInfo();
         $this->assertInstanceOf(IndexInfoResponse::class, $indexInfo);
         $this->assertEquals('darbo_drabuziai', $indexInfo->aliasName);
-        $this->assertEquals(1, $indexInfo->activeVersion);
-        $this->assertEquals('darbo_drabuziai_v1', $indexInfo->activeIndex);
+        $this->assertEquals(1, $indexInfo->getActiveVersionNumber());
+        $this->assertEquals('darbo_drabuziai-v1', $indexInfo->physicalIndexName);
         $this->assertCount(1, $indexInfo->allVersions);
         $this->assertEquals(1, $indexInfo->allVersions[0]->version);
 
@@ -762,11 +771,11 @@ class DarboDrabuziaiWorkflowTest extends TestCase
             // Step 5: Activate v2
             ['status' => 'success', 'old_index' => 'darbo_drabuziai-v1', 'new_index' => 'darbo_drabuziai-v2', 'alias_name' => 'darbo_drabuziai', 'message' => 'Alias swapped successfully'],
             // Step 6: Verify v2 active
-            ['alias_name' => 'darbo_drabuziai', 'active_version' => 2, 'active_index' => 'darbo_drabuziai_v2', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
+            ['alias_name' => 'darbo_drabuziai', 'physical_index_name' => 'darbo_drabuziai-v2', 'current_version' => 'v2', 'document_count' => 150, 'size_in_bytes' => 768000, 'field_count' => 9, 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
             // Step 7: ROLLBACK - Activate v1 due to issues
             ['status' => 'success', 'old_index' => 'darbo_drabuziai-v2', 'new_index' => 'darbo_drabuziai-v1', 'alias_name' => 'darbo_drabuziai', 'message' => 'Alias swapped successfully'],
             // Step 8: Verify rollback
-            ['alias_name' => 'darbo_drabuziai', 'active_version' => 1, 'active_index' => 'darbo_drabuziai_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
+            ['alias_name' => 'darbo_drabuziai', 'physical_index_name' => 'darbo_drabuziai-v1', 'current_version' => 'v1', 'document_count' => 100, 'size_in_bytes' => 512000, 'field_count' => 9, 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => false], ['version' => 2, 'index_name' => 'darbo_drabuziai_v2', 'document_count' => 150, 'created_at' => '2024-01-02T00:00:00Z', 'is_active' => true]]],
             // Step 9: Cleanup v2
             ['status' => 'deleted', 'message' => 'Index version 2 deleted successfully'],
         ];
@@ -796,7 +805,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
 
         // Verify v2 is active
         $infoAfterV2 = $sdk->getIndexInfo();
-        $this->assertEquals(2, $infoAfterV2->activeVersion);
+        $this->assertEquals(2, $infoAfterV2->getActiveVersionNumber());
 
         // ROLLBACK: Activate v1 due to issues with v2
         $rollbackResponse = $sdk->activateIndexVersion(1);
@@ -805,8 +814,8 @@ class DarboDrabuziaiWorkflowTest extends TestCase
 
         // Verify rollback successful
         $infoAfterRollback = $sdk->getIndexInfo();
-        $this->assertEquals(1, $infoAfterRollback->activeVersion);
-        $this->assertEquals('darbo_drabuziai_v1', $infoAfterRollback->activeIndex);
+        $this->assertEquals(1, $infoAfterRollback->getActiveVersionNumber());
+        $this->assertEquals('darbo_drabuziai-v1', $infoAfterRollback->physicalIndexName);
 
         // Cleanup problematic v2
         $deleteResponse = $sdk->deleteIndexVersion(2);
@@ -828,7 +837,7 @@ class DarboDrabuziaiWorkflowTest extends TestCase
         $indexResponse = ['status' => 'success', 'physical_index_name' => 'test_v1', 'alias_name' => 'test', 'version' => 1, 'fields_created' => 9, 'message' => 'Created'];
         $configResponse = ['status' => 'success', 'index_name' => 'test', 'cache_ttl_hours' => 24, 'search_fields' => [['field' => 'name', 'position' => 1, 'match_mode' => 'fuzzy']]];
         $bulkResponse = ['status' => 'success', 'total_operations' => 1, 'successful_operations' => 1, 'failed_operations' => 0, 'results' => [['id' => 'prod-1', 'operation' => 'index_products', 'status' => 'created']]];
-        $infoResponse = ['alias_name' => 'test', 'active_version' => 1, 'active_index' => 'test_v1', 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]]];
+        $infoResponse = ['alias_name' => 'test', 'physical_index_name' => 'test-v1', 'current_version' => 'v1', 'document_count' => 100, 'size_in_bytes' => 512000, 'field_count' => 9, 'all_versions' => [['version' => 1, 'index_name' => 'darbo_drabuziai_v1', 'document_count' => 100, 'created_at' => '2024-01-01T00:00:00Z', 'is_active' => true]]];
         $activateResponse = ['status' => 'success', 'old_index' => 'test-v0', 'new_index' => 'test-v1', 'alias_name' => 'test', 'message' => 'Success'];
         $deleteResponse = ['status' => 'deleted', 'message' => 'Deleted'];
 

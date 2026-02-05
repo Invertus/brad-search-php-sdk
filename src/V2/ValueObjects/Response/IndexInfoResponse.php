@@ -11,28 +11,40 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * Represents the response from get index info API endpoint.
  *
  * This immutable ValueObject contains index information:
- * - aliasName: The alias pointing to the active index
- * - activeVersion: The currently active version number
- * - activeIndex: The physical name of the active index
- * - allVersions: Array of IndexVersion objects
+ * - aliasName: The alias pointing to the active index (e.g., application ID)
+ * - physicalIndexName: The physical name of the active index (e.g., "app-id-v15")
+ * - currentVersion: The currently active version string (e.g., "v15")
+ * - documentCount: Number of documents in the index
+ * - sizeInBytes: Size of the index in bytes
+ * - fieldCount: Number of fields in the index
+ * - allVersions: Array of IndexVersion objects (optional, may be empty)
  */
 final readonly class IndexInfoResponse extends ValueObject
 {
     /**
      * @param string $aliasName The alias name
-     * @param int $activeVersion The active version number
-     * @param string $activeIndex The physical name of the active index
-     * @param array<IndexVersion> $allVersions All available versions
+     * @param string $physicalIndexName The physical name of the active index
+     * @param string $currentVersion The current version string (e.g., "v15")
+     * @param int $documentCount Number of documents in the index
+     * @param int $sizeInBytes Size of the index in bytes
+     * @param int $fieldCount Number of fields in the index
+     * @param array<IndexVersion> $allVersions All available versions (optional)
      */
     public function __construct(
         public string $aliasName,
-        public int $activeVersion,
-        public string $activeIndex,
-        public array $allVersions
+        public string $physicalIndexName,
+        public string $currentVersion,
+        public int $documentCount,
+        public int $sizeInBytes,
+        public int $fieldCount,
+        public array $allVersions = []
     ) {
         $this->validateNotEmpty($aliasName, 'alias_name');
-        $this->validateNonNegative($activeVersion, 'active_version');
-        $this->validateNotEmpty($activeIndex, 'active_index');
+        $this->validateNotEmpty($physicalIndexName, 'physical_index_name');
+        $this->validateNotEmpty($currentVersion, 'current_version');
+        $this->validateNonNegative($documentCount, 'document_count');
+        $this->validateNonNegative($sizeInBytes, 'size_in_bytes');
+        $this->validateNonNegative($fieldCount, 'field_count');
         $this->validateVersions($allVersions);
     }
 
@@ -49,22 +61,42 @@ final readonly class IndexInfoResponse extends ValueObject
     {
         self::validateRequiredFields($data, [
             'alias_name',
-            'active_version',
-            'active_index',
-            'all_versions',
+            'physical_index_name',
+            'current_version',
+            'document_count',
+            'size_in_bytes',
+            'field_count',
         ]);
 
+        // Parse all_versions if present (API may not return this field)
         $versions = [];
-        foreach ($data['all_versions'] as $versionData) {
-            $versions[] = IndexVersion::fromArray($versionData);
+        if (isset($data['all_versions']) && is_array($data['all_versions'])) {
+            foreach ($data['all_versions'] as $versionData) {
+                $versions[] = IndexVersion::fromArray($versionData);
+            }
         }
 
         return new self(
             aliasName: (string) $data['alias_name'],
-            activeVersion: (int) $data['active_version'],
-            activeIndex: (string) $data['active_index'],
+            physicalIndexName: (string) $data['physical_index_name'],
+            currentVersion: (string) $data['current_version'],
+            documentCount: (int) $data['document_count'],
+            sizeInBytes: (int) $data['size_in_bytes'],
+            fieldCount: (int) $data['field_count'],
             allVersions: $versions
         );
+    }
+
+    /**
+     * Get the active version number as an integer.
+     * Parses version string like "v15" to 15.
+     *
+     * @return int The version number
+     */
+    public function getActiveVersionNumber(): int
+    {
+        // Remove "v" prefix and convert to int
+        return (int) ltrim($this->currentVersion, 'v');
     }
 
     /**
@@ -92,7 +124,7 @@ final readonly class IndexInfoResponse extends ValueObject
      */
     public function getActiveVersionObject(): ?IndexVersion
     {
-        return $this->getVersion($this->activeVersion);
+        return $this->getVersion($this->getActiveVersionNumber());
     }
 
     /**
@@ -102,8 +134,11 @@ final readonly class IndexInfoResponse extends ValueObject
     {
         return [
             'alias_name' => $this->aliasName,
-            'active_version' => $this->activeVersion,
-            'active_index' => $this->activeIndex,
+            'physical_index_name' => $this->physicalIndexName,
+            'current_version' => $this->currentVersion,
+            'document_count' => $this->documentCount,
+            'size_in_bytes' => $this->sizeInBytes,
+            'field_count' => $this->fieldCount,
             'all_versions' => array_map(
                 fn(IndexVersion $version) => $version->jsonSerialize(),
                 $this->allVersions

@@ -200,11 +200,8 @@ class SyncV2SdkTest extends TestCase
     {
         $apiResponse = [
             'alias_name' => 'app_550e8400',
-            'physical_index_name' => 'app_550e8400-v2',
-            'current_version' => 'v2',
-            'document_count' => 150,
-            'size_in_bytes' => 1024000,
-            'field_count' => 25,
+            'active_version' => 2,
+            'active_index' => 'app_550e8400_v2',
             'all_versions' => [
                 [
                     'version' => 1,
@@ -235,8 +232,8 @@ class SyncV2SdkTest extends TestCase
 
         $this->assertInstanceOf(IndexInfoResponse::class, $result);
         $this->assertEquals('app_550e8400', $result->aliasName);
-        $this->assertEquals(2, $result->getActiveVersionNumber());
-        $this->assertEquals('app_550e8400-v2', $result->physicalIndexName);
+        $this->assertEquals(2, $result->activeVersion);
+        $this->assertEquals('app_550e8400_v2', $result->activeIndex);
         $this->assertCount(2, $result->allVersions);
     }
 
@@ -249,11 +246,8 @@ class SyncV2SdkTest extends TestCase
             ->with($this->stringContains(self::APP_ID))
             ->willReturn([
                 'alias_name' => 'test',
-                'physical_index_name' => 'test-v1',
-                'current_version' => 'v1',
-                'document_count' => 0,
-                'size_in_bytes' => 0,
-                'field_count' => 10,
+                'active_version' => 1,
+                'active_index' => 'test_v1',
                 'all_versions' => [
                     [
                         'version' => 1,
@@ -278,11 +272,8 @@ class SyncV2SdkTest extends TestCase
             ->with($this->stringEndsWith('/index/info'))
             ->willReturn([
                 'alias_name' => 'test',
-                'physical_index_name' => 'test-v1',
-                'current_version' => 'v1',
-                'document_count' => 0,
-                'size_in_bytes' => 0,
-                'field_count' => 10,
+                'active_version' => 1,
+                'active_index' => 'test_v1',
                 'all_versions' => [
                     [
                         'version' => 1,
@@ -302,11 +293,8 @@ class SyncV2SdkTest extends TestCase
     {
         $apiResponse = [
             'alias_name' => 'app_550e8400',
-            'physical_index_name' => 'app_550e8400-v2',
-            'current_version' => 'v2',
-            'document_count' => 150,
-            'size_in_bytes' => 1024000,
-            'field_count' => 25,
+            'active_version' => 2,
+            'active_index' => 'app_550e8400_v2',
             'all_versions' => [
                 [
                     'version' => 1,
@@ -348,11 +336,8 @@ class SyncV2SdkTest extends TestCase
             ->with($this->stringContains(self::APP_ID))
             ->willReturn([
                 'alias_name' => 'test',
-                'physical_index_name' => 'test-v1',
-                'current_version' => 'v1',
-                'document_count' => 0,
-                'size_in_bytes' => 0,
-                'field_count' => 10,
+                'active_version' => 1,
+                'active_index' => 'test_v1',
                 'all_versions' => [],
             ]);
 
@@ -369,11 +354,8 @@ class SyncV2SdkTest extends TestCase
             ->with($this->stringEndsWith('/index/versions'))
             ->willReturn([
                 'alias_name' => 'test',
-                'physical_index_name' => 'test-v1',
-                'current_version' => 'v1',
-                'document_count' => 0,
-                'size_in_bytes' => 0,
-                'field_count' => 10,
+                'active_version' => 1,
+                'active_index' => 'test_v1',
                 'all_versions' => [],
             ]);
 
