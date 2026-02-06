@@ -135,11 +135,11 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertEquals('http://prestashop/5309-small_default/sneakers.jpg', $product->imageUrl->small);
         $this->assertEquals('http://prestashop/5309-medium_default/sneakers.jpg', $product->imageUrl->medium);
 
-        // Check additional fields
-        $this->assertEquals('Sneakers "101H" Springa multi', $product->additionalFields['name']);
-        $this->assertEquals('Springa', $product->additionalFields['brand']);
-        $this->assertEquals('http://prestashop/sneakers/1807-sneakers.html', $product->additionalFields['productUrl']);
-        $this->assertEquals(['Men', 'Men > Shoes'], $product->additionalFields['categories']);
+        // Check additional fields (en-US always suffixed)
+        $this->assertEquals('Sneakers "101H" Springa multi', $product->additionalFields['name_en-US']);
+        $this->assertEquals('Springa', $product->additionalFields['brand_en-US']);
+        $this->assertEquals('http://prestashop/sneakers/1807-sneakers.html', $product->additionalFields['productUrl_en-US']);
+        $this->assertEquals(['Men', 'Men > Shoes'], $product->additionalFields['categories_en-US']);
     }
 
     public function testTransformProductWithMultipleLocales(): void
@@ -191,11 +191,11 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        // Default locale fields (en-US without suffix)
-        $this->assertEquals('Sneakers Multi', $product->additionalFields['name']);
-        $this->assertEquals('Springa', $product->additionalFields['brand']);
-        $this->assertEquals('http://prestashop/en/sneakers.html', $product->additionalFields['productUrl']);
-        $this->assertEquals(['Shoes'], $product->additionalFields['categories']);
+        // en-US locale fields (always suffixed)
+        $this->assertEquals('Sneakers Multi', $product->additionalFields['name_en-US']);
+        $this->assertEquals('Springa', $product->additionalFields['brand_en-US']);
+        $this->assertEquals('http://prestashop/en/sneakers.html', $product->additionalFields['productUrl_en-US']);
+        $this->assertEquals(['Shoes'], $product->additionalFields['categories_en-US']);
 
         // Additional locale fields (with suffix)
         $this->assertEquals('Sportiniai batai Multi', $product->additionalFields['name_lt-LT']);
@@ -574,8 +574,8 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        $this->assertArrayHasKey('tags', $product->additionalFields);
-        $this->assertEquals(['summer', 'sale', 'new'], $product->additionalFields['tags']);
+        $this->assertArrayHasKey('tags_en-US', $product->additionalFields);
+        $this->assertEquals(['summer', 'sale', 'new'], $product->additionalFields['tags_en-US']);
 
         $this->assertArrayHasKey('tags_lt-LT', $product->additionalFields);
         $this->assertEquals(['vasara', 'akcija'], $product->additionalFields['tags_lt-LT']);
@@ -682,11 +682,11 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        // HTML tags should be stripped
-        $this->assertArrayHasKey('description', $product->additionalFields);
-        $this->assertEquals('This is a test product.', $product->additionalFields['description']);
-        $this->assertArrayHasKey('descriptionShort', $product->additionalFields);
-        $this->assertEquals('Short description', $product->additionalFields['descriptionShort']);
+        // HTML tags should be stripped (en-US always suffixed)
+        $this->assertArrayHasKey('description_en-US', $product->additionalFields);
+        $this->assertEquals('This is a test product.', $product->additionalFields['description_en-US']);
+        $this->assertArrayHasKey('descriptionShort_en-US', $product->additionalFields);
+        $this->assertEquals('Short description', $product->additionalFields['descriptionShort_en-US']);
     }
 
     public function testTransformProductWithCategoryDefault(): void
@@ -723,8 +723,8 @@ class PrestaShopAdapterV2Test extends TestCase
         $result = $this->adapter->transform($prestaShopData);
         $product = $result['products'][0];
 
-        $this->assertArrayHasKey('categoryDefault', $product->additionalFields);
-        $this->assertEquals('Men > Shoes > Sneakers', $product->additionalFields['categoryDefault']);
+        $this->assertArrayHasKey('categoryDefault_en-US', $product->additionalFields);
+        $this->assertEquals('Men > Shoes > Sneakers', $product->additionalFields['categoryDefault_en-US']);
     }
 
     public function testBulkOperationsRequestStructure(): void

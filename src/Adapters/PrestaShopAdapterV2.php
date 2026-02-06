@@ -446,11 +446,7 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            if ($locale === 'en-US') {
-                $result['productUrl'] = $url;
-            } else {
-                $result["productUrl_{$locale}"] = $url;
-            }
+            $result["productUrl_{$locale}"] = $url;
         }
     }
 
@@ -463,7 +459,6 @@ class PrestaShopAdapterV2
     private function extractCategories(array &$result, array $product): void
     {
         $fieldName = 'categories';
-        $result[$fieldName] = [];
 
         if (!isset($product[$fieldName]) || !is_array($product[$fieldName])) {
             return;
@@ -509,7 +504,7 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            $key = $fieldName . ($locale === 'en-US' ? '' : '_' . $locale);
+            $key = "{$fieldName}_{$locale}";
 
             switch ($fieldName) {
                 case 'categories':
@@ -534,7 +529,6 @@ class PrestaShopAdapterV2
     private function extractCategoryDefault(array &$result, array $product): void
     {
         $categoryFieldName = 'categoryDefault';
-        $result[$categoryFieldName] = '';
 
         if (!isset($product[$categoryFieldName]) || !is_array($product[$categoryFieldName])) {
             return;
@@ -612,11 +606,7 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            if ($locale === 'en-US') {
-                $result['tags'] = $filteredTags;
-            } else {
-                $result["tags_{$locale}"] = $filteredTags;
-            }
+            $result["tags_{$locale}"] = $filteredTags;
         }
     }
 
@@ -643,11 +633,7 @@ class PrestaShopAdapterV2
 
             $cleanValue = strip_tags((string) $value);
 
-            if ($locale === 'en-US') {
-                $result[$fieldName] = $cleanValue;
-            } else {
-                $result["{$fieldName}_{$locale}"] = $cleanValue;
-            }
+            $result["{$fieldName}_{$locale}"] = $cleanValue;
         }
     }
 
