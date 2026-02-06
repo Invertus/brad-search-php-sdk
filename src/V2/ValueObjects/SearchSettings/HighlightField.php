@@ -17,13 +17,13 @@ final readonly class HighlightField extends ValueObject
 {
     /**
      * @param string $fieldName The field name to highlight
-     * @param string|null $localeSuffix Optional locale suffix for localized fields
+     * @param bool|string|null $localeSuffix Locale suffix: true to auto-apply locale, or a specific suffix string
      * @param array<string> $preTags Tags to insert before highlighted text
      * @param array<string> $postTags Tags to insert after highlighted text
      */
     public function __construct(
         public string $fieldName,
-        public ?string $localeSuffix = null,
+        public bool|string|null $localeSuffix = null,
         public array $preTags = [],
         public array $postTags = []
     ) {
@@ -47,7 +47,7 @@ final readonly class HighlightField extends ValueObject
 
         return new self(
             fieldName: (string) $data['field_name'],
-            localeSuffix: isset($data['locale_suffix']) ? (string) $data['locale_suffix'] : null,
+            localeSuffix: $data['locale_suffix'] ?? null,
             preTags: isset($data['pre_tags']) && is_array($data['pre_tags']) ? $data['pre_tags'] : [],
             postTags: isset($data['post_tags']) && is_array($data['post_tags']) ? $data['post_tags'] : []
         );
@@ -64,7 +64,7 @@ final readonly class HighlightField extends ValueObject
     /**
      * Returns a new instance with a different locale suffix.
      */
-    public function withLocaleSuffix(?string $localeSuffix): self
+    public function withLocaleSuffix(bool|string|null $localeSuffix): self
     {
         return new self($this->fieldName, $localeSuffix, $this->preTags, $this->postTags);
     }
