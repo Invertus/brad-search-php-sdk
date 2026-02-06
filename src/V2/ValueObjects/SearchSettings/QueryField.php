@@ -29,7 +29,7 @@ final readonly class QueryField extends ValueObject
     public function __construct(
         public QueryFieldType $type,
         public string $name,
-        public ?string $localeSuffix = null,
+        public bool|string|null $localeSuffix = null,
         public array $searchTypes = [],
         public ?bool $lastWordSearch = null,
         public ?string $nestedPath = null,
@@ -80,7 +80,7 @@ final readonly class QueryField extends ValueObject
         return new self(
             type: $type,
             name: (string) $data['name'],
-            localeSuffix: isset($data['locale_suffix']) ? (string) $data['locale_suffix'] : null,
+            localeSuffix: isset($data['locale_suffix']) ? $data['locale_suffix'] : null,
             searchTypes: $searchTypes,
             lastWordSearch: isset($data['last_word_search']) ? (bool) $data['last_word_search'] : null,
             nestedPath: isset($data['nested_path']) ? (string) $data['nested_path'] : null,
@@ -111,7 +111,7 @@ final readonly class QueryField extends ValueObject
     /**
      * Returns a new instance with a different locale suffix.
      */
-    public function withLocaleSuffix(?string $localeSuffix): self
+    public function withLocaleSuffix(bool|string|null $localeSuffix): self
     {
         return new self(
             $this->type,

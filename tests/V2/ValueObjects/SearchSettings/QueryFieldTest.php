@@ -289,6 +289,53 @@ class QueryFieldTest extends TestCase
         $this->assertCount(1, $newField->nestedFields);
     }
 
+    public function testConstructorWithBooleanLocaleSuffix(): void
+    {
+        $field = new QueryField(
+            type: QueryFieldType::TEXT,
+            name: 'name',
+            localeSuffix: true
+        );
+
+        $this->assertTrue($field->localeSuffix);
+    }
+
+    public function testFromArrayWithBooleanLocaleSuffix(): void
+    {
+        $data = [
+            'type' => 'text',
+            'name' => 'name',
+            'locale_suffix' => true,
+        ];
+
+        $field = QueryField::fromArray($data);
+
+        $this->assertTrue($field->localeSuffix);
+    }
+
+    public function testJsonSerializePreservesBooleanLocaleSuffix(): void
+    {
+        $field = new QueryField(
+            type: QueryFieldType::TEXT,
+            name: 'name',
+            localeSuffix: true
+        );
+
+        $serialized = $field->jsonSerialize();
+
+        $this->assertArrayHasKey('locale_suffix', $serialized);
+        $this->assertTrue($serialized['locale_suffix']);
+        $this->assertIsBool($serialized['locale_suffix']);
+    }
+
+    public function testWithLocaleSuffixAcceptsBool(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name');
+        $newField = $field->withLocaleSuffix(true);
+
+        $this->assertTrue($newField->localeSuffix);
+    }
+
     public function testRoundTripJsonSerialization(): void
     {
         $originalData = [
