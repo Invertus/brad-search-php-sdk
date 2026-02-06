@@ -35,6 +35,12 @@ final class SearchSettingsRequestBuilder
     /** @var array<string> */
     private array $sortableFields = [];
 
+    /** @var array<string>|null */
+    private ?array $supportedLocales = null;
+
+    /** @var array<string, mixed>|null */
+    private ?array $rawQueryConfig = null;
+
     /**
      * Sets the application ID.
      */
@@ -130,6 +136,28 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets supported locales.
+     *
+     * @param array<string> $locales
+     */
+    public function supportedLocales(array $locales): self
+    {
+        $this->supportedLocales = $locales;
+        return $this;
+    }
+
+    /**
+     * Sets raw query config (Go-native format, bypasses SearchConfig VOs).
+     *
+     * @param array<string, mixed> $config
+     */
+    public function rawQueryConfig(array $config): self
+    {
+        $this->rawQueryConfig = $config;
+        return $this;
+    }
+
+    /**
      * Sets the complete search config.
      */
     public function searchConfig(SearchConfig $searchConfig): self
@@ -217,7 +245,9 @@ final class SearchSettingsRequestBuilder
             $this->appId,
             $searchConfig,
             $scoringConfig,
-            $responseConfig
+            $responseConfig,
+            $this->supportedLocales,
+            $this->rawQueryConfig
         );
     }
 
@@ -234,6 +264,8 @@ final class SearchSettingsRequestBuilder
         $this->minScore = null;
         $this->sourceFields = [];
         $this->sortableFields = [];
+        $this->supportedLocales = null;
+        $this->rawQueryConfig = null;
         return $this;
     }
 }

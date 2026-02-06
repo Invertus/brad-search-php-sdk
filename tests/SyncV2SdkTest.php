@@ -1222,7 +1222,7 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('post')
             ->with(
-                'api/v2/configuration',
+                'api/v2/applications/' . self::APP_ID . '/configuration',
                 $settings->jsonSerialize()
             )
             ->willReturn($apiResponse);
@@ -1246,7 +1246,7 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('post')
             ->with(
-                'api/v2/configuration',
+                $this->stringEndsWith('/configuration'),
                 $this->anything()
             )
             ->willReturn([
@@ -1260,11 +1260,9 @@ class SyncV2SdkTest extends TestCase
 
     public function testGetSearchSettingsSuccess(): void
     {
-        $appId = self::APP_ID;
-
         $apiResponse = [
             'status' => 'success',
-            'app_id' => $appId,
+            'app_id' => self::APP_ID,
             'api_key' => 'test-api-key',
         ];
 
@@ -1272,42 +1270,39 @@ class SyncV2SdkTest extends TestCase
         $httpClientMock
             ->expects($this->once())
             ->method('get')
-            ->with('api/v2/configuration/' . $appId)
+            ->with('api/v2/applications/' . self::APP_ID . '/configuration')
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->getSearchSettings($appId);
+        $result = $sdk->getSearchSettings();
 
         $this->assertIsArray($result);
         $this->assertEquals('success', $result['status']);
-        $this->assertEquals($appId, $result['app_id']);
+        $this->assertEquals(self::APP_ID, $result['app_id']);
     }
 
     public function testGetSearchSettingsUsesCorrectEndpoint(): void
     {
-        $appId = self::APP_ID;
-
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
             ->method('get')
-            ->with('api/v2/configuration/' . $appId)
-            ->willReturn(['status' => 'success', 'app_id' => $appId]);
+            ->with($this->stringEndsWith('/configuration'))
+            ->willReturn(['status' => 'success', 'app_id' => self::APP_ID]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->getSearchSettings($appId);
+        $sdk->getSearchSettings();
     }
 
     public function testUpdateSearchSettingsSuccess(): void
     {
-        $appId = self::APP_ID;
         $settings = new SearchSettingsRequest(
-            appId: $appId
+            appId: self::APP_ID
         );
 
         $apiResponse = [
             'status' => 'success',
-            'app_id' => $appId,
+            'app_id' => self::APP_ID,
             'message' => 'Settings updated successfully',
         ];
 
@@ -1316,24 +1311,23 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('put')
             ->with(
-                'api/v2/configuration/' . $appId,
+                'api/v2/applications/' . self::APP_ID . '/configuration',
                 $settings->jsonSerialize()
             )
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->updateSearchSettings($appId, $settings);
+        $result = $sdk->updateSearchSettings($settings);
 
         $this->assertInstanceOf(SettingsResponse::class, $result);
         $this->assertEquals('success', $result->status);
-        $this->assertEquals($appId, $result->appId);
+        $this->assertEquals(self::APP_ID, $result->appId);
     }
 
     public function testUpdateSearchSettingsUsesCorrectEndpoint(): void
     {
-        $appId = self::APP_ID;
         $settings = new SearchSettingsRequest(
-            appId: $appId
+            appId: self::APP_ID
         );
 
         $httpClientMock = $this->createMock(HttpClient::class);
@@ -1341,22 +1335,20 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('put')
             ->with(
-                'api/v2/configuration/' . $appId,
+                $this->stringEndsWith('/configuration'),
                 $this->anything()
             )
             ->willReturn([
                 'status' => 'success',
-                'app_id' => $appId,
+                'app_id' => self::APP_ID,
             ]);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->updateSearchSettings($appId, $settings);
+        $sdk->updateSearchSettings($settings);
     }
 
     public function testDeleteSearchSettingsSuccess(): void
     {
-        $appId = self::APP_ID;
-
         $apiResponse = [
             'status' => 'deleted',
             'message' => 'Settings deleted successfully',
@@ -1366,11 +1358,11 @@ class SyncV2SdkTest extends TestCase
         $httpClientMock
             ->expects($this->once())
             ->method('delete')
-            ->with('api/v2/configuration/' . $appId)
+            ->with('api/v2/applications/' . self::APP_ID . '/configuration')
             ->willReturn($apiResponse);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $result = $sdk->deleteSearchSettings($appId);
+        $result = $sdk->deleteSearchSettings();
 
         $this->assertIsArray($result);
         $this->assertEquals('deleted', $result['status']);
@@ -1378,17 +1370,15 @@ class SyncV2SdkTest extends TestCase
 
     public function testDeleteSearchSettingsUsesCorrectEndpoint(): void
     {
-        $appId = self::APP_ID;
-
         $httpClientMock = $this->createMock(HttpClient::class);
         $httpClientMock
             ->expects($this->once())
             ->method('delete')
-            ->with('api/v2/configuration/' . $appId)
+            ->with($this->stringEndsWith('/configuration'))
             ->willReturn(['status' => 'deleted']);
 
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
-        $sdk->deleteSearchSettings($appId);
+        $sdk->deleteSearchSettings();
     }
 
     public function testGetAppIdReturnsConfiguredAppId(): void

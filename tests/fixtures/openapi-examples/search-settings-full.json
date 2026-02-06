@@ -1,6 +1,6 @@
 {
     "app_id": "my_app_123",
-    "search_config": {
+    "query_config": {
         "fields": [
             {
                 "id": "name_field",

@@ -290,6 +290,50 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertEquals('field2', $request2->searchConfig->fields[0]->id);
     }
 
+    public function testBuildWithSupportedLocales(): void
+    {
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->supportedLocales(['lt-LT', 'en-US'])
+            ->build();
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('supported_locales', $serialized);
+        $this->assertEquals(['lt-LT', 'en-US'], $serialized['supported_locales']);
+    }
+
+    public function testBuildWithRawQueryConfig(): void
+    {
+        $rawConfig = ['fields' => [['id' => 'name', 'field_name' => 'name']]];
+
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->rawQueryConfig($rawConfig)
+            ->build();
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('query_config', $serialized);
+        $this->assertEquals($rawConfig, $serialized['query_config']);
+    }
+
+    public function testRawQueryConfigTakesPrecedenceOverSearchConfig(): void
+    {
+        $rawConfig = ['fields' => [['id' => 'raw_field']]];
+
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->addField(new FieldConfig('name', 'name'))
+            ->rawQueryConfig($rawConfig)
+            ->build();
+
+        $serialized = $request->jsonSerialize();
+        // rawQueryConfig should take precedence
+        $this->assertEquals($rawConfig, $serialized['query_config']);
+    }
+
     public function testFluentInterfaceReturnsSelf(): void
     {
         $builder = new SearchSettingsRequestBuilder();
@@ -304,6 +348,8 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertSame($builder, $builder->sourceFields(['name']));
         $this->assertSame($builder, $builder->addSortableField('price'));
         $this->assertSame($builder, $builder->sortableFields(['price']));
+        $this->assertSame($builder, $builder->supportedLocales(['lt-LT']));
+        $this->assertSame($builder, $builder->rawQueryConfig(['fields' => []]));
         $this->assertSame($builder, $builder->searchConfig(new SearchConfig()));
         $this->assertSame($builder, $builder->scoringConfig(new ScoringConfig()));
         $this->assertSame($builder, $builder->responseConfig(new ResponseConfig()));

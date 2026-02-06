@@ -92,7 +92,7 @@ class SearchSettingsRequestTest extends TestCase
 
         $expected = [
             'app_id' => 'app_123',
-            'search_config' => [
+            'query_config' => [
                 'fields' => [
                     [
                         'id' => 'name_field',
@@ -208,7 +208,7 @@ class SearchSettingsRequestTest extends TestCase
         $decoded = json_decode($json, true);
 
         $this->assertArrayHasKey('app_id', $decoded);
-        $this->assertArrayHasKey('search_config', $decoded);
+        $this->assertArrayHasKey('query_config', $decoded);
         $this->assertEquals('app_123', $decoded['app_id']);
     }
 
@@ -276,37 +276,37 @@ class SearchSettingsRequestTest extends TestCase
 
         // Verify top-level structure
         $this->assertArrayHasKey('app_id', $serialized);
-        $this->assertArrayHasKey('search_config', $serialized);
+        $this->assertArrayHasKey('query_config', $serialized);
         $this->assertArrayHasKey('scoring_config', $serialized);
         $this->assertArrayHasKey('response_config', $serialized);
 
-        // Verify search_config structure
-        $this->assertArrayHasKey('fields', $serialized['search_config']);
-        $this->assertArrayHasKey('nested_fields', $serialized['search_config']);
-        $this->assertArrayHasKey('multi_match_configs', $serialized['search_config']);
+        // Verify query_config structure
+        $this->assertArrayHasKey('fields', $serialized['query_config']);
+        $this->assertArrayHasKey('nested_fields', $serialized['query_config']);
+        $this->assertArrayHasKey('multi_match_configs', $serialized['query_config']);
 
         // Verify fields structure
-        $this->assertCount(2, $serialized['search_config']['fields']);
-        $this->assertArrayHasKey('id', $serialized['search_config']['fields'][0]);
-        $this->assertArrayHasKey('field_name', $serialized['search_config']['fields'][0]);
-        $this->assertArrayHasKey('search_behaviors', $serialized['search_config']['fields'][0]);
+        $this->assertCount(2, $serialized['query_config']['fields']);
+        $this->assertArrayHasKey('id', $serialized['query_config']['fields'][0]);
+        $this->assertArrayHasKey('field_name', $serialized['query_config']['fields'][0]);
+        $this->assertArrayHasKey('search_behaviors', $serialized['query_config']['fields'][0]);
 
         // Verify search_behaviors structure
-        $this->assertCount(2, $serialized['search_config']['fields'][0]['search_behaviors']);
-        $this->assertArrayHasKey('type', $serialized['search_config']['fields'][0]['search_behaviors'][0]);
-        $this->assertArrayHasKey('boost', $serialized['search_config']['fields'][0]['search_behaviors'][0]);
+        $this->assertCount(2, $serialized['query_config']['fields'][0]['search_behaviors']);
+        $this->assertArrayHasKey('type', $serialized['query_config']['fields'][0]['search_behaviors'][0]);
+        $this->assertArrayHasKey('boost', $serialized['query_config']['fields'][0]['search_behaviors'][0]);
 
         // Verify nested_fields structure
-        $this->assertCount(1, $serialized['search_config']['nested_fields']);
-        $this->assertArrayHasKey('path', $serialized['search_config']['nested_fields'][0]);
-        $this->assertArrayHasKey('score_mode', $serialized['search_config']['nested_fields'][0]);
-        $this->assertEquals('max', $serialized['search_config']['nested_fields'][0]['score_mode']);
+        $this->assertCount(1, $serialized['query_config']['nested_fields']);
+        $this->assertArrayHasKey('path', $serialized['query_config']['nested_fields'][0]);
+        $this->assertArrayHasKey('score_mode', $serialized['query_config']['nested_fields'][0]);
+        $this->assertEquals('max', $serialized['query_config']['nested_fields'][0]['score_mode']);
 
         // Verify multi_match_configs structure
-        $this->assertCount(1, $serialized['search_config']['multi_match_configs']);
-        $this->assertArrayHasKey('field_ids', $serialized['search_config']['multi_match_configs'][0]);
-        $this->assertArrayHasKey('type', $serialized['search_config']['multi_match_configs'][0]);
-        $this->assertEquals('cross_fields', $serialized['search_config']['multi_match_configs'][0]['type']);
+        $this->assertCount(1, $serialized['query_config']['multi_match_configs']);
+        $this->assertArrayHasKey('field_ids', $serialized['query_config']['multi_match_configs'][0]);
+        $this->assertArrayHasKey('type', $serialized['query_config']['multi_match_configs'][0]);
+        $this->assertEquals('cross_fields', $serialized['query_config']['multi_match_configs'][0]['type']);
 
         // Verify scoring_config structure
         $this->assertArrayHasKey('function_score', $serialized['scoring_config']);

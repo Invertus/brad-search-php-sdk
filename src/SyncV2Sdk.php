@@ -255,7 +255,7 @@ class SyncV2Sdk
     public function createSearchSettings(SearchSettingsRequest $settings): SettingsResponse
     {
         $response = $this->getHttpClient()->post(
-            'api/v2/configuration',
+            $this->baseApiPath . 'configuration',
             $settings->jsonSerialize()
         );
 
@@ -263,29 +263,27 @@ class SyncV2Sdk
     }
 
     /**
-     * Get search settings for a specific application.
+     * Get search settings for the application.
      *
-     * @param  string  $appId  Application ID
      * @return array<string, mixed> Raw API response with settings data
      */
-    public function getSearchSettings(string $appId): array
+    public function getSearchSettings(): array
     {
         return $this->getHttpClient()->get(
-            'api/v2/configuration/' . $appId
+            $this->baseApiPath . 'configuration'
         );
     }
 
     /**
-     * Update search settings for a specific application.
+     * Update search settings for the application.
      *
-     * @param  string  $appId  Application ID
      * @param  SearchSettingsRequest  $settings  Search settings to update
      * @return SettingsResponse Typed response
      */
-    public function updateSearchSettings(string $appId, SearchSettingsRequest $settings): SettingsResponse
+    public function updateSearchSettings(SearchSettingsRequest $settings): SettingsResponse
     {
         $response = $this->getHttpClient()->put(
-            'api/v2/configuration/' . $appId,
+            $this->baseApiPath . 'configuration',
             $settings->jsonSerialize()
         );
 
@@ -293,15 +291,14 @@ class SyncV2Sdk
     }
 
     /**
-     * Delete search settings for a specific application.
+     * Delete search settings for the application.
      *
-     * @param  string  $appId  Application ID
      * @return array<string, mixed> Raw API response
      */
-    public function deleteSearchSettings(string $appId): array
+    public function deleteSearchSettings(): array
     {
         return $this->getHttpClient()->delete(
-            'api/v2/configuration/' . $appId
+            $this->baseApiPath . 'configuration'
         );
     }
 }
