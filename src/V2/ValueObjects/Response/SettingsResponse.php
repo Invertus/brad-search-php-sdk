@@ -42,11 +42,23 @@ final readonly class SettingsResponse extends ValueObject
      */
     public static function fromArray(array $data): self
     {
-        self::validateRequiredFields($data, ['status', 'app_id']);
+        self::validateRequiredFields($data, ['status']);
+
+        $appId = $data['app_id']
+            ?? $data['settings']['app_id']
+            ?? null;
+
+        if ($appId === null) {
+            throw new InvalidArgumentException(
+                'Missing required field: app_id (checked top-level and settings.app_id)',
+                'app_id',
+                null
+            );
+        }
 
         return new self(
             status: (string) $data['status'],
-            appId: (string) $data['app_id'],
+            appId: (string) $appId,
             message: isset($data['message']) ? (string) $data['message'] : null
         );
     }
