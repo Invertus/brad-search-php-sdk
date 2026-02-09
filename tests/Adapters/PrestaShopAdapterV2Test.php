@@ -232,14 +232,16 @@ class PrestaShopAdapterV2Test extends TestCase
                             'priceTaxExcluded' => 82.64,
                             'basePriceTaxExcluded' => 82.64,
                             'attributes' => [
-                                [
+                                'Size' => [
                                     'remoteId' => '201',
+                                    'localizedNames' => ['en-US' => 'Size'],
                                     'localizedValues' => [
                                         'en-US' => '34',
                                     ],
                                 ],
-                                [
+                                'Color' => [
                                     'remoteId' => '202',
+                                    'localizedNames' => ['en-US' => 'Color'],
                                     'localizedValues' => [
                                         'en-US' => 'multi',
                                     ],
@@ -306,8 +308,12 @@ class PrestaShopAdapterV2Test extends TestCase
                             'remoteId' => '26911',
                             'sku' => 'VARIANT-SKU',
                             'attributes' => [
-                                [
+                                'Color' => [
                                     'remoteId' => '301',
+                                    'localizedNames' => [
+                                        'en-US' => 'Color',
+                                        'lt-LT' => 'Spalva',
+                                    ],
                                     'localizedValues' => [
                                         'en-US' => 'Red',
                                         'lt-LT' => 'Raudona',
@@ -900,14 +906,16 @@ class PrestaShopAdapterV2Test extends TestCase
                                 'medium' => 'https://www.darbodrabuziai.lt/img/4107.jpg',
                             ],
                             'attributes' => [
-                                [
+                                'Dydis' => [
                                     'remoteId' => '101',
+                                    'localizedNames' => ['lt-LT' => 'Dydis'],
                                     'localizedValues' => [
                                         'lt-LT' => '8',
                                     ],
                                 ],
-                                [
+                                'Spalva' => [
                                     'remoteId' => '102',
+                                    'localizedNames' => ['lt-LT' => 'Spalva'],
                                     'localizedValues' => [
                                         'lt-LT' => 'Juoda',
                                     ],
@@ -931,14 +939,16 @@ class PrestaShopAdapterV2Test extends TestCase
                                 'medium' => 'https://www.darbodrabuziai.lt/img/4108.jpg',
                             ],
                             'attributes' => [
-                                [
+                                'Dydis' => [
                                     'remoteId' => '101',
+                                    'localizedNames' => ['lt-LT' => 'Dydis'],
                                     'localizedValues' => [
                                         'lt-LT' => '9',
                                     ],
                                 ],
-                                [
+                                'Spalva' => [
                                     'remoteId' => '102',
+                                    'localizedNames' => ['lt-LT' => 'Spalva'],
                                     'localizedValues' => [
                                         'lt-LT' => 'Juoda',
                                     ],
