@@ -35,4 +35,4 @@ readonly class SyncConfig
             throw new InvalidFieldConfigException('Timeout must be greater than 0');
         }
     }
-} 
+}

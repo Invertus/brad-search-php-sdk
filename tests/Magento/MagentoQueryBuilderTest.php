@@ -14,7 +14,7 @@ class MagentoQueryBuilderTest extends TestCase
     {
         $builder = new MagentoQueryBuilder();
 
-        $this->assertSame(MagentoProductQuery::DEFAULT_QUERY, $builder->getQuery());
+        $this->assertSame(MagentoProductQuery::getDefaultQuery(), $builder->getQuery());
         $this->assertSame(100, $builder->getPageSize());
         $this->assertSame(1, $builder->getCurrentPage());
         $this->assertSame([], $builder->getFilters());

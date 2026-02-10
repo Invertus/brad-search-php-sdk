@@ -1,0 +1,32 @@
+{
+    "search_fields": [
+        {
+            "field": "name_lt-LT",
+            "position": 1,
+            "match_mode": "phrase_prefix"
+        },
+        {
+            "field": "brand_lt-LT",
+            "position": 2,
+            "match_mode": "fuzzy"
+        },
+        {
+            "field": "description_lt-LT",
+            "position": 3,
+            "match_mode": "fuzzy"
+        },
+        {
+            "field": "sku",
+            "position": 4,
+            "match_mode": "exact"
+        }
+    ],
+    "multi_word_operator": "and",
+    "popularity_boost": {
+        "enabled": true,
+        "field": "sales_count",
+        "algorithm": "logarithmic",
+        "max_boost": 3.0
+    },
+    "min_score": 0.1
+}

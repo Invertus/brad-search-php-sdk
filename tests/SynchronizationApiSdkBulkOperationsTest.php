@@ -34,7 +34,7 @@ class SynchronizationApiSdkBulkOperationsTest extends TestCase
     {
         $config = new SyncConfig('http://api.test.com', 'test-token');
 
-        return new class($config, $this->fieldConfiguration, $httpClientMock) extends SynchronizationApiSdk {
+        return new class ($config, $this->fieldConfiguration, $httpClientMock) extends SynchronizationApiSdk {
             public function __construct(SyncConfig $config, array $fieldConfiguration, private HttpClient $mockedHttpClient)
             {
                 parent::__construct($config, $fieldConfiguration);

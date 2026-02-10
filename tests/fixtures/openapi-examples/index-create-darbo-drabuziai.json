@@ -1,0 +1,21 @@
+{
+    "locales": ["lt-LT"],
+    "fields": [
+        {"name": "id", "type": "keyword"},
+        {"name": "name_lt-LT", "type": "text"},
+        {"name": "brand_lt-LT", "type": "text"},
+        {"name": "sku", "type": "keyword"},
+        {"name": "imageUrl", "type": "image_url"},
+        {"name": "description_lt-LT", "type": "text"},
+        {"name": "categories_lt-LT", "type": "text"},
+        {"name": "price", "type": "double"},
+        {
+            "name": "variants",
+            "type": "variants",
+            "attributes": [
+                {"id": "size", "type": "keyword", "locale_aware": true},
+                {"id": "color", "type": "keyword", "locale_aware": true}
+            ]
+        }
+    ]
+}

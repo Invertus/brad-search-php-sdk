@@ -1,0 +1,67 @@
+{
+    "app_id": "my_app_123",
+    "query_config": {
+        "fields": [
+            {
+                "id": "name_field",
+                "field_name": "name",
+                "locale_suffix": "en",
+                "search_behaviors": [
+                    {
+                        "type": "fuzzy",
+                        "subfield": "keyword",
+                        "operator": "and",
+                        "boost": 2.0,
+                        "fuzziness": 1,
+                        "prefix_length": 2
+                    },
+                    {
+                        "type": "phrase_prefix"
+                    }
+                ]
+            },
+            {
+                "id": "description_field",
+                "field_name": "description",
+                "locale_suffix": "en"
+            }
+        ],
+        "nested_fields": [
+            {
+                "id": "variants_config",
+                "path": "variants",
+                "score_mode": "max",
+                "fields": [
+                    {
+                        "id": "variant_sku",
+                        "field_name": "sku"
+                    }
+                ]
+            }
+        ],
+        "multi_match_configs": [
+            {
+                "id": "name_desc_multi",
+                "field_ids": ["name_field", "description_field"],
+                "type": "cross_fields",
+                "operator": "and",
+                "boost": 1.5
+            }
+        ]
+    },
+    "scoring_config": {
+        "function_score": {
+            "field": "sales_count",
+            "modifier": "log1p",
+            "factor": 1.5,
+            "missing": 1.0,
+            "boost_mode": "multiply",
+            "max_boost": 10.0
+        },
+        "min_score": 0.1
+    },
+    "response_config": {
+        "source_fields": ["id", "name", "price", "description"],
+        "sortable_fields": ["price", "created_at", "sales_count"]
+    }
+}

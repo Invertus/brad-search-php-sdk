@@ -18,7 +18,7 @@ class MagentoQueryBuilder
 
     public function __construct(?string $query = null, ?int $defaultPageSize = null)
     {
-        $this->query = $query ?? MagentoProductQuery::DEFAULT_QUERY;
+        $this->query = $query ?? MagentoProductQuery::getDefaultQuery();
 
         if ($defaultPageSize !== null) {
             $this->pageSize = $defaultPageSize;

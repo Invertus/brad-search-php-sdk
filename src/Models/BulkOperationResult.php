@@ -14,7 +14,8 @@ class BulkOperationResult
         public readonly int $failedOperations,
         public readonly int $processingTimeMs,
         public readonly array $results
-    ) {}
+    ) {
+    }
 
     public static function fromApiResponse(array $response): self
     {

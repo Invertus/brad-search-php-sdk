@@ -14,4 +14,4 @@ class ApiException extends SyncSdkException
     ) {
         parent::__construct($message, $statusCode, $previous);
     }
-} 
+}

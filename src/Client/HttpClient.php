@@ -61,7 +61,7 @@ class HttpClient
     private function request(string $method, string $endpoint, ?array $data = null): array
     {
         $curl = curl_init();
-        
+
         if ($curl === false) {
             throw new ApiException('Failed to initialize cURL');
         }
@@ -90,14 +90,14 @@ class HttpClient
             curl_setopt_array($curl, $options);
 
             $response = curl_exec($curl);
-            
+
             if ($response === false) {
                 $error = curl_error($curl);
                 throw new ApiException("cURL error: {$error}");
             }
 
             $statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            
+
             if (!is_string($response)) {
                 throw new ApiException('Invalid response from server');
             }
@@ -126,9 +126,8 @@ class HttpClient
             }
 
             return $decoded;
-
         } finally {
             curl_close($curl);
         }
     }
-} 
+}

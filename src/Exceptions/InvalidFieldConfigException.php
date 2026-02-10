@@ -6,4 +6,4 @@ namespace BradSearch\SyncSdk\Exceptions;
 
 class InvalidFieldConfigException extends SyncSdkException
 {
-} 
+}

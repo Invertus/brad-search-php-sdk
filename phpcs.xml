@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<ruleset name="BradSearch SDK">
+    <description>Coding standard for BradSearch Sync SDK</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <arg name="colors"/>
+    <arg value="sp"/>
+    <!-- Only report errors, not warnings -->
+    <arg name="warning-severity" value="0"/>
+
+    <!-- Use PSR-12 as base -->
+    <rule ref="PSR12"/>
+
+    <!-- Disable line length limits -->
+    <rule ref="Generic.Files.LineLength">
+        <severity>0</severity>
+    </rule>
+
+    <!-- Allow multiple classes in test files -->
+    <rule ref="PSR1.Classes.ClassDeclaration.MultipleClasses">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- Allow non-standard default parameter order (PHP 8 nullable types) -->
+    <rule ref="PEAR.Functions.ValidDefaultValue.NotAtEnd">
+        <severity>0</severity>
+    </rule>
+</ruleset>
