@@ -19,13 +19,13 @@ final readonly class FieldDefinition extends ValueObject
      * @param string $name The field name
      * @param FieldType $type The field type
      * @param array<VariantAttribute> $attributes Optional variant attributes (for VARIANTS type)
-     * @param string|null $searchAnalysis Controls which subfields are created ("full" or "basic")
+     * @param SearchAnalysis|null $searchAnalysis Controls which subfields are created
      */
     public function __construct(
         public string $name,
         public FieldType $type,
         public array $attributes = [],
-        public ?string $searchAnalysis = null,
+        public ?SearchAnalysis $searchAnalysis = null,
     ) {
         if ($name === '') {
             throw new InvalidArgumentException(
@@ -75,7 +75,7 @@ final readonly class FieldDefinition extends ValueObject
     /**
      * Returns a new instance with a different search analysis profile.
      */
-    public function withSearchAnalysis(?string $searchAnalysis): self
+    public function withSearchAnalysis(?SearchAnalysis $searchAnalysis): self
     {
         return new self($this->name, $this->type, $this->attributes, $searchAnalysis);
     }
@@ -98,7 +98,7 @@ final readonly class FieldDefinition extends ValueObject
         }
 
         if ($this->searchAnalysis !== null) {
-            $result['search_analysis'] = $this->searchAnalysis;
+            $result['search_analysis'] = $this->searchAnalysis->value;
         }
 
         return $result;
