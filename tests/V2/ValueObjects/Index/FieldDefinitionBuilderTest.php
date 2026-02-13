@@ -8,6 +8,7 @@ use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinitionBuilder;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\SearchAnalysis;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use PHPUnit\Framework\TestCase;
 
@@ -204,6 +205,60 @@ class FieldDefinitionBuilderTest extends TestCase
 
         $this->assertEquals('price', $priceField->name);
         $this->assertEquals('double', $priceField->jsonSerialize()['type']);
+    }
+
+    public function testSearchAnalysisMethodReturnsBuilder(): void
+    {
+        $builder = new FieldDefinitionBuilder();
+
+        $this->assertSame($builder, $builder->searchAnalysis(SearchAnalysis::FULL));
+    }
+
+    public function testBuildWithSearchAnalysis(): void
+    {
+        $builder = new FieldDefinitionBuilder();
+
+        $field = $builder
+            ->name('name')
+            ->type(FieldType::TEXT)
+            ->searchAnalysis(SearchAnalysis::BASIC)
+            ->build();
+
+        $this->assertEquals(SearchAnalysis::BASIC, $field->searchAnalysis);
+        $this->assertEquals('basic', $field->jsonSerialize()['search_analysis']);
+    }
+
+    public function testBuildWithoutSearchAnalysisDefaultsToNull(): void
+    {
+        $builder = new FieldDefinitionBuilder();
+
+        $field = $builder
+            ->name('name')
+            ->type(FieldType::TEXT)
+            ->build();
+
+        $this->assertNull($field->searchAnalysis);
+        $this->assertArrayNotHasKey('search_analysis', $field->jsonSerialize());
+    }
+
+    public function testResetClearsSearchAnalysis(): void
+    {
+        $builder = new FieldDefinitionBuilder();
+
+        $builder
+            ->name('name')
+            ->type(FieldType::TEXT)
+            ->searchAnalysis(SearchAnalysis::FULL)
+            ->build();
+
+        $builder->reset();
+
+        $field = $builder
+            ->name('name')
+            ->type(FieldType::TEXT)
+            ->build();
+
+        $this->assertNull($field->searchAnalysis);
     }
 
     /**

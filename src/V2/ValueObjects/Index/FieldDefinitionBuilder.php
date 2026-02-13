@@ -17,6 +17,8 @@ final class FieldDefinitionBuilder
     /** @var array<VariantAttribute> */
     private array $attributes = [];
 
+    private ?SearchAnalysis $searchAnalysis = null;
+
     /**
      * Sets the field name.
      */
@@ -41,6 +43,15 @@ final class FieldDefinitionBuilder
     public function addAttribute(VariantAttribute $attribute): self
     {
         $this->attributes[] = $attribute;
+        return $this;
+    }
+
+    /**
+     * Sets the search analysis profile.
+     */
+    public function searchAnalysis(?SearchAnalysis $searchAnalysis): self
+    {
+        $this->searchAnalysis = $searchAnalysis;
         return $this;
     }
 
@@ -70,7 +81,8 @@ final class FieldDefinitionBuilder
         return new FieldDefinition(
             $this->name,
             $this->type,
-            $this->attributes
+            $this->attributes,
+            $this->searchAnalysis
         );
     }
 
@@ -82,6 +94,7 @@ final class FieldDefinitionBuilder
         $this->name = null;
         $this->type = null;
         $this->attributes = [];
+        $this->searchAnalysis = null;
         return $this;
     }
 }

@@ -7,6 +7,7 @@ namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\Index;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\SearchAnalysis;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
@@ -267,5 +268,81 @@ class FieldDefinitionTest extends TestCase
         $this->assertEquals('size', $serialized['attributes'][0]['id']);
         $this->assertEquals('color', $serialized['attributes'][1]['id']);
         $this->assertEquals('material', $serialized['attributes'][2]['id']);
+    }
+
+    public function testConstructorWithSearchAnalysis(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], SearchAnalysis::FULL);
+
+        $this->assertEquals(SearchAnalysis::FULL, $field->searchAnalysis);
+    }
+
+    public function testConstructorWithoutSearchAnalysisDefaultsToNull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT);
+
+        $this->assertNull($field->searchAnalysis);
+    }
+
+    public function testWithSearchAnalysisReturnsNewInstance(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT);
+        $newField = $field->withSearchAnalysis(SearchAnalysis::FULL);
+
+        $this->assertNotSame($field, $newField);
+        $this->assertNull($field->searchAnalysis);
+        $this->assertEquals(SearchAnalysis::FULL, $newField->searchAnalysis);
+    }
+
+    public function testWithSearchAnalysisCanSetToNull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], SearchAnalysis::BASIC);
+        $newField = $field->withSearchAnalysis(null);
+
+        $this->assertEquals(SearchAnalysis::BASIC, $field->searchAnalysis);
+        $this->assertNull($newField->searchAnalysis);
+    }
+
+    public function testJsonSerializeIncludesSearchAnalysis(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], SearchAnalysis::BASIC);
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayHasKey('search_analysis', $result);
+        $this->assertEquals('basic', $result['search_analysis']);
+    }
+
+    public function testJsonSerializeIncludesSearchAnalysisFull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], SearchAnalysis::FULL);
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayHasKey('search_analysis', $result);
+        $this->assertEquals('full', $result['search_analysis']);
+    }
+
+    public function testJsonSerializeOmitsSearchAnalysisWhenNull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT);
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayNotHasKey('search_analysis', $result);
+    }
+
+    public function testImmutableMethodsPreserveSearchAnalysis(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], SearchAnalysis::FULL);
+
+        $renamed = $field->withName('title');
+        $this->assertEquals(SearchAnalysis::FULL, $renamed->searchAnalysis);
+
+        $retyped = $field->withType(FieldType::KEYWORD);
+        $this->assertEquals(SearchAnalysis::FULL, $retyped->searchAnalysis);
+
+        $withAttrs = $field->withAttributes([new VariantAttribute('size', FieldType::KEYWORD)]);
+        $this->assertEquals(SearchAnalysis::FULL, $withAttrs->searchAnalysis);
     }
 }

@@ -19,11 +19,13 @@ final readonly class FieldDefinition extends ValueObject
      * @param string $name The field name
      * @param FieldType $type The field type
      * @param array<VariantAttribute> $attributes Optional variant attributes (for VARIANTS type)
+     * @param SearchAnalysis|null $searchAnalysis Controls which subfields are created
      */
     public function __construct(
         public string $name,
         public FieldType $type,
-        public array $attributes = []
+        public array $attributes = [],
+        public ?SearchAnalysis $searchAnalysis = null,
     ) {
         if ($name === '') {
             throw new InvalidArgumentException(
@@ -49,7 +51,7 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withName(string $name): self
     {
-        return new self($name, $this->type, $this->attributes);
+        return new self($name, $this->type, $this->attributes, $this->searchAnalysis);
     }
 
     /**
@@ -57,7 +59,7 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withType(FieldType $type): self
     {
-        return new self($this->name, $type, $this->attributes);
+        return new self($this->name, $type, $this->attributes, $this->searchAnalysis);
     }
 
     /**
@@ -67,7 +69,15 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withAttributes(array $attributes): self
     {
-        return new self($this->name, $this->type, $attributes);
+        return new self($this->name, $this->type, $attributes, $this->searchAnalysis);
+    }
+
+    /**
+     * Returns a new instance with a different search analysis profile.
+     */
+    public function withSearchAnalysis(?SearchAnalysis $searchAnalysis): self
+    {
+        return new self($this->name, $this->type, $this->attributes, $searchAnalysis);
     }
 
     /**
@@ -85,6 +95,10 @@ final readonly class FieldDefinition extends ValueObject
                 fn(VariantAttribute $attr) => $attr->jsonSerialize(),
                 $this->attributes
             );
+        }
+
+        if ($this->searchAnalysis !== null) {
+            $result['search_analysis'] = $this->searchAnalysis->value;
         }
 
         return $result;
