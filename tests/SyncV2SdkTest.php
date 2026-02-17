@@ -1381,6 +1381,101 @@ class SyncV2SdkTest extends TestCase
         $sdk->deleteSearchSettings();
     }
 
+    public function testRefreshConfigurationSuccess(): void
+    {
+        $apiResponse = [
+            'status' => 'success',
+            'settings' => [
+                'app_id' => self::APP_ID,
+                'supported_locales' => ['lt-LT'],
+                'query_config' => [],
+            ],
+            'message' => 'Configuration refreshed from platform',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/configuration/refresh',
+                []
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->refreshConfiguration();
+
+        $this->assertInstanceOf(SettingsResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals(self::APP_ID, $result->appId);
+        $this->assertEquals('Configuration refreshed from platform', $result->message);
+    }
+
+    public function testRefreshConfigurationAppIdIncludedInUrlPath(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn([
+                'status' => 'success',
+                'settings' => ['app_id' => self::APP_ID],
+                'message' => 'Refreshed',
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->refreshConfiguration();
+    }
+
+    public function testRefreshConfigurationUsesCorrectEndpoint(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/configuration/refresh'),
+                $this->anything()
+            )
+            ->willReturn([
+                'status' => 'success',
+                'settings' => ['app_id' => self::APP_ID],
+                'message' => 'Refreshed',
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->refreshConfiguration();
+    }
+
+    public function testRefreshConfigurationUsesPostMethod(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->willReturn([
+                'status' => 'success',
+                'settings' => ['app_id' => self::APP_ID],
+                'message' => 'Refreshed',
+            ]);
+
+        $httpClientMock
+            ->expects($this->never())
+            ->method('get');
+
+        $httpClientMock
+            ->expects($this->never())
+            ->method('put');
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->refreshConfiguration();
+    }
+
     public function testGetAppIdReturnsConfiguredAppId(): void
     {
         $httpClientMock = $this->createMock(HttpClient::class);
