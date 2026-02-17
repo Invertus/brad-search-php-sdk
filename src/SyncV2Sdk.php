@@ -301,4 +301,21 @@ class SyncV2Sdk
             $this->baseApiPath . 'configuration'
         );
     }
+
+    /**
+     * Refresh search settings by triggering Go to pull from the SaaS platform.
+     *
+     * Instead of pushing the full configuration payload, this calls the Go service's
+     * /refresh endpoint which pulls the latest settings from the platform and caches them.
+     *
+     * @return SettingsResponse Typed response with refreshed settings
+     */
+    public function refreshConfiguration(): SettingsResponse
+    {
+        $response = $this->getHttpClient()->post(
+            $this->baseApiPath . 'configuration/refresh'
+        );
+
+        return SettingsResponse::fromArray($response);
+    }
 }
