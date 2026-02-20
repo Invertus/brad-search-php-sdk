@@ -9,9 +9,11 @@ use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Normalize\NormalizeRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\NormalizeResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SettingsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
@@ -300,6 +302,22 @@ class SyncV2Sdk
         return $this->getHttpClient()->delete(
             $this->baseApiPath . 'configuration'
         );
+    }
+
+    /**
+     * Normalize field values into a percentage range [1, 999] for consistent sorting.
+     *
+     * @param  NormalizeRequest  $request  The normalization request containing fields to normalize
+     * @return NormalizeResponse Typed response with per-field normalization results
+     */
+    public function normalize(NormalizeRequest $request): NormalizeResponse
+    {
+        $response = $this->getHttpClient()->post(
+            $this->baseApiPath . 'normalize',
+            $request->jsonSerialize()
+        );
+
+        return NormalizeResponse::fromArray($response);
     }
 
     /**
