@@ -18,4 +18,5 @@ enum FieldType: string
     case BOOLEAN = 'boolean';
     case IMAGE_URL = 'image_url';
     case VARIANTS = 'variants';
+    case DATE = 'date';
 }
