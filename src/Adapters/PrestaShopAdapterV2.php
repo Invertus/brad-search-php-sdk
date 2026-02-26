@@ -99,18 +99,18 @@ class PrestaShopAdapterV2
         $additionalFields = [];
 
         // Add optional product identifiers
-        if (isset($product['ean13']) && $product['ean13'] !== null && $product['ean13'] !== '') {
+        if (!empty($product['ean13'])) {
             $additionalFields['ean13'] = (string) $product['ean13'];
         }
-        if (isset($product['mpn']) && $product['mpn'] !== null && $product['mpn'] !== '') {
+        if (!empty($product['mpn'])) {
             $additionalFields['mpn'] = (string) $product['mpn'];
         }
 
         // Add optional timestamp fields
-        if (isset($product['createdAt']) && $product['createdAt'] !== null && $product['createdAt'] !== '') {
+        if (!empty($product['createdAt'])) {
             $additionalFields['createdAt'] = (string) $product['createdAt'];
         }
-        if (isset($product['updatedAt']) && $product['updatedAt'] !== null && $product['updatedAt'] !== '') {
+        if (!empty($product['updatedAt'])) {
             $additionalFields['updatedAt'] = (string) $product['updatedAt'];
         }
 
