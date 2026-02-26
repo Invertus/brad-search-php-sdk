@@ -1082,6 +1082,53 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertEquals($expectedProduct['variants'], $productPayload['variants']);
     }
 
+    public function testTransformProductWithTimestamps(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                array_merge($this->getMinimalProductData('1807', 'SKU-123'), [
+                    'createdAt' => '2025-05-16 18:28:58',
+                    'updatedAt' => '2025-12-16 15:17:11',
+                ]),
+            ],
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result['products'][0];
+
+        $this->assertEquals('2025-05-16 18:28:58', $product->additionalFields['createdAt']);
+        $this->assertEquals('2025-12-16 15:17:11', $product->additionalFields['updatedAt']);
+    }
+
+    public function testTransformProductWithoutTimestamps(): void
+    {
+        $prestaShopData = $this->getMinimalValidProduct();
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result['products'][0];
+
+        $this->assertArrayNotHasKey('createdAt', $product->additionalFields);
+        $this->assertArrayNotHasKey('updatedAt', $product->additionalFields);
+    }
+
+    public function testTransformProductWithEmptyTimestamps(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                array_merge($this->getMinimalProductData('1807', 'SKU-123'), [
+                    'createdAt' => '',
+                    'updatedAt' => null,
+                ]),
+            ],
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+        $product = $result['products'][0];
+
+        $this->assertArrayNotHasKey('createdAt', $product->additionalFields);
+        $this->assertArrayNotHasKey('updatedAt', $product->additionalFields);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *

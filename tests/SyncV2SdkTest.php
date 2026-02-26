@@ -11,16 +11,15 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
-use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperation;
-use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\IndexProductsPayload;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
-use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
+use BradSearch\SyncSdk\V2\ValueObjects\Normalize\NormalizeRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\NormalizeResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SettingsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SynonymResponse;
@@ -1490,5 +1489,164 @@ class SyncV2SdkTest extends TestCase
         $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
 
         $this->assertEquals('api/v2/applications/' . self::APP_ID . '/', $sdk->getBaseApiPath());
+    }
+
+    public function testNormalizeSuccess(): void
+    {
+        $request = new NormalizeRequest(['orders_quantity', 'views_count']);
+
+        $apiResponse = [
+            'status' => 'success',
+            'results' => [
+                [
+                    'field' => 'orders_quantity',
+                    'status' => 'success',
+                    'min' => 0.0,
+                    'max' => 1500.0,
+                    'documents_updated' => 250,
+                ],
+                [
+                    'field' => 'views_count',
+                    'status' => 'success',
+                    'min' => 10.0,
+                    'max' => 50000.0,
+                    'documents_updated' => 300,
+                ],
+            ],
+            'message' => 'Normalization completed successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/normalize',
+                $request->jsonSerialize()
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->normalize($request);
+
+        $this->assertInstanceOf(NormalizeResponse::class, $result);
+        $this->assertEquals('success', $result->status);
+        $this->assertEquals('Normalization completed successfully', $result->message);
+        $this->assertTrue($result->isSuccessful());
+        $this->assertCount(2, $result->results);
+
+        $this->assertEquals('orders_quantity', $result->results[0]->field);
+        $this->assertEquals('success', $result->results[0]->status);
+        $this->assertEquals(0.0, $result->results[0]->min);
+        $this->assertEquals(1500.0, $result->results[0]->max);
+        $this->assertEquals(250, $result->results[0]->documentsUpdated);
+        $this->assertTrue($result->results[0]->isSuccessful());
+
+        $this->assertEquals('views_count', $result->results[1]->field);
+        $this->assertEquals(300, $result->results[1]->documentsUpdated);
+
+        $this->assertCount(2, $result->getSuccessfulResults());
+        $this->assertCount(0, $result->getFailedResults());
+    }
+
+    public function testNormalizeAppIdIncludedInUrlPath(): void
+    {
+        $request = new NormalizeRequest(['orders_quantity']);
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringContains(self::APP_ID),
+                $this->anything()
+            )
+            ->willReturn([
+                'status' => 'success',
+                'results' => [
+                    [
+                        'field' => 'orders_quantity',
+                        'status' => 'success',
+                        'min' => 0.0,
+                        'max' => 100.0,
+                        'documents_updated' => 10,
+                    ],
+                ],
+                'message' => 'Done',
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->normalize($request);
+    }
+
+    public function testNormalizeUsesCorrectEndpoint(): void
+    {
+        $request = new NormalizeRequest(['orders_quantity']);
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->stringEndsWith('/normalize'),
+                $this->anything()
+            )
+            ->willReturn([
+                'status' => 'success',
+                'results' => [
+                    [
+                        'field' => 'orders_quantity',
+                        'status' => 'success',
+                        'min' => 0.0,
+                        'max' => 100.0,
+                        'documents_updated' => 10,
+                    ],
+                ],
+                'message' => 'Done',
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->normalize($request);
+    }
+
+    public function testNormalizeSendsCorrectRequestBody(): void
+    {
+        $request = new NormalizeRequest(['orders_quantity', 'views_count']);
+
+        $expectedPayload = [
+            'fields' => ['orders_quantity', 'views_count'],
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                $this->anything(),
+                $expectedPayload
+            )
+            ->willReturn([
+                'status' => 'success',
+                'results' => [
+                    [
+                        'field' => 'orders_quantity',
+                        'status' => 'success',
+                        'min' => 0.0,
+                        'max' => 100.0,
+                        'documents_updated' => 10,
+                    ],
+                    [
+                        'field' => 'views_count',
+                        'status' => 'success',
+                        'min' => 0.0,
+                        'max' => 500.0,
+                        'documents_updated' => 20,
+                    ],
+                ],
+                'message' => 'Done',
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $sdk->normalize($request);
     }
 }

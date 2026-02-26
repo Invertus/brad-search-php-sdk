@@ -51,7 +51,7 @@ class PrestaShopAdapterV2
                 $this->errors[] = [
                     'type' => 'transformation_error',
                     'product_index' => $index,
-                    'product_id' => (string) ($product['remoteId'] ?? ''),
+                    'product_id' => (string) ($product['remoteId']x ?? ''),
                     'message' => $e->getMessage(),
                     'exception' => get_class($e),
                 ];
@@ -104,6 +104,14 @@ class PrestaShopAdapterV2
         }
         if (isset($product['mpn']) && $product['mpn'] !== null && $product['mpn'] !== '') {
             $additionalFields['mpn'] = (string) $product['mpn'];
+        }
+
+        // Add optional timestamp fields
+        if (isset($product['createdAt']) && $product['createdAt'] !== null && $product['createdAt'] !== '') {
+            $additionalFields['createdAt'] = (string) $product['createdAt'];
+        }
+        if (isset($product['updatedAt']) && $product['updatedAt'] !== null && $product['updatedAt'] !== '') {
+            $additionalFields['updatedAt'] = (string) $product['updatedAt'];
         }
 
         // Handle localized product name
