@@ -16,7 +16,7 @@ use Stringable;
  */
 final readonly class LocalizedField implements Stringable
 {
-    private const LOCALE_PATTERN = '/^[a-z]{2}-[A-Z]{2}$/';
+    private const LOCALE_PATTERN = '/^[a-z]{2}(-[A-Z]{2})?$/';
 
     public function __construct(
         private string $baseName,

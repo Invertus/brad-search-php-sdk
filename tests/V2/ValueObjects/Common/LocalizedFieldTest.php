@@ -175,6 +175,11 @@ class LocalizedFieldTest extends TestCase
             'Russian' => ['ru-RU'],
             'Chinese' => ['zh-CN'],
             'Japanese' => ['ja-JP'],
+            'Shorthand English' => ['en'],
+            'Shorthand Lithuanian' => ['lt'],
+            'Shorthand German' => ['de'],
+            'Shorthand French' => ['fr'],
+            'Shorthand Spanish' => ['es'],
         ];
     }
 
