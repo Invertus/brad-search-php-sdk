@@ -85,7 +85,7 @@ class LocalizedFieldTest extends TestCase
     public function testThrowsExceptionForInvalidLocaleFormat(): void
     {
         $this->expectException(InvalidLocaleException::class);
-        $this->expectExceptionMessage("Invalid locale: 'invalid'. Locale must match pattern 'xx-XX'");
+        $this->expectExceptionMessage("Invalid locale: 'invalid'. Locale must match pattern 'xx' or 'xx-XX'");
 
         new LocalizedField('name', 'invalid');
     }
