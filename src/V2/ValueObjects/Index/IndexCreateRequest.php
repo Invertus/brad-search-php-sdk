@@ -17,7 +17,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class IndexCreateRequest extends ValueObject
 {
-    private const LOCALE_PATTERN = '/^[a-z]{2}-[A-Z]{2}$/';
+    private const LOCALE_PATTERN = '/^[a-z]{2}(-[A-Z]{2})?$/';
 
     /**
      * @param array<string> $locales Array of locale codes (e.g., ['lt-LT', 'en-US'])

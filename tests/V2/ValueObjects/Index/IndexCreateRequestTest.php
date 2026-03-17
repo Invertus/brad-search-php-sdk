@@ -135,6 +135,11 @@ class IndexCreateRequestTest extends TestCase
             'polish' => ['pl-PL'],
             'latvian' => ['lv-LV'],
             'estonian' => ['et-EE'],
+            'shorthand english' => ['en'],
+            'shorthand swedish' => ['sv'],
+            'shorthand danish' => ['da'],
+            'shorthand lithuanian' => ['lt'],
+            'shorthand german' => ['de'],
         ];
     }
 
