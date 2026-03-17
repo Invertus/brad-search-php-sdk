@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Index;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
+use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -19,16 +20,20 @@ final readonly class IndexCreateRequest extends ValueObject
 {
     private const LOCALE_PATTERN = '/^[a-z]{2}(-[A-Z]{2})?$/';
 
+    /** @var array<string> */
+    public array $locales;
+
     /**
      * @param array<string> $locales Array of locale codes (e.g., ['lt-LT', 'en-US'])
      * @param array<FieldDefinition> $fields Array of field definitions
      */
     public function __construct(
-        public array $locales,
+        array $locales,
         public array $fields
     ) {
         $this->validateLocales($locales);
         $this->validateFields($fields);
+        $this->locales = LocaleNormalizer::normalizeAll($locales);
     }
 
     /**
