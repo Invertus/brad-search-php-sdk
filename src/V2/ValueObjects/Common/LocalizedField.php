@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Common;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
+use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use Stringable;
 
 /**
@@ -16,11 +17,13 @@ use Stringable;
  */
 final readonly class LocalizedField implements Stringable
 {
-    private const LOCALE_PATTERN = '/^[a-z]{2}-[A-Z]{2}$/';
+    private const LOCALE_PATTERN = '/^[a-z]{2}(-[A-Z]{2})?$/';
+
+    private string $locale;
 
     public function __construct(
         private string $baseName,
-        private string $locale
+        string $locale
     ) {
         if ($baseName === '') {
             throw new InvalidArgumentException(
@@ -33,6 +36,8 @@ final readonly class LocalizedField implements Stringable
         if (!preg_match(self::LOCALE_PATTERN, $locale)) {
             throw new InvalidLocaleException($locale);
         }
+
+        $this->locale = LocaleNormalizer::normalize($locale);
     }
 
     /**

@@ -85,7 +85,7 @@ class LocalizedFieldTest extends TestCase
     public function testThrowsExceptionForInvalidLocaleFormat(): void
     {
         $this->expectException(InvalidLocaleException::class);
-        $this->expectExceptionMessage("Invalid locale: 'invalid'. Locale must match pattern 'xx-XX'");
+        $this->expectExceptionMessage("Invalid locale: 'invalid'. Locale must match pattern 'xx' or 'xx-XX'");
 
         new LocalizedField('name', 'invalid');
     }
@@ -151,30 +151,35 @@ class LocalizedFieldTest extends TestCase
     /**
      * @dataProvider validLocalesProvider
      */
-    public function testAcceptsValidLocales(string $locale): void
+    public function testAcceptsValidLocales(string $locale, string $expectedLocale): void
     {
         $field = new LocalizedField('name', $locale);
 
-        $this->assertEquals($locale, $field->getLocale());
-        $this->assertEquals('name_' . $locale, $field->toString());
+        $this->assertEquals($expectedLocale, $field->getLocale());
+        $this->assertEquals('name_' . $expectedLocale, $field->toString());
     }
 
     /**
-     * @return array<string, array{string}>
+     * @return array<string, array{string, string}>
      */
     public static function validLocalesProvider(): array
     {
         return [
-            'Lithuanian' => ['lt-LT'],
-            'English US' => ['en-US'],
-            'English GB' => ['en-GB'],
-            'German' => ['de-DE'],
-            'French' => ['fr-FR'],
-            'Spanish' => ['es-ES'],
-            'Polish' => ['pl-PL'],
-            'Russian' => ['ru-RU'],
-            'Chinese' => ['zh-CN'],
-            'Japanese' => ['ja-JP'],
+            'Lithuanian' => ['lt-LT', 'lt-LT'],
+            'English US' => ['en-US', 'en-US'],
+            'English GB' => ['en-GB', 'en-GB'],
+            'German' => ['de-DE', 'de-DE'],
+            'French' => ['fr-FR', 'fr-FR'],
+            'Spanish' => ['es-ES', 'es-ES'],
+            'Polish' => ['pl-PL', 'pl-PL'],
+            'Russian' => ['ru-RU', 'ru-RU'],
+            'Chinese' => ['zh-CN', 'zh-CN'],
+            'Japanese' => ['ja-JP', 'ja-JP'],
+            'Shorthand English' => ['en', 'en-US'],
+            'Shorthand Lithuanian' => ['lt', 'lt-LT'],
+            'Shorthand German' => ['de', 'de-DE'],
+            'Shorthand French' => ['fr', 'fr-FR'],
+            'Shorthand Spanish' => ['es', 'es-ES'],
         ];
     }
 
@@ -234,6 +239,30 @@ class LocalizedFieldTest extends TestCase
         $field = new LocalizedField('name', 'lt-LT');
 
         $this->assertInstanceOf(\Stringable::class, $field);
+    }
+
+    public function testShortLocaleIsNormalized(): void
+    {
+        $field = new LocalizedField('name', 'lt');
+
+        $this->assertEquals('lt-LT', $field->getLocale());
+        $this->assertEquals('name_lt-LT', $field->toString());
+    }
+
+    public function testShortLocaleNormalizationInStringContext(): void
+    {
+        $field = new LocalizedField('description', 'en');
+
+        $this->assertEquals('en-US', $field->getLocale());
+        $this->assertEquals('description_en-US', (string) $field);
+    }
+
+    public function testFullLocaleRemainsUnchanged(): void
+    {
+        $field = new LocalizedField('name', 'lt-LT');
+
+        $this->assertEquals('lt-LT', $field->getLocale());
+        $this->assertEquals('name_lt-LT', $field->toString());
     }
 
     public function testCanUseInStringContext(): void

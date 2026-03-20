@@ -14,7 +14,7 @@ class InvalidLocaleException extends InvalidArgumentException
         ?\Throwable $previous = null
     ) {
         parent::__construct(
-            "Invalid locale: '{$invalidLocale}'. Locale must match pattern 'xx-XX' (e.g., 'en-US', 'lt-LT').",
+            "Invalid locale: '{$invalidLocale}'. Locale must match pattern 'xx' or 'xx-XX' (e.g., 'en', 'en-US').",
             'locale',
             $invalidLocale,
             $previous
