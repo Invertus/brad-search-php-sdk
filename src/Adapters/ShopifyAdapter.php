@@ -127,6 +127,12 @@ class ShopifyAdapter
         // Extract categories from productType and tags
         $result['categories'] = $this->extractCategories($product);
 
+        // Add product URL (onlineStoreUrl in Shopify, fallback to onlineStorePreviewUrl)
+        $productUrl = $product['onlineStoreUrl'] ?? $product['onlineStorePreviewUrl'] ?? null;
+        if (is_string($productUrl) && $productUrl !== '') {
+            $result['productUrl'] = $productUrl;
+        }
+
         // Handle images - only add if images exist
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
