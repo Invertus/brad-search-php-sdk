@@ -41,6 +41,9 @@ final class SearchSettingsRequestBuilder
     /** @var array<string, mixed>|null */
     private ?array $rawQueryConfig = null;
 
+    /** @var array<string, mixed>|null */
+    private ?array $filterConfig = null;
+
     /**
      * Sets the application ID.
      */
@@ -158,6 +161,17 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets filter configuration for facets/aggregations.
+     *
+     * @param array<string, mixed> $filterConfig
+     */
+    public function filterConfig(array $filterConfig): self
+    {
+        $this->filterConfig = $filterConfig;
+        return $this;
+    }
+
+    /**
      * Sets the complete search config.
      */
     public function searchConfig(SearchConfig $searchConfig): self
@@ -247,7 +261,8 @@ final class SearchSettingsRequestBuilder
             $scoringConfig,
             $responseConfig,
             $this->supportedLocales,
-            $this->rawQueryConfig
+            $this->rawQueryConfig,
+            $this->filterConfig
         );
     }
 
@@ -266,6 +281,7 @@ final class SearchSettingsRequestBuilder
         $this->sortableFields = [];
         $this->supportedLocales = null;
         $this->rawQueryConfig = null;
+        $this->filterConfig = null;
         return $this;
     }
 }
