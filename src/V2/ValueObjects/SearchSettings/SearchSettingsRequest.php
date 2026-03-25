@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\V2\ValueObjects\SearchSettings;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -36,9 +35,7 @@ final readonly class SearchSettingsRequest extends ValueObject
         public ?array $rawQueryConfig = null
     ) {
         $this->validateAppId($appId);
-        $this->supportedLocales = $supportedLocales !== null
-            ? LocaleNormalizer::normalizeAll($supportedLocales)
-            : null;
+        $this->supportedLocales = $supportedLocales;
     }
 
     /**

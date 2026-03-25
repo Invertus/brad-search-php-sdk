@@ -410,22 +410,22 @@ class IndexCreateRequestTest extends TestCase
         );
     }
 
-    public function testShortLocalesAreNormalized(): void
+    public function testShortLocalesPassThrough(): void
     {
         $fields = [new FieldDefinition('id', FieldType::KEYWORD)];
 
         $request = new IndexCreateRequest(['lt', 'en'], $fields);
 
-        $this->assertEquals(['lt-LT', 'en-US'], $request->locales);
+        $this->assertEquals(['lt', 'en'], $request->locales);
     }
 
-    public function testMixedShortAndFullLocalesAreNormalized(): void
+    public function testMixedShortAndFullLocalesPassThrough(): void
     {
         $fields = [new FieldDefinition('id', FieldType::KEYWORD)];
 
         $request = new IndexCreateRequest(['lt', 'en-US', 'de'], $fields);
 
-        $this->assertEquals(['lt-LT', 'en-US', 'de-DE'], $request->locales);
+        $this->assertEquals(['lt', 'en-US', 'de'], $request->locales);
     }
 
     public function testFullLocalesRemainUnchanged(): void
@@ -437,7 +437,7 @@ class IndexCreateRequestTest extends TestCase
         $this->assertEquals(['lt-LT', 'en-US'], $request->locales);
     }
 
-    public function testJsonSerializeReturnsNormalizedLocales(): void
+    public function testJsonSerializeReturnsLocalesUnchanged(): void
     {
         $request = new IndexCreateRequest(
             ['lt', 'en'],
@@ -446,7 +446,7 @@ class IndexCreateRequestTest extends TestCase
 
         $serialized = $request->jsonSerialize();
 
-        $this->assertEquals(['lt-LT', 'en-US'], $serialized['locales']);
+        $this->assertEquals(['lt', 'en'], $serialized['locales']);
     }
 
     public function testInvalidFieldInMiddleOfArray(): void

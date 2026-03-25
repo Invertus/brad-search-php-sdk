@@ -6,14 +6,14 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Common;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use Stringable;
 
 /**
  * Represents a localized field with a base name and locale suffix.
  *
  * This helper generates locale-suffixed field names for multilingual content.
- * For example, `new LocalizedField('name', 'lt-LT')` generates `name_lt-LT`.
+ * Accepts both short codes and BCP 47: `new LocalizedField('name', 'lt')` → `name_lt`,
+ * `new LocalizedField('name', 'lt-LT')` → `name_lt-LT`.
  */
 final readonly class LocalizedField implements Stringable
 {
@@ -37,7 +37,7 @@ final readonly class LocalizedField implements Stringable
             throw new InvalidLocaleException($locale);
         }
 
-        $this->locale = LocaleNormalizer::normalize($locale);
+        $this->locale = $locale;
     }
 
     /**
