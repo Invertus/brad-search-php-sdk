@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\Adapters;
 
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 
 class ShopifyAdapter
 {
@@ -19,13 +20,18 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform Shopify GraphQL product data to BradSearch format
+     * Transform Shopify GraphQL product data to BradSearch format.
+     *
+     * When locales are provided, locale-aware fields (name, description, brand, etc.)
+     * are output with BCP 47 locale suffixes (e.g., "name_en-US", "name_lt-LT").
+     * All locales receive the same content (primary language) until translation support is added.
      *
      * @param array $shopifyData The Shopify GraphQL API response
+     * @param array<string> $locales Locale codes (e.g., ['en', 'lt'] or ['en-US', 'lt-LT'])
      * @return array<array> Array with products and errors
      * @throws ValidationException
      */
-    public function transform(array $shopifyData): array
+    public function transform(array $shopifyData, array $locales = []): array
     {
         // Validate basic structure
         if (! isset($shopifyData['data'])) {
@@ -49,6 +55,19 @@ class ShopifyAdapter
             throw new ValidationException('Invalid Shopify data: products edges must be an array');
         }
 
+        // Normalize locales to BCP 47 (e.g., "lt" → "lt-LT")
+        $normalizedLocales = ! empty($locales) ? LocaleNormalizer::normalizeAll($locales) : [];
+
+        // Build locale mapping: normalized BCP 47 → raw short code (for looking up translations)
+        $localeMap = [];
+        foreach ($locales as $raw) {
+            $localeMap[LocaleNormalizer::normalize($raw)] = $raw;
+        }
+
+        // Determine primary locale from response metadata (if available)
+        $rawPrimary = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
+        $primaryLocale = LocaleNormalizer::normalize($rawPrimary);
+
         $transformedProducts = [];
         $errors = [];
 
@@ -65,7 +84,7 @@ class ShopifyAdapter
             }
 
             try {
-                $transformedProducts[] = $this->transformProduct($edge['node']);
+                $transformedProducts[] = $this->transformProduct($edge['node'], $normalizedLocales, $primaryLocale, $localeMap);
             } catch (\Throwable $e) {
                 $productId = $this->getNumericIdOrGid($edge['node']['id'] ?? '');
 
@@ -86,9 +105,14 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform a single Shopify product to BradSearch format
+     * Transform a single Shopify product to BradSearch format.
+     *
+     * @param array<string, mixed> $product Shopify product node (may include translations)
+     * @param array<string> $locales Normalized BCP 47 locale codes
+     * @param string $primaryLocale Normalized BCP 47 primary locale
+     * @param array<string, string> $localeMap Normalized BCP 47 → raw short code mapping
      */
-    private function transformProduct(array $product): array
+    private function transformProduct(array $product, array $locales, string $primaryLocale, array $localeMap): array
     {
         // Extract prices once to avoid duplicate calls
         $price = $this->extractPrice($product);
@@ -96,7 +120,6 @@ class ShopifyAdapter
 
         $result = [
             'id' => $this->getRequiredField($product, 'id', true),
-            'name' => $this->getRequiredField($product, 'title'),
             'sku' => $this->extractMainSku($product),
             'price' => $price,
             'basePrice' => $basePrice,
@@ -107,40 +130,120 @@ class ShopifyAdapter
             'variants' => [],
         ];
 
-        // Add description (strip HTML tags)
+        // Extract primary locale field values
+        $title = $this->getRequiredField($product, 'title');
+        $description = '';
         if (isset($product['descriptionHtml']) && is_string($product['descriptionHtml'])) {
-            $result['description'] = strip_tags($product['descriptionHtml']);
+            $description = strip_tags($product['descriptionHtml']);
         }
+        $brand = (isset($product['vendor']) && is_string($product['vendor']) && $product['vendor'] !== '')
+            ? $product['vendor']
+            : '';
+        $categoryDefault = (isset($product['productType']) && is_string($product['productType']) && $product['productType'] !== '')
+            ? $product['productType']
+            : '';
+        $categories = $this->extractCategories($product);
+        $productUrl = $this->extractProductUrl($product);
 
-        // Add brand (vendor in Shopify)
-        if (isset($product['vendor']) && is_string($product['vendor']) && $product['vendor'] !== '') {
-            $result['brand'] = $product['vendor'];
+        // Translation data keyed by raw locale code: ['lt' => [{key, value}, ...]]
+        $translations = $product['translations'] ?? [];
+
+        // Output locale-aware fields with BCP 47 suffixes
+        if (! empty($locales)) {
+            foreach ($locales as $locale) {
+                if ($locale === $primaryLocale) {
+                    // Primary locale: use the product's native fields
+                    $result["name_{$locale}"] = $title;
+                    $result["description_{$locale}"] = $description;
+                } else {
+                    // Non-primary locale: use translation if available, fall back to primary
+                    $rawLocale = $localeMap[$locale] ?? null;
+                    $localeTranslations = ($rawLocale !== null && isset($translations[$rawLocale]) && is_array($translations[$rawLocale]))
+                        ? $translations[$rawLocale]
+                        : null;
+
+                    $translatedTitle = $localeTranslations !== null ? $this->getTranslationValue($localeTranslations, 'title') : null;
+                    $result["name_{$locale}"] = $translatedTitle ?? $title;
+
+                    $translatedDescription = $localeTranslations !== null ? $this->getTranslationValue($localeTranslations, 'body_html') : null;
+                    $result["description_{$locale}"] = $translatedDescription !== null ? strip_tags($translatedDescription) : $description;
+                }
+
+                // Non-translatable fields: same across all locales
+                if ($brand !== '') {
+                    $result["brand_{$locale}"] = $brand;
+                }
+                $result["categoryDefault_{$locale}"] = $categoryDefault;
+                $result["categories_{$locale}"] = $categories;
+                if ($productUrl !== '') {
+                    $result["productUrl_{$locale}"] = $productUrl;
+                }
+            }
+        } else {
+            // No locales: plain field names (backward compatible)
+            $result['name'] = $title;
+            if ($description !== '') {
+                $result['description'] = $description;
+            }
+            if ($brand !== '') {
+                $result['brand'] = $brand;
+            }
+            $result['categoryDefault'] = $categoryDefault;
+            $result['categories'] = $categories;
+            if ($productUrl !== '') {
+                $result['productUrl'] = $productUrl;
+            }
         }
-
-        // Add category default (productType in Shopify)
-        // Always set to match PrestaShopAdapter behavior (defaults to empty string)
-        $result['categoryDefault'] = '';
-        if (isset($product['productType']) && is_string($product['productType']) && $product['productType'] !== '') {
-            $result['categoryDefault'] = $product['productType'];
-        }
-
-        // Extract categories from productType and tags
-        $result['categories'] = $this->extractCategories($product);
 
         // Handle images - only add if images exist
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
-            if (!empty($imageUrl)) {
+            if (! empty($imageUrl)) {
                 $result['imageUrl'] = $imageUrl;
             }
         }
 
         // Transform variants
         if (isset($product['variants']) && is_array($product['variants'])) {
-            $result['variants'] = $this->transformVariants($product['variants']);
+            $result['variants'] = $this->transformVariants($product['variants'], $locales);
         }
 
         return $result;
+    }
+
+    /**
+     * Get a translated value from a Shopify translations array.
+     *
+     * @param array<int, array{key: string, value: string|null}> $translationData
+     * @param string $key The Shopify translation key (e.g., "title", "body_html")
+     */
+    private function getTranslationValue(array $translationData, string $key): ?string
+    {
+        foreach ($translationData as $entry) {
+            if (
+                is_array($entry) &&
+                isset($entry['key'], $entry['value']) &&
+                $entry['key'] === $key &&
+                is_string($entry['value']) &&
+                $entry['value'] !== ''
+            ) {
+                return $entry['value'];
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extract product URL from onlineStoreUrl field.
+     */
+    private function extractProductUrl(array $product): string
+    {
+        if (isset($product['onlineStoreUrl']) && is_string($product['onlineStoreUrl'])) {
+            return $product['onlineStoreUrl'];
+        }
+
+        return '';
     }
 
     /**
@@ -328,9 +431,12 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform Shopify variants to BradSearch format
+     * Transform Shopify variants to BradSearch format.
+     *
+     * @param array<string, mixed> $variantsData Shopify variants data
+     * @param array<string> $locales Normalized BCP 47 locale codes
      */
-    private function transformVariants(array $variantsData): array
+    private function transformVariants(array $variantsData, array $locales): array
     {
         if (! isset($variantsData['edges']) || ! is_array($variantsData['edges'])) {
             return [];
@@ -352,8 +458,17 @@ class ShopifyAdapter
             $transformedVariant = [
                 'id' => $this->extractNumericId($variant['id']),
                 'sku' => $variant['sku'] ?? '',
-                'attributes' => $this->transformVariantOptions($variant['selectedOptions'] ?? []),
             ];
+
+            // Use locale-keyed attrs format when locales are provided
+            if (! empty($locales)) {
+                $transformedVariant['attrs'] = $this->transformVariantOptionsWithLocales(
+                    $variant['selectedOptions'] ?? [],
+                    $locales
+                );
+            } else {
+                $transformedVariant['attributes'] = $this->transformVariantOptions($variant['selectedOptions'] ?? []);
+            }
 
             $variants[] = $transformedVariant;
         }
@@ -362,7 +477,44 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform variant selectedOptions to BradSearch attributes format
+     * Transform variant selectedOptions to locale-keyed attrs format.
+     *
+     * Output format: {"color": {"en-US": "White", "lt-LT": "White"}}
+     *
+     * @param array<int, array{name: string, value: string}> $selectedOptions
+     * @param array<string> $locales
+     * @return array<string, array<string, string>>
+     */
+    private function transformVariantOptionsWithLocales(array $selectedOptions, array $locales): array
+    {
+        $attrs = [];
+
+        foreach ($selectedOptions as $option) {
+            if (
+                ! is_array($option) ||
+                ! isset($option['name']) ||
+                ! isset($option['value']) ||
+                ! is_string($option['name']) ||
+                ! is_string($option['value']) ||
+                $option['name'] === '' ||
+                $option['value'] === ''
+            ) {
+                continue;
+            }
+
+            $name = strtolower($option['name']);
+            $localeValues = [];
+            foreach ($locales as $locale) {
+                $localeValues[$locale] = $option['value'];
+            }
+            $attrs[$name] = $localeValues;
+        }
+
+        return $attrs;
+    }
+
+    /**
+     * Transform variant selectedOptions to flat attributes format (no locales).
      */
     private function transformVariantOptions(array $selectedOptions): array
     {
