@@ -260,7 +260,8 @@ class ShopifyAdapter
      */
     private function extractProductUrl(array $product): string
     {
-        return $this->extractOptionalString($product, 'onlineStoreUrl');
+        return $this->extractOptionalString($product, 'onlineStoreUrl')
+            ?: $this->extractOptionalString($product, 'onlineStorePreviewUrl');
     }
 
     /**
