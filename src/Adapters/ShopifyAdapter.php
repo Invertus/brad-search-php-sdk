@@ -160,7 +160,10 @@ class ShopifyAdapter
             $fields["name_{$locale}"] = $this->translated($localeTranslations, 'title') ?? $title;
 
             $translatedDesc = $this->translated($localeTranslations, 'body_html');
-            $fields["description_{$locale}"] = $translatedDesc !== null ? strip_tags($translatedDesc) : $description;
+            $localeDescription = $translatedDesc !== null ? strip_tags($translatedDesc) : $description;
+            if ($localeDescription !== '') {
+                $fields["description_{$locale}"] = $localeDescription;
+            }
 
             $translatedProductType = $this->translated($localeTranslations, 'product_type');
             $localeCategoryDefault = $translatedProductType ?? $categoryDefault;
