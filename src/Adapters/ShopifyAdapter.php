@@ -46,8 +46,8 @@ class ShopifyAdapter
         }
 
         $normalizedLocales = ! empty($locales) ? LocaleNormalizer::normalizeAll($locales) : [];
-        $localeMap = ! empty($locales)
-            ? array_combine(LocaleNormalizer::normalizeAll($locales), $locales)
+        $localeMap = ! empty($normalizedLocales)
+            ? array_combine($normalizedLocales, $locales)
             : [];
 
         $rawPrimary = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
@@ -367,11 +367,17 @@ class ShopifyAdapter
      */
     private function getNestedValue(array $data, array $keys, mixed $default = null): mixed
     {
-        return array_reduce($keys, function (mixed $current, int|string $key) use ($default): mixed {
-            return is_array($current) && array_key_exists($key, $current)
-                ? $current[$key]
-                : $default;
-        }, $data);
+        $current = $data;
+
+        foreach ($keys as $key) {
+            if (! is_array($current) || ! array_key_exists($key, $current)) {
+                return $default;
+            }
+
+            $current = $current[$key];
+        }
+
+        return $current;
     }
 
     /**
