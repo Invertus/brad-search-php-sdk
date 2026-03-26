@@ -415,6 +415,7 @@ class ShopifyAdapter
             return [];
         }
 
+        // Sort by width ascending; pick smallest for "small" and middle for "medium" (best-effort, Shopify has no explicit size categories)
         usort($images, fn($a, $b) => $a['width'] <=> $b['width']);
         $images = array_values($images);
 
