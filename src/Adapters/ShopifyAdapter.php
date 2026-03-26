@@ -128,8 +128,8 @@ class ShopifyAdapter
         $result['categories'] = $this->extractCategories($product);
 
         // Add product URL (onlineStoreUrl in Shopify, fallback to onlineStorePreviewUrl)
-        $productUrl = $product['onlineStoreUrl'] ?? $product['onlineStorePreviewUrl'] ?? null;
-        if (is_string($productUrl) && $productUrl !== '') {
+        $productUrl = ($product['onlineStoreUrl'] ?? null) ?: ($product['onlineStorePreviewUrl'] ?? null);
+        if (!empty($productUrl) && is_string($productUrl)) {
             $result['productUrl'] = $productUrl;
         }
 
