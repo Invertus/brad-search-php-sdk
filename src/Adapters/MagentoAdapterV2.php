@@ -18,6 +18,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
  * - Flat `feature_{code}` fields for text search (searchable attributes only)
  * - Nested `features` array with `{name, value}` pairs for filtering/aggregations
  * - Brand extraction from `code === 'manufacturer'`
+ * - Product identifiers: `mpn`, `barcode`, `mpn_without_symbols` → top-level fields
+ * - Name prefix: `beginning_of_product_nam` → `nameShort` for fuzzy matching
  * - SDK sends raw {name, value} pairs — Go handles numeric_value/unit enrichment
  */
 class MagentoAdapterV2
@@ -220,6 +222,26 @@ class MagentoAdapterV2
             // Brand extraction from manufacturer
             if ($code === 'manufacturer') {
                 $result['brand'] = $value;
+                continue;
+            }
+
+            // Product identifiers — top-level fields (searchable alongside sku)
+            if ($code === 'mpn') {
+                $result['mpn'] = $value;
+                continue;
+            }
+            if ($code === 'barcode') {
+                $result['barcode'] = $value;
+                continue;
+            }
+            if ($code === 'mpn_without_symbols') {
+                $result['mpn_without_symbols'] = $value;
+                continue;
+            }
+
+            // Name components — top-level fields for enhanced search
+            if ($code === 'beginning_of_product_nam') {
+                $result['nameShort'] = $value;
                 continue;
             }
 

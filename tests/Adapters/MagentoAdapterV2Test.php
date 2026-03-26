@@ -194,6 +194,68 @@ class MagentoAdapterV2Test extends TestCase
         }
     }
 
+    // --- Product Identifier Extraction Tests ---
+
+    public function testMpnExtractedAsTopLevelField(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'attributes' => [
+                ['code' => 'mpn', 'value' => 'E-03707', 'is_searchable' => true, 'is_filterable' => false],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame('E-03707', $serialized['mpn']);
+        $this->assertArrayNotHasKey('feature_mpn', $serialized);
+    }
+
+    public function testBarcodeExtractedAsTopLevelField(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'attributes' => [
+                ['code' => 'barcode', 'value' => '4039784620186', 'is_searchable' => true, 'is_filterable' => false],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame('4039784620186', $serialized['barcode']);
+        $this->assertArrayNotHasKey('feature_barcode', $serialized);
+    }
+
+    public function testMpnWithoutSymbolsExtractedAsTopLevelField(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'attributes' => [
+                ['code' => 'mpn_without_symbols', 'value' => 'E03707', 'is_searchable' => true, 'is_filterable' => false],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame('E03707', $serialized['mpn_without_symbols']);
+        $this->assertArrayNotHasKey('feature_mpn_without_symbols', $serialized);
+    }
+
+    public function testBeginningOfProductNameExtractedAsNameShort(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'attributes' => [
+                ['code' => 'beginning_of_product_nam', 'value' => 'Gręžimo karūna', 'is_searchable' => false, 'is_filterable' => false],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame('Gręžimo karūna', $serialized['nameShort']);
+        $this->assertArrayNotHasKey('feature_beginning_of_product_nam', $serialized);
+    }
+
     // --- Brand Extraction Tests ---
 
     public function testBrandExtractedFromManufacturer(): void
@@ -436,6 +498,10 @@ class MagentoAdapterV2Test extends TestCase
             ],
             'attributes' => [
                 ['code' => 'manufacturer', 'value' => 'Bosch', 'is_searchable' => true, 'is_filterable' => true],
+                ['code' => 'mpn', 'value' => 'E-03707', 'is_searchable' => true, 'is_filterable' => false],
+                ['code' => 'barcode', 'value' => '0088381561945', 'is_searchable' => true, 'is_filterable' => false],
+                ['code' => 'mpn_without_symbols', 'value' => 'E03707', 'is_searchable' => true, 'is_filterable' => false],
+                ['code' => 'beginning_of_product_nam', 'value' => 'Grąžtas metalui', 'is_searchable' => false, 'is_filterable' => false],
                 ['code' => 'diameter', 'value' => '10 mm', 'is_searchable' => true, 'is_filterable' => true],
                 ['code' => 'color', 'value' => 'Silver', 'is_searchable' => false, 'is_filterable' => true],
                 ['code' => 'internal_code', 'value' => 'XYZ', 'is_searchable' => false, 'is_filterable' => false],
@@ -461,13 +527,23 @@ class MagentoAdapterV2Test extends TestCase
         // Brand from manufacturer
         $this->assertSame('Bosch', $serialized['brand']);
 
-        // Flat search fields (searchable only, no manufacturer)
+        // Product identifiers as top-level fields
+        $this->assertSame('E-03707', $serialized['mpn']);
+        $this->assertSame('0088381561945', $serialized['barcode']);
+        $this->assertSame('E03707', $serialized['mpn_without_symbols']);
+
+        // Name prefix for fuzzy matching
+        $this->assertSame('Grąžtas metalui', $serialized['nameShort']);
+
+        // Flat search fields (searchable only, excludes special attributes)
         $this->assertSame('10 mm', $serialized['feature_diameter']);
         $this->assertArrayNotHasKey('feature_color', $serialized);
         $this->assertArrayNotHasKey('feature_internal_code', $serialized);
         $this->assertArrayNotHasKey('feature_manufacturer', $serialized);
+        $this->assertArrayNotHasKey('feature_mpn', $serialized);
+        $this->assertArrayNotHasKey('feature_barcode', $serialized);
 
-        // Nested features (filterable only, no manufacturer)
+        // Nested features (filterable only, no special attributes)
         $this->assertCount(2, $serialized['features']);
         $featureNames = array_column($serialized['features'], 'name');
         $this->assertContains('diameter', $featureNames);
