@@ -147,6 +147,15 @@ class MagentoAdapterV2
             $additionalFields['categoryDefault'] = $categoryDefault;
         }
 
+        // Popularity/sorting metrics (Magento GraphQL native fields)
+        // Magento's sort_popularity_sales: 1 = most popular, 999 = least popular.
+        // V2 "popularity" scoring uses field_value_factor (higher = better boost),
+        // so we invert: 1000 - original, making higher values = more popular.
+        if (isset($product['sort_popularity_sales'])) {
+            $original = (int) $product['sort_popularity_sales'];
+            $additionalFields['sort_popularity_sales'] = max(0, 1000 - $original);
+        }
+
         // Process attributes: flat feature_ fields + nested features array + brand
         $this->processAttributes($additionalFields, $product);
 

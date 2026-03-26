@@ -194,6 +194,46 @@ class MagentoAdapterV2Test extends TestCase
         }
     }
 
+    // --- Popularity/Sorting Metrics Tests ---
+
+    public function testSortPopularitySalesInverted(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'sort_popularity_sales' => 42,
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        // Inverted: 1000 - 42 = 958 (most popular products get highest values)
+        $this->assertSame(958, $serialized['sort_popularity_sales']);
+    }
+
+    public function testSortPopularitySalesInvertedEdgeCases(): void
+    {
+        // Most popular (rank 1) → inverted 999
+        $product = $this->adapter->transformProduct($this->buildMinimalProduct(['sort_popularity_sales' => 1]));
+        $this->assertSame(999, $product->jsonSerialize()['sort_popularity_sales']);
+
+        // Least popular (rank 999) → inverted 1
+        $product = $this->adapter->transformProduct($this->buildMinimalProduct(['sort_popularity_sales' => 999]));
+        $this->assertSame(1, $product->jsonSerialize()['sort_popularity_sales']);
+
+        // Beyond range → clamped to 0
+        $product = $this->adapter->transformProduct($this->buildMinimalProduct(['sort_popularity_sales' => 1500]));
+        $this->assertSame(0, $product->jsonSerialize()['sort_popularity_sales']);
+    }
+
+    public function testSortPopularitySalesMissingIsOmitted(): void
+    {
+        $product = $this->buildMinimalProduct();
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertArrayNotHasKey('sort_popularity_sales', $serialized);
+    }
+
     // --- Product Identifier Extraction Tests ---
 
     public function testMpnExtractedAsTopLevelField(): void
@@ -482,6 +522,7 @@ class MagentoAdapterV2Test extends TestCase
     {
         $product = $this->buildMinimalProduct([
             'name' => 'Grąžtas metalui 10mm',
+            'sort_popularity_sales' => 15,
             'full_url' => 'https://shop.example.com/graztas.html',
             'description' => ['html' => '<p>High quality drill bit</p>'],
             'short_description' => ['html' => '<p>Drill bit</p>'],
@@ -523,6 +564,9 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame('High quality drill bit', $serialized['description']);
         $this->assertSame('Drill bit', $serialized['descriptionShort']);
         $this->assertSame('https://shop.example.com/graztas.html', $serialized['productUrl']);
+
+        // Popularity metric (inverted: 1000 - 15 = 985)
+        $this->assertSame(985, $serialized['sort_popularity_sales']);
 
         // Brand from manufacturer
         $this->assertSame('Bosch', $serialized['brand']);
