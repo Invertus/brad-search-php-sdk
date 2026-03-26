@@ -14,12 +14,16 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 /**
  * Transforms Magento GraphQL product data into V2 ValueObjects for bulk operations.
  *
+ * Magento syncs one store view at a time, so a locale must be provided to suffix
+ * locale-aware fields (e.g., name → name_lt-LT, feature_diameter → feature_diameter_lt-LT).
+ *
  * Produces the unified cross-platform data format:
- * - Flat `feature_{code}` fields for text search (searchable attributes only)
- * - Nested `features` array with `{name, value}` pairs for filtering/aggregations
+ * - Locale-suffixed text fields: `name_{locale}`, `brand_{locale}`, `description_{locale}`, etc.
+ * - Flat `feature_{code}_{locale}` fields for text search (searchable attributes only)
+ * - Nested `features` array with `{name, value}` pairs for filtering/aggregations (filterable-only attributes)
  * - Brand extraction from `code === 'manufacturer'`
- * - Product identifiers: `mpn`, `barcode`, `mpn_without_symbols` → top-level fields
- * - Name prefix: `beginning_of_product_nam` → `nameShort` for fuzzy matching
+ * - Product identifiers: `mpn`, `barcode`, `mpn_without_symbols` → top-level fields (no locale suffix)
+ * - Name prefix: `beginning_of_product_nam` → `nameShort` for fuzzy matching (no locale suffix)
  * - SDK sends raw {name, value} pairs — Go handles numeric_value/unit enrichment
  */
 class MagentoAdapterV2
@@ -29,7 +33,10 @@ class MagentoAdapterV2
      */
     private array $errors = [];
 
-    public function __construct()
+    /**
+     * @param string $locale Store view locale (e.g., "lt_LT", "lt-LT", "lt"). Normalized to BCP 47 format.
+     */
+    public function __construct(private readonly string $locale)
     {
     }
 
@@ -113,41 +120,42 @@ class MagentoAdapterV2
         $inStock = $this->extractInStock($product);
 
         $additionalFields = [];
+        $locale = $this->locale;
 
-        // Name
+        // Name (locale-aware)
         if (isset($product['name']) && is_string($product['name']) && $product['name'] !== '') {
-            $additionalFields['name'] = strip_tags($product['name']);
+            $additionalFields["name_{$locale}"] = strip_tags($product['name']);
         }
 
-        // Description
+        // Description (locale-aware)
         $description = $this->extractHtmlField($product, 'description');
         if ($description !== null) {
-            $additionalFields['description'] = $description;
+            $additionalFields["description_{$locale}"] = $description;
         }
 
-        // Short description
+        // Short description (locale-aware)
         $shortDescription = $this->extractHtmlField($product, 'short_description');
         if ($shortDescription !== null) {
-            $additionalFields['descriptionShort'] = $shortDescription;
+            $additionalFields["descriptionShort_{$locale}"] = $shortDescription;
         }
 
-        // Product URL
+        // Product URL (locale-aware)
         if (isset($product['full_url']) && is_string($product['full_url']) && $product['full_url'] !== '') {
-            $additionalFields['productUrl'] = $product['full_url'];
+            $additionalFields["productUrl_{$locale}"] = $product['full_url'];
         }
 
-        // Categories
+        // Categories (locale-aware)
         $categories = $this->buildHierarchicalCategories($product);
         if (!empty($categories)) {
-            $additionalFields['categories'] = $categories;
+            $additionalFields["categories_{$locale}"] = $categories;
         }
 
         $categoryDefault = $this->extractDefaultCategory($product);
         if ($categoryDefault !== null) {
-            $additionalFields['categoryDefault'] = $categoryDefault;
+            $additionalFields["categoryDefault_{$locale}"] = $categoryDefault;
         }
 
-        // Popularity/sorting metrics (Magento GraphQL native fields)
+        // Popularity/sorting metrics (locale-agnostic)
         // Magento's sort_popularity_sales: 1 = most popular, 999 = least popular.
         // V2 "popularity" scoring uses field_value_factor (higher = better boost),
         // so we invert: 1000 - original, making higher values = more popular.
@@ -201,9 +209,9 @@ class MagentoAdapterV2
     /**
      * Process attributes into flat feature_ fields, nested features array, and brand.
      *
-     * - is_searchable=true → flat `feature_{code}` field for text search
-     * - is_filterable=true → entry in nested `features` array for filtering/aggregations
-     * - code=manufacturer → extracted as brand
+     * - code=manufacturer → extracted as `brand_{locale}`
+     * - is_searchable=true → flat `feature_{code}_{locale}` field for text search
+     * - is_filterable=true → entry in nested `features` array for filtering/aggregations (includes searchable+filterable)
      *
      * @param array<string, mixed> $result
      * @param array<string, mixed> $product
@@ -214,6 +222,7 @@ class MagentoAdapterV2
             return;
         }
 
+        $locale = $this->locale;
         $features = [];
 
         foreach ($product['attributes'] as $attr) {
@@ -228,13 +237,13 @@ class MagentoAdapterV2
                 continue;
             }
 
-            // Brand extraction from manufacturer
+            // Brand extraction from manufacturer (locale-aware)
             if ($code === 'manufacturer') {
-                $result['brand'] = $value;
+                $result["brand_{$locale}"] = $value;
                 continue;
             }
 
-            // Product identifiers — top-level fields (searchable alongside sku)
+            // Product identifiers — top-level fields, no locale suffix (searchable alongside sku)
             if ($code === 'mpn') {
                 $result['mpn'] = $value;
                 continue;
@@ -248,7 +257,7 @@ class MagentoAdapterV2
                 continue;
             }
 
-            // Name components — top-level fields for enhanced search
+            // Name components — top-level fields, no locale suffix
             if ($code === 'beginning_of_product_nam') {
                 $result['nameShort'] = $value;
                 continue;
@@ -257,12 +266,12 @@ class MagentoAdapterV2
             $isSearchable = (bool) ($attr['is_searchable'] ?? false);
             $isFilterable = (bool) ($attr['is_filterable'] ?? false);
 
-            // Flat field for text search (searchable attributes only)
+            // Flat field for text search with locale suffix (searchable attributes)
             if ($isSearchable) {
-                $result["feature_{$code}"] = $value;
+                $result["feature_{$code}_{$locale}"] = $value;
             }
 
-            // Nested array for filtering/aggregations (filterable attributes)
+            // Nested array for filtering/aggregations (all filterable attributes)
             if ($isFilterable) {
                 $features[] = [
                     'name' => $code,
