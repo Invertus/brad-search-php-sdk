@@ -6,7 +6,6 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Index;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -33,7 +32,7 @@ final readonly class IndexCreateRequest extends ValueObject
     ) {
         $this->validateLocales($locales);
         $this->validateFields($fields);
-        $this->locales = LocaleNormalizer::normalizeAll($locales);
+        $this->locales = $locales;
     }
 
     /**

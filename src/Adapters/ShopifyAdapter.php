@@ -19,15 +19,15 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform Shopify GraphQL product data to BradSearch format
+     * Transform Shopify GraphQL product data to BradSearch format.
      *
      * @param array $shopifyData The Shopify GraphQL API response
-     * @return array<array> Array with products and errors
+     * @param array<string> $locales Locale codes (e.g., ['en', 'lt'] or ['en-US', 'lt-LT'])
+     * @return array{products: array, errors: array}
      * @throws ValidationException
      */
-    public function transform(array $shopifyData): array
+    public function transform(array $shopifyData, array $locales = []): array
     {
-        // Validate basic structure
         if (! isset($shopifyData['data'])) {
             throw new ValidationException('Invalid Shopify data: missing data field');
         }
@@ -36,18 +36,15 @@ class ShopifyAdapter
             throw new ValidationException('Invalid Shopify data: missing products field');
         }
 
-        // Handle both empty results and missing edges gracefully
         if (! isset($shopifyData['data']['products']['edges'])) {
-            // Empty response or different structure
-            return [
-                'products' => [],
-                'errors' => [],
-            ];
+            return ['products' => [], 'errors' => []];
         }
 
         if (! is_array($shopifyData['data']['products']['edges'])) {
             throw new ValidationException('Invalid Shopify data: products edges must be an array');
         }
+
+        $primaryLocale = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
 
         $transformedProducts = [];
         $errors = [];
@@ -65,95 +62,225 @@ class ShopifyAdapter
             }
 
             try {
-                $transformedProducts[] = $this->transformProduct($edge['node']);
+                $transformedProducts[] = $this->transformProduct($edge['node'], $locales, $primaryLocale);
             } catch (\Throwable $e) {
-                $productId = $this->getNumericIdOrGid($edge['node']['id'] ?? '');
-
                 $errors[] = [
                     'type' => 'transformation_error',
                     'product_index' => $index,
-                    'product_id' => $productId,
+                    'product_id' => $this->getNumericIdOrGid($edge['node']['id'] ?? ''),
                     'message' => $e->getMessage(),
                     'exception' => get_class($e),
                 ];
             }
         }
 
-        return [
-            'products' => $transformedProducts,
-            'errors' => $errors,
-        ];
+        return ['products' => $transformedProducts, 'errors' => $errors];
     }
 
     /**
-     * Transform a single Shopify product to BradSearch format
+     * Transform a single Shopify product to BradSearch format.
+     *
+     * @param array<string, mixed> $product Shopify product node (may include translations)
+     * @param array<string> $locales Locale codes
+     * @param string $primaryLocale Primary locale code
      */
-    private function transformProduct(array $product): array
+    private function transformProduct(array $product, array $locales, string $primaryLocale): array
     {
-        // Extract prices once to avoid duplicate calls
         $price = $this->extractPrice($product);
         $basePrice = $this->extractBasePrice($product);
 
         $result = [
             'id' => $this->getRequiredField($product, 'id', true),
-            'name' => $this->getRequiredField($product, 'title'),
             'sku' => $this->extractMainSku($product),
             'price' => $price,
             'basePrice' => $basePrice,
-            'priceTaxExcluded' => $price, // Shopify prices are typically tax-excluded
+            'priceTaxExcluded' => $price,
             'basePriceTaxExcluded' => $basePrice,
             'inStock' => $this->isInStock($product),
-            'isNew' => false, // Shopify doesn't have explicit "new" flag
+            'isNew' => false,
             'variants' => [],
         ];
 
-        // Add description (strip HTML tags)
-        if (isset($product['descriptionHtml']) && is_string($product['descriptionHtml'])) {
-            $result['description'] = strip_tags($product['descriptionHtml']);
-        }
+        $title = $this->getRequiredField($product, 'title');
+        $description = $this->extractOptionalString($product, 'descriptionHtml', stripHtml: true);
+        $brand = $this->extractOptionalString($product, 'vendor');
+        $categoryDefault = $this->extractOptionalString($product, 'productType');
+        $productUrl = $this->extractProductUrl($product);
+        $translations = $product['translations'] ?? [];
 
-        // Add brand (vendor in Shopify)
-        if (isset($product['vendor']) && is_string($product['vendor']) && $product['vendor'] !== '') {
-            $result['brand'] = $product['vendor'];
-        }
+        $result += ! empty($locales)
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl)
+            : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product);
 
-        // Add category default (productType in Shopify)
-        // Always set to match PrestaShopAdapter behavior (defaults to empty string)
-        $result['categoryDefault'] = '';
-        if (isset($product['productType']) && is_string($product['productType']) && $product['productType'] !== '') {
-            $result['categoryDefault'] = $product['productType'];
-        }
-
-        // Extract categories from productType and tags
-        $result['categories'] = $this->extractCategories($product);
-
-        // Add product URL (onlineStoreUrl in Shopify, fallback to onlineStorePreviewUrl)
-        $productUrl = ($product['onlineStoreUrl'] ?? null) ?: ($product['onlineStorePreviewUrl'] ?? null);
-        if (!empty($productUrl) && is_string($productUrl)) {
-            $result['productUrl'] = $productUrl;
-        }
-
-        // Handle images - only add if images exist
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
-            if (!empty($imageUrl)) {
+            if (! empty($imageUrl)) {
                 $result['imageUrl'] = $imageUrl;
             }
         }
 
-        // Transform variants
         if (isset($product['variants']) && is_array($product['variants'])) {
-            $result['variants'] = $this->transformVariants($product['variants']);
+            $result['variants'] = $this->transformVariants($product['variants'], $locales);
         }
 
         return $result;
     }
 
     /**
-     * Extract numeric ID from Shopify GID format
-     * Converts "gid://shopify/Product/6843600694995" to "6843600694995"
-     * Returns empty string only for empty input
-     * Throws ValidationException for malformed GIDs
+     * Build locale-suffixed fields for all locales.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildLocaleFields(
+        array $locales,
+        string $primaryLocale,
+        array $translations,
+        array $product,
+        string $title,
+        string $description,
+        string $brand,
+        string $categoryDefault,
+        string $productUrl,
+    ): array {
+        $fields = [];
+
+        foreach ($locales as $locale) {
+            $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
+
+            // Translatable fields: title, description, product_type
+            $fields["name_{$locale}"] = $this->translated($localeTranslations, 'title') ?? $title;
+
+            $translatedDesc = $this->translated($localeTranslations, 'body_html');
+            $localeDescription = $translatedDesc !== null ? strip_tags($translatedDesc) : $description;
+            if ($localeDescription !== '') {
+                $fields["description_{$locale}"] = $localeDescription;
+            }
+
+            $translatedProductType = $this->translated($localeTranslations, 'product_type');
+            $localeCategoryDefault = $translatedProductType ?? $categoryDefault;
+            $fields["categoryDefault_{$locale}"] = $localeCategoryDefault;
+            $fields["categories_{$locale}"] = $this->buildCategories($localeCategoryDefault, $this->extractTags($product));
+
+            // Non-translatable fields: vendor has no Shopify translation support
+            if ($brand !== '') {
+                $fields["brand_{$locale}"] = $brand;
+            }
+            if ($productUrl !== '') {
+                $fields["productUrl_{$locale}"] = $productUrl;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Build plain (non-localized) fields for backward compatibility.
+     *
+     * @return array<string, mixed>
+     */
+    private function buildPlainFields(
+        string $title,
+        string $description,
+        string $brand,
+        string $categoryDefault,
+        string $productUrl,
+        array $product,
+    ): array {
+        return array_filter([
+            'name' => $title,
+            'description' => $description !== '' ? $description : null,
+            'brand' => $brand !== '' ? $brand : null,
+            'categoryDefault' => $categoryDefault,
+            'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
+            'productUrl' => $productUrl !== '' ? $productUrl : null,
+        ], fn($v) => $v !== null);
+    }
+
+    /**
+     * Resolve translation data for a locale. Returns null for primary locale (use native fields).
+     *
+     * @return array<int, array{key: string, value: string}>|null
+     */
+    private function resolveTranslationsForLocale(string $locale, string $primaryLocale, array $translations): ?array
+    {
+        if ($locale === $primaryLocale) {
+            return null;
+        }
+
+        return (isset($translations[$locale]) && is_array($translations[$locale]))
+            ? $translations[$locale]
+            : null;
+    }
+
+    /**
+     * Get a translated value, returning null for primary locale or when no translation exists.
+     */
+    private function translated(?array $localeTranslations, string $key): ?string
+    {
+        if ($localeTranslations === null) {
+            return null;
+        }
+
+        $match = array_find(
+            $localeTranslations,
+            fn($entry) => is_array($entry)
+                && ($entry['key'] ?? null) === $key
+                && is_string($entry['value'] ?? null)
+                && $entry['value'] !== ''
+        );
+
+        return $match['value'] ?? null;
+    }
+
+    /**
+     * Extract an optional string field, returning empty string if missing/empty.
+     */
+    private function extractOptionalString(array $data, string $field, bool $stripHtml = false): string
+    {
+        if (! isset($data[$field]) || ! is_string($data[$field]) || $data[$field] === '') {
+            return '';
+        }
+
+        return $stripHtml ? strip_tags($data[$field]) : $data[$field];
+    }
+
+    /**
+     * Extract product URL from onlineStoreUrl field.
+     */
+    private function extractProductUrl(array $product): string
+    {
+        return $this->extractOptionalString($product, 'onlineStoreUrl')
+            ?: $this->extractOptionalString($product, 'onlineStorePreviewUrl');
+    }
+
+    /**
+     * Extract tags from product.
+     *
+     * @return array<string>
+     */
+    private function extractTags(array $product): array
+    {
+        return isset($product['tags']) && is_array($product['tags']) ? $product['tags'] : [];
+    }
+
+    /**
+     * Build categories from a product type string and tags.
+     * Shared by both locale and non-locale code paths.
+     *
+     * @param array<string> $tags
+     * @return array<string>
+     */
+    private function buildCategories(string $productType, array $tags): array
+    {
+        $raw = $productType !== '' ? [$productType, ...$tags] : $tags;
+        $valid = array_filter($raw, fn($c) => is_string($c) && $c !== '');
+
+        return array_values(array_unique($valid));
+    }
+
+    /**
+     * Extract numeric ID from Shopify GID format.
+     * Converts "gid://shopify/Product/6843600694995" to "6843600694995".
      */
     private function extractNumericId(string $gid): string
     {
@@ -161,18 +288,15 @@ class ShopifyAdapter
             return '';
         }
 
-        // Use preg_match for robust and clear extraction of the numeric ID
         if (preg_match('#/(\d+)$#', $gid, $matches)) {
             return $matches[1];
         }
 
-        // Malformed GID - throw exception to surface data quality issues
         throw new ValidationException("Malformed Shopify GID: {$gid}");
     }
 
     /**
-     * Safely extract numeric ID or return raw GID for error logging
-     * Returns numeric ID if valid, otherwise returns the raw GID unchanged
+     * Safely extract numeric ID or return raw GID for error logging.
      */
     private function getNumericIdOrGid(string $gid): string
     {
@@ -187,7 +311,7 @@ class ShopifyAdapter
     }
 
     /**
-     * Extract main SKU from the first variant
+     * Extract main SKU from the first variant.
      */
     private function extractMainSku(array $product): string
     {
@@ -196,8 +320,7 @@ class ShopifyAdapter
     }
 
     /**
-     * Extract minimum price from priceRangeV2
-     * Returns string to match PrestaShopAdapter format
+     * Extract minimum price from priceRangeV2.
      */
     private function extractPrice(array $product): string
     {
@@ -206,55 +329,44 @@ class ShopifyAdapter
     }
 
     /**
-     * Extract base price from variants' compareAtPrice
-     * Uses the maximum compareAtPrice across all variants (represents original price before discount)
-     * Returns string to match PrestaShopAdapter format
+     * Extract base price from variants' compareAtPrice.
+     * Uses the maximum compareAtPrice across all variants.
      */
     private function extractBasePrice(array $product): string
     {
-        $maxCompareAtPrice = '0.00';
-        $hasCompareAtPrice = false;
+        $edges = $this->getNestedValue($product, ['variants', 'edges'], []);
 
-        foreach ($this->getNestedValue($product, ['variants', 'edges'], []) as $edge) {
-            $price = $this->getNestedValue($edge, ['node', 'compareAtPrice']);
+        $compareAtPrices = array_filter(
+            array_map(fn($edge) => $this->getNestedValue($edge, ['node', 'compareAtPrice']), $edges),
+            fn($price) => $price !== null
+        );
 
-            if ($price !== null && bccomp((string) $price, $maxCompareAtPrice, 2) > 0) {
-                $maxCompareAtPrice = (string) $price;
-                $hasCompareAtPrice = true;
+        if (! empty($compareAtPrices)) {
+            $max = array_reduce($compareAtPrices, fn($carry, $price) =>
+                bccomp((string) $price, $carry, 2) > 0 ? (string) $price : $carry, '0.00');
+
+            if (bccomp($max, '0.00', 2) > 0) {
+                return $max;
             }
         }
 
-        if ($hasCompareAtPrice) {
-            return $maxCompareAtPrice;
-        }
-
-        // Fallback to max variant price from priceRangeV2
         $amount = $this->getNestedValue($product, ['priceRangeV2', 'maxVariantPrice', 'amount']);
 
-        if (is_string($amount)) {
-            return $amount;
-        }
-
-        // Final fallback to min price if max not available
-        return $this->extractPrice($product);
+        return is_string($amount) ? $amount : $this->extractPrice($product);
     }
 
     /**
-     * Safely access nested array values
-     *
-     * @param array $data The array to traverse
-     * @param array $keys The keys to traverse (e.g., ['variants', 'edges', 0, 'node', 'sku'])
-     * @param mixed $default Default value if path doesn't exist or is invalid
-     * @return mixed The value at the nested path or default
+     * Safely access nested array values.
      */
     private function getNestedValue(array $data, array $keys, mixed $default = null): mixed
     {
         $current = $data;
 
         foreach ($keys as $key) {
-            if (!is_array($current) || !array_key_exists($key, $current)) {
+            if (! is_array($current) || ! array_key_exists($key, $current)) {
                 return $default;
             }
+
             $current = $current[$key];
         }
 
@@ -262,41 +374,18 @@ class ShopifyAdapter
     }
 
     /**
-     * Check if product is in stock based on variants
+     * Check if product is in stock based on variants.
      */
     private function isInStock(array $product): bool
     {
-        // Check if any variant is available for sale
-        foreach ($this->getNestedValue($product, ['variants', 'edges'], []) as $edge) {
-            if ($this->getNestedValue($edge, ['node', 'availableForSale']) === true) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any(
+            $this->getNestedValue($product, ['variants', 'edges'], []),
+            fn($edge) => $this->getNestedValue($edge, ['node', 'availableForSale']) === true
+        );
     }
 
     /**
-     * Extract categories from productType and tags
-     */
-    private function extractCategories(array $product): array
-    {
-        $rawCategories = [];
-        if (isset($product['productType'])) {
-            $rawCategories[] = $product['productType'];
-        }
-        if (isset($product['tags']) && is_array($product['tags'])) {
-            $rawCategories = array_merge($rawCategories, $product['tags']);
-        }
-
-        $validCategories = array_filter($rawCategories, fn($c) => is_string($c) && $c !== '');
-
-        return array_values(array_unique($validCategories));
-    }
-
-    /**
-     * Extract and format images
-     * Intelligently selects images based on dimensions when available
+     * Extract and format images.
      */
     private function extractImages(array $imagesData): array
     {
@@ -304,47 +393,37 @@ class ShopifyAdapter
             return [];
         }
 
-        $images = [];
-        foreach ($imagesData['edges'] as $edge) {
-            if (isset($edge['node']['url']) && is_string($edge['node']['url'])) {
-                $images[] = [
-                    'url' => $edge['node']['url'],
-                    'width' => $edge['node']['width'] ?? 0,
-                    'height' => $edge['node']['height'] ?? 0,
-                ];
-            }
-        }
+        $images = array_filter(array_map(
+            fn($edge) => isset($edge['node']['url']) && is_string($edge['node']['url'])
+                ? ['url' => $edge['node']['url'], 'width' => $edge['node']['width'] ?? 0, 'height' => $edge['node']['height'] ?? 0]
+                : null,
+            $imagesData['edges']
+        ));
 
         if (empty($images)) {
             return [];
         }
 
-        // Sort images by width to intelligently select small and medium sizes
+        // Sort by width ascending; pick smallest for "small" and middle for "medium" (best-effort, Shopify has no explicit size categories)
         usort($images, fn($a, $b) => $a['width'] <=> $b['width']);
-
-        $smallImage = $images[0]['url'];
-        // For medium, pick one from the middle range
-        $mediumIndex = (int) floor(count($images) / 2);
-        $mediumImage = $images[$mediumIndex]['url'];
+        $images = array_values($images);
 
         return [
-            'small' => $smallImage,
-            'medium' => $mediumImage,
+            'small' => $images[0]['url'],
+            'medium' => $images[(int) floor(count($images) / 2)]['url'],
         ];
     }
 
     /**
-     * Transform Shopify variants to BradSearch format
+     * Transform Shopify variants to BradSearch format.
      */
-    private function transformVariants(array $variantsData): array
+    private function transformVariants(array $variantsData, array $locales): array
     {
         if (! isset($variantsData['edges']) || ! is_array($variantsData['edges'])) {
             return [];
         }
 
-        $variants = [];
-
-        foreach ($variantsData['edges'] as $edge) {
+        return array_map(function (array $edge) use ($locales): array {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
                 throw new ValidationException('Variant has malformed node structure');
             }
@@ -355,50 +434,62 @@ class ShopifyAdapter
                 throw new ValidationException('Variant is missing required ID field');
             }
 
-            $transformedVariant = [
+            $options = $variant['selectedOptions'] ?? [];
+
+            return [
                 'id' => $this->extractNumericId($variant['id']),
                 'sku' => $variant['sku'] ?? '',
-                'attributes' => $this->transformVariantOptions($variant['selectedOptions'] ?? []),
+                ...! empty($locales)
+                    ? ['attrs' => $this->transformVariantOptionsWithLocales($options, $locales)]
+                    : ['attributes' => $this->transformVariantOptions($options)],
             ];
-
-            $variants[] = $transformedVariant;
-        }
-
-        return $variants;
+        }, $variantsData['edges']);
     }
 
     /**
-     * Transform variant selectedOptions to BradSearch attributes format
+     * Check if an option entry is a valid non-empty name/value pair.
+     */
+    private function isValidOption(mixed $option): bool
+    {
+        return is_array($option)
+            && isset($option['name'], $option['value'])
+            && is_string($option['name']) && $option['name'] !== ''
+            && is_string($option['value']) && $option['value'] !== '';
+    }
+
+    /**
+     * Transform variant selectedOptions to locale-keyed attrs format.
+     * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function transformVariantOptionsWithLocales(array $selectedOptions, array $locales): array
+    {
+        $validOptions = array_filter($selectedOptions, $this->isValidOption(...));
+
+        $result = [];
+        foreach ($validOptions as $option) {
+            $result[strtolower($option['name'])] = array_fill_keys($locales, $option['value']);
+        }
+
+        return $result;
+    }
+
+    /**
+     * Transform variant selectedOptions to flat attributes format (no locales).
+     *
+     * @return array<int, array{name: string, value: string}>
      */
     private function transformVariantOptions(array $selectedOptions): array
     {
-        $attributes = [];
-
-        foreach ($selectedOptions as $option) {
-            if (
-                ! is_array($option) ||
-                ! isset($option['name']) ||
-                ! isset($option['value']) ||
-                ! is_string($option['name']) ||
-                ! is_string($option['value']) ||
-                $option['name'] === '' ||
-                $option['value'] === ''
-            ) {
-                continue;
-            }
-
-            $attributes[] = [
-                'name' => strtolower($option['name']),
-                'value' => $option['value'],
-            ];
-        }
-
-        return $attributes;
+        return array_values(array_map(
+            fn($option) => ['name' => strtolower($option['name']), 'value' => $option['value']],
+            array_filter($selectedOptions, $this->isValidOption(...))
+        ));
     }
 
     /**
-     * Get required field with validation
-     * Note: Empty strings are allowed (consistent with PrestaShopAdapter)
+     * Get required field with validation.
      */
     private function getRequiredField(array $data, string $field, bool $extractId = false): string
     {
@@ -408,11 +499,6 @@ class ShopifyAdapter
 
         $value = (string) $data[$field];
 
-        // Extract numeric ID from GID if needed
-        if ($extractId) {
-            return $this->extractNumericId($value);
-        }
-
-        return $value;
+        return $extractId ? $this->extractNumericId($value) : $value;
     }
 }

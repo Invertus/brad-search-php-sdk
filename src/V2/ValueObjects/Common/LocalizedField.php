@@ -6,7 +6,6 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Common;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use Stringable;
 
 /**
@@ -37,7 +36,7 @@ final readonly class LocalizedField implements Stringable
             throw new InvalidLocaleException($locale);
         }
 
-        $this->locale = LocaleNormalizer::normalize($locale);
+        $this->locale = $locale;
     }
 
     /**

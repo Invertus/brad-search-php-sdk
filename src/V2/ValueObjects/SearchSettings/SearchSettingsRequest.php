@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\V2\ValueObjects\SearchSettings;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -26,6 +25,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      * @param ResponseConfig|null $responseConfig Optional response configuration (source fields, sortable fields)
      * @param array<string>|null $supportedLocales Optional supported locales
      * @param array<string, mixed>|null $rawQueryConfig Optional raw query config (Go-native format, bypasses SearchConfig VOs)
+     * @param array<string, mixed>|null $filterConfig Optional filter configuration for facets/aggregations
      */
     public function __construct(
         public string $appId,
@@ -33,12 +33,11 @@ final readonly class SearchSettingsRequest extends ValueObject
         public ?ScoringConfig $scoringConfig = null,
         public ?ResponseConfig $responseConfig = null,
         ?array $supportedLocales = null,
-        public ?array $rawQueryConfig = null
+        public ?array $rawQueryConfig = null,
+        public ?array $filterConfig = null,
     ) {
         $this->validateAppId($appId);
-        $this->supportedLocales = $supportedLocales !== null
-            ? LocaleNormalizer::normalizeAll($supportedLocales)
-            : null;
+        $this->supportedLocales = $supportedLocales;
     }
 
     /**
@@ -56,6 +55,7 @@ final readonly class SearchSettingsRequest extends ValueObject
             responseConfig: isset($config['response_config'])
                 ? ResponseConfig::fromArray($config['response_config'])
                 : null,
+            filterConfig: $config['filter_config'] ?? null,
         );
     }
 
@@ -64,7 +64,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withAppId(string $appId): self
     {
-        return new self($appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig);
+        return new self($appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig);
     }
 
     /**
@@ -72,7 +72,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withSearchConfig(?SearchConfig $searchConfig): self
     {
-        return new self($this->appId, $searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig);
+        return new self($this->appId, $searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig);
     }
 
     /**
@@ -80,7 +80,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withScoringConfig(?ScoringConfig $scoringConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig);
+        return new self($this->appId, $this->searchConfig, $scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig);
     }
 
     /**
@@ -88,7 +88,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withResponseConfig(?ResponseConfig $responseConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $responseConfig, $this->supportedLocales, $this->rawQueryConfig);
+        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig);
     }
 
     /**
@@ -126,6 +126,10 @@ final readonly class SearchSettingsRequest extends ValueObject
             if (count($responseConfigData) > 0) {
                 $result['response_config'] = $responseConfigData;
             }
+        }
+
+        if ($this->filterConfig !== null && count($this->filterConfig) > 0) {
+            $result['filter_config'] = $this->filterConfig;
         }
 
         return $result;
