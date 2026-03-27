@@ -77,19 +77,19 @@ class ShopifyAdapterTest extends TestCase
         $product = $result['products'][0];
 
         // Primary locale uses native fields
-        $this->assertEquals('Snowboard', $product['name_en-US']);
-        $this->assertEquals('Great board', $product['description_en-US']);
+        $this->assertEquals('Snowboard', $product['name_en']);
+        $this->assertEquals('Great board', $product['description_en']);
 
         // Non-primary falls back to primary when no translations
-        $this->assertEquals('Snowboard', $product['name_lt-LT']);
-        $this->assertEquals('Great board', $product['description_lt-LT']);
+        $this->assertEquals('Snowboard', $product['name_lt']);
+        $this->assertEquals('Great board', $product['description_lt']);
 
         // Brand is not translatable in Shopify — same across all locales
-        $this->assertEquals('BrandX', $product['brand_en-US']);
-        $this->assertEquals('BrandX', $product['brand_lt-LT']);
+        $this->assertEquals('BrandX', $product['brand_en']);
+        $this->assertEquals('BrandX', $product['brand_lt']);
         // categoryDefault falls back to primary when no product_type translation
-        $this->assertEquals('Sports', $product['categoryDefault_en-US']);
-        $this->assertEquals('Sports', $product['categoryDefault_lt-LT']);
+        $this->assertEquals('Sports', $product['categoryDefault_en']);
+        $this->assertEquals('Sports', $product['categoryDefault_lt']);
 
         // Plain field names should NOT exist
         $this->assertArrayNotHasKey('name', $product);
@@ -112,10 +112,10 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
 
         $p = $result['products'][0];
-        $this->assertEquals('Snowboard', $p['name_en-US']);
-        $this->assertEquals('Great board', $p['description_en-US']);
-        $this->assertEquals('Snieglentė', $p['name_lt-LT']);
-        $this->assertEquals('Puiki lenta', $p['description_lt-LT']);
+        $this->assertEquals('Snowboard', $p['name_en']);
+        $this->assertEquals('Great board', $p['description_en']);
+        $this->assertEquals('Snieglentė', $p['name_lt']);
+        $this->assertEquals('Puiki lenta', $p['description_lt']);
     }
 
     public function test_transform_with_product_type_translation(): void
@@ -134,17 +134,17 @@ class ShopifyAdapterTest extends TestCase
         $p = $result['products'][0];
 
         // Primary locale uses native productType
-        $this->assertEquals('Sports', $p['categoryDefault_en-US']);
-        $this->assertContains('Sports', $p['categories_en-US']);
+        $this->assertEquals('Sports', $p['categoryDefault_en']);
+        $this->assertContains('Sports', $p['categories_en']);
 
         // Non-primary uses translated product_type
-        $this->assertEquals('Sportas', $p['categoryDefault_lt-LT']);
-        $this->assertContains('Sportas', $p['categories_lt-LT']);
+        $this->assertEquals('Sportas', $p['categoryDefault_lt']);
+        $this->assertContains('Sportas', $p['categories_lt']);
         // Tags are not translatable — still in English
-        $this->assertContains('winter', $p['categories_lt-LT']);
-        $this->assertContains('outdoor', $p['categories_lt-LT']);
+        $this->assertContains('winter', $p['categories_lt']);
+        $this->assertContains('outdoor', $p['categories_lt']);
         // Original English productType should NOT be in lt categories
-        $this->assertNotContains('Sports', $p['categories_lt-LT']);
+        $this->assertNotContains('Sports', $p['categories_lt']);
     }
 
     public function test_brand_is_not_translatable(): void
@@ -161,8 +161,8 @@ class ShopifyAdapterTest extends TestCase
         $p = $result['products'][0];
 
         // Brand stays English for all locales — Shopify does not support vendor translation
-        $this->assertEquals('BrandX', $p['brand_en-US']);
-        $this->assertEquals('BrandX', $p['brand_lt-LT']);
+        $this->assertEquals('BrandX', $p['brand_en']);
+        $this->assertEquals('BrandX', $p['brand_lt']);
     }
 
     public function test_transform_with_missing_translation_falls_back_to_primary(): void
@@ -180,8 +180,8 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
 
         $p = $result['products'][0];
-        $this->assertEquals('Snieglentė', $p['name_lt-LT']);
-        $this->assertEquals('Great board', $p['description_lt-LT']); // fallback
+        $this->assertEquals('Snieglentė', $p['name_lt']);
+        $this->assertEquals('Great board', $p['description_lt']); // fallback
     }
 
     public function test_transform_with_empty_string_translation_falls_back(): void
@@ -198,7 +198,7 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
 
         $p = $result['products'][0];
-        $this->assertEquals('Snowboard', $p['name_lt-LT']); // empty string → fallback
+        $this->assertEquals('Snowboard', $p['name_lt']); // empty string → fallback
     }
 
     public function test_transform_with_null_translation_value_falls_back(): void
@@ -215,7 +215,7 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
 
         $p = $result['products'][0];
-        $this->assertEquals('Snowboard', $p['name_lt-LT']); // null → fallback
+        $this->assertEquals('Snowboard', $p['name_lt']); // null → fallback
     }
 
     public function test_three_locales_with_partial_translations(): void
@@ -237,24 +237,24 @@ class ShopifyAdapterTest extends TestCase
         $p = $result['products'][0];
 
         // Primary (en): native fields
-        $this->assertEquals('Snowboard', $p['name_en-US']);
-        $this->assertEquals('Great board', $p['description_en-US']);
-        $this->assertEquals('Sports', $p['categoryDefault_en-US']);
+        $this->assertEquals('Snowboard', $p['name_en']);
+        $this->assertEquals('Great board', $p['description_en']);
+        $this->assertEquals('Sports', $p['categoryDefault_en']);
 
         // lt: has translations
-        $this->assertEquals('Snieglentė', $p['name_lt-LT']);
-        $this->assertEquals('Puiki lenta', $p['description_lt-LT']);
-        $this->assertEquals('Sportas', $p['categoryDefault_lt-LT']);
+        $this->assertEquals('Snieglentė', $p['name_lt']);
+        $this->assertEquals('Puiki lenta', $p['description_lt']);
+        $this->assertEquals('Sportas', $p['categoryDefault_lt']);
 
         // fr: no translations — falls back to English
-        $this->assertEquals('Snowboard', $p['name_fr-FR']);
-        $this->assertEquals('Great board', $p['description_fr-FR']);
-        $this->assertEquals('Sports', $p['categoryDefault_fr-FR']);
+        $this->assertEquals('Snowboard', $p['name_fr']);
+        $this->assertEquals('Great board', $p['description_fr']);
+        $this->assertEquals('Sports', $p['categoryDefault_fr']);
 
         // Brand is same across all three
-        $this->assertEquals('BrandX', $p['brand_en-US']);
-        $this->assertEquals('BrandX', $p['brand_lt-LT']);
-        $this->assertEquals('BrandX', $p['brand_fr-FR']);
+        $this->assertEquals('BrandX', $p['brand_en']);
+        $this->assertEquals('BrandX', $p['brand_lt']);
+        $this->assertEquals('BrandX', $p['brand_fr']);
     }
 
     // ─── Backward compatibility: empty locales ───
@@ -269,7 +269,7 @@ class ShopifyAdapterTest extends TestCase
 
         $product = $result['products'][0];
         $this->assertArrayHasKey('name', $product);
-        $this->assertArrayNotHasKey('name_en-US', $product);
+        $this->assertArrayNotHasKey('name_en', $product);
     }
 
     // ─── Variant options with locales ───
@@ -299,8 +299,8 @@ class ShopifyAdapterTest extends TestCase
         $variant = $result['products'][0]['variants'][0];
         $this->assertArrayHasKey('attrs', $variant);
         $this->assertArrayNotHasKey('attributes', $variant);
-        $this->assertEquals(['en-US' => 'White', 'lt-LT' => 'White'], $variant['attrs']['color']);
-        $this->assertEquals(['en-US' => 'L', 'lt-LT' => 'L'], $variant['attrs']['size']);
+        $this->assertEquals(['en' => 'White', 'lt' => 'White'], $variant['attrs']['color']);
+        $this->assertEquals(['en' => 'L', 'lt' => 'L'], $variant['attrs']['size']);
     }
 
     public function test_variants_use_attributes_format_without_locales(): void
@@ -354,8 +354,8 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
 
         $p = $result['products'][0];
-        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_en-US']);
-        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_lt-LT']);
+        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_en']);
+        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_lt']);
     }
 
     // ─── Error handling ───

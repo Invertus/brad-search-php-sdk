@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\Adapters;
 
 use BradSearch\SyncSdk\Exceptions\ValidationException;
-use BradSearch\SyncSdk\V2\ValueObjects\Common\LocaleNormalizer;
 
 class ShopifyAdapter
 {
@@ -45,13 +44,7 @@ class ShopifyAdapter
             throw new ValidationException('Invalid Shopify data: products edges must be an array');
         }
 
-        $normalizedLocales = ! empty($locales) ? LocaleNormalizer::normalizeAll($locales) : [];
-        $localeMap = ! empty($normalizedLocales)
-            ? array_combine($normalizedLocales, $locales)
-            : [];
-
-        $rawPrimary = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
-        $primaryLocale = LocaleNormalizer::normalize($rawPrimary);
+        $primaryLocale = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
 
         $transformedProducts = [];
         $errors = [];
@@ -69,7 +62,7 @@ class ShopifyAdapter
             }
 
             try {
-                $transformedProducts[] = $this->transformProduct($edge['node'], $normalizedLocales, $primaryLocale, $localeMap);
+                $transformedProducts[] = $this->transformProduct($edge['node'], $locales, $primaryLocale);
             } catch (\Throwable $e) {
                 $errors[] = [
                     'type' => 'transformation_error',
@@ -88,11 +81,10 @@ class ShopifyAdapter
      * Transform a single Shopify product to BradSearch format.
      *
      * @param array<string, mixed> $product Shopify product node (may include translations)
-     * @param array<string> $locales Normalized BCP 47 locale codes
-     * @param string $primaryLocale Normalized BCP 47 primary locale
-     * @param array<string, string> $localeMap Normalized BCP 47 → raw short code mapping
+     * @param array<string> $locales Locale codes
+     * @param string $primaryLocale Primary locale code
      */
-    private function transformProduct(array $product, array $locales, string $primaryLocale, array $localeMap): array
+    private function transformProduct(array $product, array $locales, string $primaryLocale): array
     {
         $price = $this->extractPrice($product);
         $basePrice = $this->extractBasePrice($product);
@@ -117,7 +109,7 @@ class ShopifyAdapter
         $translations = $product['translations'] ?? [];
 
         $result += ! empty($locales)
-            ? $this->buildLocaleFields($locales, $primaryLocale, $localeMap, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl)
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product);
 
         if (isset($product['images']) && is_array($product['images'])) {
@@ -142,7 +134,6 @@ class ShopifyAdapter
     private function buildLocaleFields(
         array $locales,
         string $primaryLocale,
-        array $localeMap,
         array $translations,
         array $product,
         string $title,
@@ -154,7 +145,7 @@ class ShopifyAdapter
         $fields = [];
 
         foreach ($locales as $locale) {
-            $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $localeMap, $translations);
+            $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
 
             // Translatable fields: title, description, product_type
             $fields["name_{$locale}"] = $this->translated($localeTranslations, 'title') ?? $title;
@@ -210,16 +201,14 @@ class ShopifyAdapter
      *
      * @return array<int, array{key: string, value: string}>|null
      */
-    private function resolveTranslationsForLocale(string $locale, string $primaryLocale, array $localeMap, array $translations): ?array
+    private function resolveTranslationsForLocale(string $locale, string $primaryLocale, array $translations): ?array
     {
         if ($locale === $primaryLocale) {
             return null;
         }
 
-        $rawLocale = $localeMap[$locale] ?? null;
-
-        return ($rawLocale !== null && isset($translations[$rawLocale]) && is_array($translations[$rawLocale]))
-            ? $translations[$rawLocale]
+        return (isset($translations[$locale]) && is_array($translations[$locale]))
+            ? $translations[$locale]
             : null;
     }
 
