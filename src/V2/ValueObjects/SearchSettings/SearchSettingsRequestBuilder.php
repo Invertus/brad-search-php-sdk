@@ -41,6 +41,12 @@ final class SearchSettingsRequestBuilder
     /** @var array<string, mixed>|null */
     private ?array $rawQueryConfig = null;
 
+    /** @var array<string, array<string, string>>|null */
+    private ?array $featuresKeyValueMap = null;
+
+    /** @var array<string, array<string, string>>|null */
+    private ?array $attributeKeyValueMap = null;
+
     /**
      * Sets the application ID.
      */
@@ -158,6 +164,28 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets the features key-value map for facet name translation.
+     *
+     * @param array<string, array<string, string>> $map Feature ID → locale → display name
+     */
+    public function featuresKeyValueMap(array $map): self
+    {
+        $this->featuresKeyValueMap = $map;
+        return $this;
+    }
+
+    /**
+     * Sets the attribute key-value map for facet name translation.
+     *
+     * @param array<string, array<string, string>> $map Attribute ID → locale → display name
+     */
+    public function attributeKeyValueMap(array $map): self
+    {
+        $this->attributeKeyValueMap = $map;
+        return $this;
+    }
+
+    /**
      * Sets the complete search config.
      */
     public function searchConfig(SearchConfig $searchConfig): self
@@ -247,7 +275,9 @@ final class SearchSettingsRequestBuilder
             $scoringConfig,
             $responseConfig,
             $this->supportedLocales,
-            $this->rawQueryConfig
+            $this->rawQueryConfig,
+            $this->featuresKeyValueMap,
+            $this->attributeKeyValueMap,
         );
     }
 
@@ -266,6 +296,8 @@ final class SearchSettingsRequestBuilder
         $this->sortableFields = [];
         $this->supportedLocales = null;
         $this->rawQueryConfig = null;
+        $this->featuresKeyValueMap = null;
+        $this->attributeKeyValueMap = null;
         return $this;
     }
 }
