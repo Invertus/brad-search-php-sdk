@@ -135,6 +135,17 @@ GRAPHQL;
         }
 GRAPHQL;
 
+    /**
+     * Features query body for bradFeatures endpoint.
+     */
+    private const FEATURES_BODY = <<<'GRAPHQL'
+        code
+        label
+        is_searchable
+        is_filterable
+        position
+GRAPHQL;
+
     private function __construct()
     {
         // Prevent instantiation
@@ -207,6 +218,25 @@ query GetProducts(\$filter: BradProductFilterInput, \$pageSize: Int, \$currentPa
         items {
 {$itemsBody}
         }
+    }
+}
+GRAPHQL;
+    }
+
+    /**
+     * Get the features query for discovering available product attributes.
+     *
+     * Returns catalog-level attribute definitions (code, label, searchable/filterable flags).
+     * Requires X-BradSearch-Api-Key header.
+     */
+    public static function getFeaturesQuery(): string
+    {
+        $body = self::FEATURES_BODY;
+
+        return <<<GRAPHQL
+query GetFeatures {
+    bradFeatures {
+{$body}
     }
 }
 GRAPHQL;
