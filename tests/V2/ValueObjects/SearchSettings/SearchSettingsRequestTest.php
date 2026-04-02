@@ -457,7 +457,7 @@ class SearchSettingsRequestTest extends TestCase
         $request = new SearchSettingsRequest('app_123', supportedLocales: ['lt', 'en']);
         $serialized = $request->jsonSerialize();
 
-        $this->assertEquals(['lt-LT', 'en-US'], $serialized['supported_locales']);
+        $this->assertEquals(['lt', 'en'], $serialized['supported_locales']);
     }
 
     public function testMatchesSearchSettingsRequestSchemaFullConfiguration(): void

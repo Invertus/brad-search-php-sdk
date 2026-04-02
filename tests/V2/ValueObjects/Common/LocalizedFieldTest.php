@@ -175,11 +175,11 @@ class LocalizedFieldTest extends TestCase
             'Russian' => ['ru-RU', 'ru-RU'],
             'Chinese' => ['zh-CN', 'zh-CN'],
             'Japanese' => ['ja-JP', 'ja-JP'],
-            'Shorthand English' => ['en', 'en-US'],
-            'Shorthand Lithuanian' => ['lt', 'lt-LT'],
-            'Shorthand German' => ['de', 'de-DE'],
-            'Shorthand French' => ['fr', 'fr-FR'],
-            'Shorthand Spanish' => ['es', 'es-ES'],
+            'Shorthand English' => ['en', 'en'],
+            'Shorthand Lithuanian' => ['lt', 'lt'],
+            'Shorthand German' => ['de', 'de'],
+            'Shorthand French' => ['fr', 'fr'],
+            'Shorthand Spanish' => ['es', 'es'],
         ];
     }
 
@@ -245,16 +245,16 @@ class LocalizedFieldTest extends TestCase
     {
         $field = new LocalizedField('name', 'lt');
 
-        $this->assertEquals('lt-LT', $field->getLocale());
-        $this->assertEquals('name_lt-LT', $field->toString());
+        $this->assertEquals('lt', $field->getLocale());
+        $this->assertEquals('name_lt', $field->toString());
     }
 
     public function testShortLocaleNormalizationInStringContext(): void
     {
         $field = new LocalizedField('description', 'en');
 
-        $this->assertEquals('en-US', $field->getLocale());
-        $this->assertEquals('description_en-US', (string) $field);
+        $this->assertEquals('en', $field->getLocale());
+        $this->assertEquals('description_en', (string) $field);
     }
 
     public function testFullLocaleRemainsUnchanged(): void
