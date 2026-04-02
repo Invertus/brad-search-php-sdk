@@ -212,6 +212,154 @@ class SearchSettingsRequestTest extends TestCase
         $this->assertEquals('app_123', $decoded['app_id']);
     }
 
+    public function testConstructorWithFeaturesKeyValueMap(): void
+    {
+        $map = [
+            '5' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+            '12' => ['lt-LT' => 'Dydis', 'en-US' => 'Size'],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', featuresKeyValueMap: $map);
+
+        $this->assertEquals($map, $request->featuresKeyValueMap);
+    }
+
+    public function testJsonSerializeIncludesFeaturesKeyValueMap(): void
+    {
+        $map = [
+            '5' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', featuresKeyValueMap: $map);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayHasKey('features_key_value_map', $serialized);
+        $this->assertEquals($map, $serialized['features_key_value_map']);
+    }
+
+    public function testJsonSerializeOmitsNullFeaturesKeyValueMap(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('features_key_value_map', $serialized);
+    }
+
+    public function testJsonSerializeOmitsEmptyFeaturesKeyValueMap(): void
+    {
+        $request = new SearchSettingsRequest('app_123', featuresKeyValueMap: []);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('features_key_value_map', $serialized);
+    }
+
+    public function testFromSearchConfigurationExtractsFeaturesKeyValueMap(): void
+    {
+        $map = ['5' => ['lt-LT' => 'Spalva']];
+        $config = [
+            'supported_locales' => ['lt-LT'],
+            'features_key_value_map' => $map,
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertEquals($map, $request->featuresKeyValueMap);
+    }
+
+    public function testFromSearchConfigurationHandlesMissingFeaturesKeyValueMap(): void
+    {
+        $config = ['supported_locales' => ['lt-LT']];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertNull($request->featuresKeyValueMap);
+    }
+
+    public function testWithMethodsPreserveFeaturesKeyValueMap(): void
+    {
+        $map = ['5' => ['lt-LT' => 'Spalva']];
+        $request = new SearchSettingsRequest('app_123', featuresKeyValueMap: $map);
+
+        $this->assertEquals($map, $request->withAppId('app_456')->featuresKeyValueMap);
+        $this->assertEquals($map, $request->withSearchConfig(null)->featuresKeyValueMap);
+        $this->assertEquals($map, $request->withScoringConfig(null)->featuresKeyValueMap);
+        $this->assertEquals($map, $request->withResponseConfig(null)->featuresKeyValueMap);
+    }
+
+    public function testConstructorWithAttributeKeyValueMap(): void
+    {
+        $map = [
+            '3' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+            '7' => ['lt-LT' => 'Dydis', 'en-US' => 'Size'],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', attributeKeyValueMap: $map);
+
+        $this->assertEquals($map, $request->attributeKeyValueMap);
+    }
+
+    public function testJsonSerializeIncludesAttributeKeyValueMap(): void
+    {
+        $map = [
+            '3' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', attributeKeyValueMap: $map);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayHasKey('attribute_key_value_map', $serialized);
+        $this->assertEquals($map, $serialized['attribute_key_value_map']);
+    }
+
+    public function testJsonSerializeOmitsNullAttributeKeyValueMap(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('attribute_key_value_map', $serialized);
+    }
+
+    public function testJsonSerializeOmitsEmptyAttributeKeyValueMap(): void
+    {
+        $request = new SearchSettingsRequest('app_123', attributeKeyValueMap: []);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('attribute_key_value_map', $serialized);
+    }
+
+    public function testFromSearchConfigurationExtractsAttributeKeyValueMap(): void
+    {
+        $map = ['3' => ['lt-LT' => 'Spalva']];
+        $config = [
+            'supported_locales' => ['lt-LT'],
+            'attribute_key_value_map' => $map,
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertEquals($map, $request->attributeKeyValueMap);
+    }
+
+    public function testFromSearchConfigurationHandlesMissingAttributeKeyValueMap(): void
+    {
+        $config = ['supported_locales' => ['lt-LT']];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertNull($request->attributeKeyValueMap);
+    }
+
+    public function testWithMethodsPreserveAttributeKeyValueMap(): void
+    {
+        $map = ['3' => ['lt-LT' => 'Spalva']];
+        $request = new SearchSettingsRequest('app_123', attributeKeyValueMap: $map);
+
+        $this->assertEquals($map, $request->withAppId('app_456')->attributeKeyValueMap);
+        $this->assertEquals($map, $request->withSearchConfig(null)->attributeKeyValueMap);
+        $this->assertEquals($map, $request->withScoringConfig(null)->attributeKeyValueMap);
+        $this->assertEquals($map, $request->withResponseConfig(null)->attributeKeyValueMap);
+    }
+
     /**
      * Test output matches OpenAPI SearchSettingsRequest schema structure for full configuration.
      */

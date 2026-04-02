@@ -379,6 +379,46 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertNull($request->filterConfig);
     }
 
+    public function testBuildWithFeaturesKeyValueMap(): void
+    {
+        $map = [
+            '5' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+            '12' => ['lt-LT' => 'Dydis', 'en-US' => 'Size'],
+        ];
+
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->featuresKeyValueMap($map)
+            ->build();
+
+        $this->assertEquals($map, $request->featuresKeyValueMap);
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('features_key_value_map', $serialized);
+        $this->assertEquals($map, $serialized['features_key_value_map']);
+    }
+
+    public function testBuildWithAttributeKeyValueMap(): void
+    {
+        $map = [
+            '3' => ['lt-LT' => 'Spalva', 'en-US' => 'Color'],
+            '7' => ['lt-LT' => 'Dydis', 'en-US' => 'Size'],
+        ];
+
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->attributeKeyValueMap($map)
+            ->build();
+
+        $this->assertEquals($map, $request->attributeKeyValueMap);
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('attribute_key_value_map', $serialized);
+        $this->assertEquals($map, $serialized['attribute_key_value_map']);
+    }
+
     public function testFluentInterfaceReturnsSelf(): void
     {
         $builder = new SearchSettingsRequestBuilder();
@@ -396,6 +436,8 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertSame($builder, $builder->supportedLocales(['lt-LT']));
         $this->assertSame($builder, $builder->rawQueryConfig(['fields' => []]));
         $this->assertSame($builder, $builder->filterConfig(['fields' => []]));
+        $this->assertSame($builder, $builder->featuresKeyValueMap(['5' => ['lt-LT' => 'Spalva']]));
+        $this->assertSame($builder, $builder->attributeKeyValueMap(['3' => ['lt-LT' => 'Spalva']]));
         $this->assertSame($builder, $builder->searchConfig(new SearchConfig()));
         $this->assertSame($builder, $builder->scoringConfig(new ScoringConfig()));
         $this->assertSame($builder, $builder->responseConfig(new ResponseConfig()));
