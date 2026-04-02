@@ -405,10 +405,11 @@ class MagentoAdapterV2Test extends TestCase
 
         $this->assertSame('Bosch', $serialized['brand_lt-LT']);
         $this->assertArrayNotHasKey('brand', $serialized);
-        // manufacturer should NOT appear as feature_ flat field or nested feature
+        // manufacturer also appears as feature_ flat field and nested feature for aggregations
         $this->assertArrayNotHasKey('feature_manufacturer', $serialized);
-        $this->assertArrayNotHasKey('feature_manufacturer_lt-LT', $serialized);
-        $this->assertArrayNotHasKey('features', $serialized);
+        $this->assertSame('Bosch', $serialized['feature_manufacturer_lt-LT']);
+        $this->assertCount(1, $serialized['features']);
+        $this->assertSame('manufacturer', $serialized['features'][0]['name']);
     }
 
     public function testBrandMixedWithOtherAttributes(): void
@@ -424,8 +425,10 @@ class MagentoAdapterV2Test extends TestCase
         $serialized = $result->jsonSerialize();
 
         $this->assertSame('Stanley', $serialized['brand_lt-LT']);
-        $this->assertCount(1, $serialized['features']);
-        $this->assertSame('color', $serialized['features'][0]['name']);
+        $this->assertCount(2, $serialized['features']);
+        $featureNames = array_column($serialized['features'], 'name');
+        $this->assertContains('manufacturer', $featureNames);
+        $this->assertContains('color', $featureNames);
     }
 
     // --- Price Flattening Tests ---
@@ -681,14 +684,16 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame('Silver', $serialized['feature_color_lt-LT']);
         $this->assertSame('XYZ', $serialized['feature_internal_code_lt-LT']);
         $this->assertArrayNotHasKey('feature_diameter', $serialized);
-        // Special attributes are NOT duplicated as feature_ fields
-        $this->assertArrayNotHasKey('feature_manufacturer_lt-LT', $serialized);
+        // manufacturer also appears as feature_ flat field for aggregations
+        $this->assertSame('Bosch', $serialized['feature_manufacturer_lt-LT']);
+        // mpn/barcode are special top-level fields, not duplicated as feature_
         $this->assertArrayNotHasKey('feature_mpn_lt-LT', $serialized);
         $this->assertArrayNotHasKey('feature_barcode_lt-LT', $serialized);
 
-        // Nested features (all filterable attributes, including searchable+filterable)
-        $this->assertCount(2, $serialized['features']);
+        // Nested features (all filterable attributes, including manufacturer)
+        $this->assertCount(3, $serialized['features']);
         $featureNames = array_column($serialized['features'], 'name');
+        $this->assertContains('manufacturer', $featureNames);
         $this->assertContains('diameter', $featureNames);
         $this->assertContains('color', $featureNames);
         // Non-filterable attributes excluded
