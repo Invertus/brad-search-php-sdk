@@ -210,8 +210,8 @@ class MagentoAdapterV2
      * Process attributes into flat feature_ fields, nested features array, and brand.
      *
      * - code=manufacturer → extracted as `brand_{locale}`
-     * - is_searchable=true → flat `feature_{code}_{locale}` field for text search
-     * - is_filterable=true → entry in nested `features` array for filtering/aggregations (includes searchable+filterable)
+     * - ALL non-special attributes → flat `feature_{code}_{locale}` field for text search (v1 searched all attributes)
+     * - is_filterable=true → also added to nested `features` array for filtering/aggregations
      *
      * @param array<string, mixed> $result
      * @param array<string, mixed> $product
@@ -238,9 +238,9 @@ class MagentoAdapterV2
             }
 
             // Brand extraction from manufacturer (locale-aware)
+            // Also falls through to create feature_manufacturer_{locale} for aggregations
             if ($code === 'manufacturer') {
                 $result["brand_{$locale}"] = $value;
-                continue;
             }
 
             // Product identifiers — top-level fields, no locale suffix (searchable alongside sku)
@@ -263,15 +263,12 @@ class MagentoAdapterV2
                 continue;
             }
 
-            $isSearchable = (bool) ($attr['is_searchable'] ?? false);
             $isFilterable = (bool) ($attr['is_filterable'] ?? false);
 
-            // Flat field for text search with locale suffix (searchable attributes)
-            if ($isSearchable) {
-                $result["feature_{$code}_{$locale}"] = $value;
-            }
+            // Flat field for text search with locale suffix (all attributes, matching v1 behavior)
+            $result["feature_{$code}_{$locale}"] = $value;
 
-            // Nested array for filtering/aggregations (all filterable attributes)
+            // Nested array for filtering/aggregations (filterable attributes)
             if ($isFilterable) {
                 $features[] = [
                     'name' => $code,

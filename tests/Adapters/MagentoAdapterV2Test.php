@@ -88,13 +88,14 @@ class MagentoAdapterV2Test extends TestCase
 
     // --- Locale Suffix Tests ---
 
-    public function testLocaleNormalizedFromShortCode(): void
+    public function testLocaleUsedAsIs(): void
     {
+        // Locale normalization happens in brad-app (MagentoApi::getLocales()), not in the adapter
         $adapter = new MagentoAdapterV2('lt');
         $product = $adapter->transformProduct($this->buildMinimalProduct(['name' => 'Grąžtas']));
         $serialized = $product->jsonSerialize();
 
-        $this->assertSame('Grąžtas', $serialized['name_lt-LT']);
+        $this->assertSame('Grąžtas', $serialized['name_lt']);
     }
 
     public function testLocaleNormalizedFromHyphenFormat(): void
@@ -166,9 +167,9 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertArrayHasKey('sort_popularity_sales', $serialized);
     }
 
-    // --- Attribute Processing: is_searchable Tests ---
+    // --- Attribute Processing: Flat Field Tests ---
 
-    public function testSearchableAttributeCreatedAsFlatFieldWithLocale(): void
+    public function testAttributeCreatedAsFlatFieldWithLocale(): void
     {
         $product = $this->buildMinimalProduct([
             'attributes' => [
@@ -183,7 +184,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('feature_diameter', $serialized);
     }
 
-    public function testNonSearchableAttributeExcludedFromFlatFields(): void
+    public function testNonSearchableAttributeAlsoCreatedAsFlatField(): void
     {
         $product = $this->buildMinimalProduct([
             'attributes' => [
@@ -194,13 +195,13 @@ class MagentoAdapterV2Test extends TestCase
         $result = $this->adapter->transformProduct($product);
         $serialized = $result->jsonSerialize();
 
-        $this->assertArrayNotHasKey('feature_color_lt-LT', $serialized);
-        $this->assertArrayNotHasKey('feature_color', $serialized);
+        // All attributes get flat fields regardless of is_searchable (matching v1 behavior)
+        $this->assertSame('Red', $serialized['feature_color_lt-LT']);
     }
 
     // --- Attribute Processing: is_filterable Tests ---
 
-    public function testFilterableOnlyAttributeIncludedInNestedArray(): void
+    public function testFilterableAttributeIncludedInBothFlatAndNested(): void
     {
         $product = $this->buildMinimalProduct([
             'attributes' => [
@@ -211,6 +212,9 @@ class MagentoAdapterV2Test extends TestCase
         $result = $this->adapter->transformProduct($product);
         $serialized = $result->jsonSerialize();
 
+        // Flat field for search
+        $this->assertSame('Red', $serialized['feature_color_lt-LT']);
+        // Nested for filtering/aggregations
         $this->assertArrayHasKey('features', $serialized);
         $this->assertCount(1, $serialized['features']);
         $this->assertSame('color', $serialized['features'][0]['name']);
@@ -236,7 +240,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame('10 mm', $serialized['features'][0]['value']);
     }
 
-    public function testNonFilterableNonSearchableAttributeExcluded(): void
+    public function testNonFilterableAttributeGetsFlatFieldButNotNested(): void
     {
         $product = $this->buildMinimalProduct([
             'attributes' => [
@@ -247,7 +251,9 @@ class MagentoAdapterV2Test extends TestCase
         $result = $this->adapter->transformProduct($product);
         $serialized = $result->jsonSerialize();
 
-        $this->assertArrayNotHasKey('feature_internal_code_lt-LT', $serialized);
+        // All attributes get flat fields for search (matching v1 behavior)
+        $this->assertSame('XYZ', $serialized['feature_internal_code_lt-LT']);
+        // But non-filterable attributes are NOT in nested features
         $this->assertArrayNotHasKey('features', $serialized);
     }
 
@@ -670,11 +676,12 @@ class MagentoAdapterV2Test extends TestCase
         // Name prefix for fuzzy matching (no locale)
         $this->assertSame('Grąžtas metalui', $serialized['nameShort']);
 
-        // Flat search fields with locale (searchable only, excludes special attributes)
+        // Flat search fields with locale (all non-special attributes, matching v1 behavior)
         $this->assertSame('10 mm', $serialized['feature_diameter_lt-LT']);
+        $this->assertSame('Silver', $serialized['feature_color_lt-LT']);
+        $this->assertSame('XYZ', $serialized['feature_internal_code_lt-LT']);
         $this->assertArrayNotHasKey('feature_diameter', $serialized);
-        $this->assertArrayNotHasKey('feature_color_lt-LT', $serialized);
-        $this->assertArrayNotHasKey('feature_internal_code_lt-LT', $serialized);
+        // Special attributes are NOT duplicated as feature_ fields
         $this->assertArrayNotHasKey('feature_manufacturer_lt-LT', $serialized);
         $this->assertArrayNotHasKey('feature_mpn_lt-LT', $serialized);
         $this->assertArrayNotHasKey('feature_barcode_lt-LT', $serialized);
