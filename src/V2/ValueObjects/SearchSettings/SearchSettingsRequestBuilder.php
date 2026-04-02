@@ -41,6 +41,9 @@ final class SearchSettingsRequestBuilder
     /** @var array<string, mixed>|null */
     private ?array $rawQueryConfig = null;
 
+    /** @var array<string, mixed>|null */
+    private ?array $filterConfig = null;
+
     /** @var array<string, array<string, string>>|null */
     private ?array $featuresKeyValueMap = null;
 
@@ -164,6 +167,17 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets filter configuration for facets/aggregations.
+     *
+     * @param array<string, mixed> $filterConfig
+     */
+    public function filterConfig(array $filterConfig): self
+    {
+        $this->filterConfig = $filterConfig;
+        return $this;
+    }
+
+    /**
      * Sets the features key-value map for facet name translation.
      *
      * @param array<string, array<string, string>> $map Feature ID → locale → display name
@@ -276,6 +290,7 @@ final class SearchSettingsRequestBuilder
             $responseConfig,
             $this->supportedLocales,
             $this->rawQueryConfig,
+            $this->filterConfig,
             $this->featuresKeyValueMap,
             $this->attributeKeyValueMap,
         );
@@ -296,6 +311,7 @@ final class SearchSettingsRequestBuilder
         $this->sortableFields = [];
         $this->supportedLocales = null;
         $this->rawQueryConfig = null;
+        $this->filterConfig = null;
         $this->featuresKeyValueMap = null;
         $this->attributeKeyValueMap = null;
         return $this;

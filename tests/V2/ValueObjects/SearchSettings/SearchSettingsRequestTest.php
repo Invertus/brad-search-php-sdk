@@ -363,6 +363,103 @@ class SearchSettingsRequestTest extends TestCase
     /**
      * Test output matches OpenAPI SearchSettingsRequest schema structure for full configuration.
      */
+    public function testConstructorWithFilterConfig(): void
+    {
+        $filterConfig = [
+            'fields' => [
+                ['name' => 'brand', 'type' => 'term'],
+                ['name' => 'price', 'type' => 'range'],
+            ],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', filterConfig: $filterConfig);
+
+        $this->assertEquals($filterConfig, $request->filterConfig);
+    }
+
+    public function testJsonSerializeIncludesFilterConfigWhenPresent(): void
+    {
+        $filterConfig = [
+            'fields' => [
+                ['name' => 'brand', 'type' => 'term'],
+            ],
+        ];
+
+        $request = new SearchSettingsRequest('app_123', filterConfig: $filterConfig);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayHasKey('filter_config', $serialized);
+        $this->assertEquals($filterConfig, $serialized['filter_config']);
+    }
+
+    public function testJsonSerializeOmitsFilterConfigWhenNull(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('filter_config', $serialized);
+    }
+
+    public function testJsonSerializeOmitsFilterConfigWhenEmpty(): void
+    {
+        $request = new SearchSettingsRequest('app_123', filterConfig: []);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('filter_config', $serialized);
+    }
+
+    public function testWithMethodsPreserveFilterConfig(): void
+    {
+        $filterConfig = ['fields' => [['name' => 'brand', 'type' => 'term']]];
+        $request = new SearchSettingsRequest('app_123', filterConfig: $filterConfig);
+
+        $newRequest = $request->withAppId('app_456');
+        $this->assertEquals($filterConfig, $newRequest->filterConfig);
+
+        $newRequest = $request->withSearchConfig(null);
+        $this->assertEquals($filterConfig, $newRequest->filterConfig);
+
+        $newRequest = $request->withScoringConfig(null);
+        $this->assertEquals($filterConfig, $newRequest->filterConfig);
+
+        $newRequest = $request->withResponseConfig(null);
+        $this->assertEquals($filterConfig, $newRequest->filterConfig);
+    }
+
+    public function testFromSearchConfigurationPassesFilterConfig(): void
+    {
+        $filterConfig = ['fields' => [['name' => 'brand', 'type' => 'term']]];
+        $config = [
+            'supported_locales' => ['en-US'],
+            'filter_config' => $filterConfig,
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertEquals($filterConfig, $request->filterConfig);
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('filter_config', $serialized);
+    }
+
+    public function testFromSearchConfigurationWithoutFilterConfig(): void
+    {
+        $config = [
+            'supported_locales' => ['en-US'],
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertNull($request->filterConfig);
+    }
+
+    public function testSupportedLocalesAreNormalized(): void
+    {
+        $request = new SearchSettingsRequest('app_123', supportedLocales: ['lt', 'en']);
+        $serialized = $request->jsonSerialize();
+
+        $this->assertEquals(['lt', 'en'], $serialized['supported_locales']);
+    }
+
     public function testMatchesSearchSettingsRequestSchemaFullConfiguration(): void
     {
         $searchBehaviors = [

@@ -334,6 +334,51 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertEquals($rawConfig, $serialized['query_config']);
     }
 
+    public function testBuildWithFilterConfig(): void
+    {
+        $filterConfig = [
+            'fields' => [
+                ['name' => 'brand', 'type' => 'term', 'locale_suffix' => true],
+                ['name' => 'price', 'type' => 'range'],
+            ],
+        ];
+
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->filterConfig($filterConfig)
+            ->build();
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayHasKey('filter_config', $serialized);
+        $this->assertEquals($filterConfig, $serialized['filter_config']);
+    }
+
+    public function testBuildWithoutFilterConfigOmitsIt(): void
+    {
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->build();
+
+        $serialized = $request->jsonSerialize();
+        $this->assertArrayNotHasKey('filter_config', $serialized);
+        $this->assertNull($request->filterConfig);
+    }
+
+    public function testResetClearsFilterConfig(): void
+    {
+        $builder = new SearchSettingsRequestBuilder();
+        $builder
+            ->appId('app_123')
+            ->filterConfig(['fields' => [['name' => 'brand', 'type' => 'term']]])
+            ->reset()
+            ->appId('app_456');
+
+        $request = $builder->build();
+        $this->assertNull($request->filterConfig);
+    }
+
     public function testBuildWithFeaturesKeyValueMap(): void
     {
         $map = [
@@ -390,6 +435,7 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertSame($builder, $builder->sortableFields(['price']));
         $this->assertSame($builder, $builder->supportedLocales(['lt-LT']));
         $this->assertSame($builder, $builder->rawQueryConfig(['fields' => []]));
+        $this->assertSame($builder, $builder->filterConfig(['fields' => []]));
         $this->assertSame($builder, $builder->featuresKeyValueMap(['5' => ['lt-LT' => 'Spalva']]));
         $this->assertSame($builder, $builder->attributeKeyValueMap(['3' => ['lt-LT' => 'Spalva']]));
         $this->assertSame($builder, $builder->searchConfig(new SearchConfig()));
