@@ -43,7 +43,7 @@ final class SearchSettingsRequestBuilder
 
     /** @var array<string, mixed>|null */
     private ?array $filterConfig = null;
-    
+
     /** @var array<string, array<string, string>>|null */
     private ?array $featuresKeyValueMap = null;
 
@@ -176,7 +176,7 @@ final class SearchSettingsRequestBuilder
         $this->filterConfig = $filterConfig;
         return $this;
     }
-    
+
     /**
      * Sets the features key-value map for facet name translation.
      *

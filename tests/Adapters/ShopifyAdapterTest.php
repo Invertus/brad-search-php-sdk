@@ -20,7 +20,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Basic transform without locales (backward compat) ───
 
-    public function test_transform_without_locales_returns_plain_field_names(): void
+    public function testTransformWithoutLocalesReturnsPlainFieldNames(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports'),
@@ -40,7 +40,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertContains('Sports', $product['categories']);
     }
 
-    public function test_transform_without_locales_omits_empty_description(): void
+    public function testTransformWithoutLocalesOmitsEmptyDescription(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', '', 'BrandX', 'Sports'),
@@ -52,7 +52,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('description', $product);
     }
 
-    public function test_transform_without_locales_omits_empty_brand(): void
+    public function testTransformWithoutLocalesOmitsEmptyBrand(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', '', 'Sports'),
@@ -66,7 +66,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Transform with locales ───
 
-    public function test_transform_with_locales_produces_suffixed_fields(): void
+    public function testTransformWithLocalesProducesSuffixedFields(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports'),
@@ -97,7 +97,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('brand', $product);
     }
 
-    public function test_transform_with_translations_uses_translated_values(): void
+    public function testTransformWithTranslationsUsesTranslatedValues(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', '<p>Great board</p>', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -118,7 +118,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Puiki lenta', $p['description_lt']);
     }
 
-    public function test_transform_with_product_type_translation(): void
+    public function testTransformWithProductTypeTranslation(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports');
         $product['node']['tags'] = ['winter', 'outdoor'];
@@ -147,7 +147,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertNotContains('Sports', $p['categories_lt']);
     }
 
-    public function test_brand_is_not_translatable(): void
+    public function testBrandIsNotTranslatable(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -165,7 +165,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('BrandX', $p['brand_lt']);
     }
 
-    public function test_transform_with_missing_translation_falls_back_to_primary(): void
+    public function testTransformWithMissingTranslationFallsBackToPrimary(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -184,7 +184,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Great board', $p['description_lt']); // fallback
     }
 
-    public function test_transform_with_empty_string_translation_falls_back(): void
+    public function testTransformWithEmptyStringTranslationFallsBack(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -201,7 +201,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Snowboard', $p['name_lt']); // empty string → fallback
     }
 
-    public function test_transform_with_null_translation_value_falls_back(): void
+    public function testTransformWithNullTranslationValueFallsBack(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Great board', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -218,7 +218,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Snowboard', $p['name_lt']); // null → fallback
     }
 
-    public function test_three_locales_with_partial_translations(): void
+    public function testThreeLocalesWithPartialTranslations(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', '<p>Great board</p>', 'BrandX', 'Sports');
         $product['node']['translations'] = [
@@ -259,7 +259,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Backward compatibility: empty locales ───
 
-    public function test_empty_locales_array_produces_plain_fields(): void
+    public function testEmptyLocalesArrayProducesPlainFields(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports'),
@@ -274,7 +274,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Variant options with locales ───
 
-    public function test_variants_use_attrs_format_with_locales(): void
+    public function testVariantsUseAttrsFormatWithLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['variants'] = [
@@ -303,7 +303,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals(['en' => 'L', 'lt' => 'L'], $variant['attrs']['size']);
     }
 
-    public function test_variants_use_attributes_format_without_locales(): void
+    public function testVariantsUseAttributesFormatWithoutLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['variants'] = [
@@ -332,7 +332,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Product URL ───
 
-    public function test_product_url_included_when_present(): void
+    public function testProductUrlIncludedWhenPresent(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
@@ -344,7 +344,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('https://shop.example.com/products/snowboard', $result['products'][0]['productUrl']);
     }
 
-    public function test_product_url_duplicated_across_locales(): void
+    public function testProductUrlDuplicatedAcrossLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
@@ -360,7 +360,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Error handling ───
 
-    public function test_malformed_edge_is_reported_as_error(): void
+    public function testMalformedEdgeIsReportedAsError(): void
     {
         $data = [
             'data' => [
@@ -379,19 +379,19 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('invalid_structure', $result['errors'][0]['type']);
     }
 
-    public function test_missing_data_field_throws(): void
+    public function testMissingDataFieldThrows(): void
     {
         $this->expectException(ValidationException::class);
         $this->adapter->transform([]);
     }
 
-    public function test_missing_products_field_throws(): void
+    public function testMissingProductsFieldThrows(): void
     {
         $this->expectException(ValidationException::class);
         $this->adapter->transform(['data' => []]);
     }
 
-    public function test_missing_edges_returns_empty(): void
+    public function testMissingEdgesReturnsEmpty(): void
     {
         $result = $this->adapter->transform(['data' => ['products' => []]]);
 
@@ -401,7 +401,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Multiple products ───
 
-    public function test_transform_multiple_products(): void
+    public function testTransformMultipleProducts(): void
     {
         $data = $this->makeShopifyResponse([
             $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc1', 'BrandX', 'Sports'),
@@ -417,7 +417,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── Pricing ───
 
-    public function test_price_extracted_from_price_range(): void
+    public function testPriceExtractedFromPriceRange(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['priceRangeV2'] = [
@@ -431,7 +431,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('29.99', $result['products'][0]['price']);
     }
 
-    public function test_base_price_from_compare_at_price(): void
+    public function testBasePriceFromCompareAtPrice(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['variants'] = [
@@ -461,7 +461,7 @@ class ShopifyAdapterTest extends TestCase
 
     // ─── In stock ───
 
-    public function test_in_stock_when_variant_available(): void
+    public function testInStockWhenVariantAvailable(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['variants'] = [
@@ -477,7 +477,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertTrue($result['products'][0]['inStock']);
     }
 
-    public function test_out_of_stock_when_no_variant_available(): void
+    public function testOutOfStockWhenNoVariantAvailable(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['variants'] = [
