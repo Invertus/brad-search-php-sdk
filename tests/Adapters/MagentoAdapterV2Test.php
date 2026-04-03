@@ -586,6 +586,32 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame('https://example.com/fallback.jpg', $serialized['imageUrl']['small']);
     }
 
+    public function testPlaceholderImageSetsHasImageFalse(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'image_optimized' => 'https://www.irankiai.lt/media/catalog/product/placeholder/default/verkter_logo_blank_JPG_4.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover',
+            'sort_popularity' => 'I042I003', // hashed flag says has image
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertFalse($serialized['hasImage']);
+    }
+
+    public function testRealImageKeepsHasImageTrue(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'image_optimized' => 'https://www.irankiai.lt/media/catalog/product/1/0/108594_p1.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover',
+            'sort_popularity' => 'I042I003',
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertTrue($serialized['hasImage']);
+    }
+
     // --- Stock Status Tests ---
 
     public function testInStockFromBooleanField(): void

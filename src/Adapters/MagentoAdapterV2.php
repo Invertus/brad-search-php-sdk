@@ -182,6 +182,10 @@ class MagentoAdapterV2
                 $additionalFields['delivery_speed'] = max(0, 999 - (int) $delayPart);
             }
         }
+        // Override hasImage if the image URL is actually a placeholder
+        if (AdapterUtils::isPlaceholderImage($imageUrl->small)) {
+            $additionalFields['hasImage'] = false;
+        }
 
         // Process attributes: flat feature_ fields + nested features array + brand
         $this->processAttributes($additionalFields, $product);

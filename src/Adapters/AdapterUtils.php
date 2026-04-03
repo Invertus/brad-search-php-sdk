@@ -40,6 +40,22 @@ final class AdapterUtils
     }
 
     /**
+     * Check if an image URL is a placeholder (not a real product photo).
+     *
+     * Magento placeholder URLs contain "/placeholder/" in the path, e.g.:
+     * https://example.com/media/catalog/product/placeholder/default/logo.jpg?auto=webp
+     *
+     * @param string $url The image URL to check
+     * @return bool True if the URL is a placeholder image
+     */
+    public static function isPlaceholderImage(string $url): bool
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+
+        return $path !== null && str_contains($path, '/placeholder/');
+    }
+
+    /**
      * Extract URL from a nested image structure like {url: string, label: string}
      *
      * @param array $data The product or variant data
