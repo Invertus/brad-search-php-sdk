@@ -324,6 +324,83 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('sort_popularity_sales', $serialized);
     }
 
+    // --- hasImage & delivery_speed from sort_popularity Tests ---
+
+    public function testHasImageExtractedFromSortPopularity(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042I003']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertTrue($serialized['hasImage']);
+    }
+
+    public function testHasImageFalseExtracted(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042N003']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertFalse($serialized['hasImage']);
+    }
+
+    public function testDeliverySpeedExtractedAndInverted(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042I003']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        // Inverted: 999 - 3 = 996 (faster delivery = higher value)
+        $this->assertSame(996, $serialized['delivery_speed']);
+    }
+
+    public function testDeliverySpeedZeroDelay(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042I000']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        // Inverted: 999 - 0 = 999 (instant delivery = max boost)
+        $this->assertSame(999, $serialized['delivery_speed']);
+    }
+
+    public function testDeliverySpeedMaxDelay(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042I999']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        // Inverted: 999 - 999 = 0 (slowest delivery = no boost)
+        $this->assertSame(0, $serialized['delivery_speed']);
+    }
+
+    public function testDeliverySpeedNulOmitted(): void
+    {
+        $product = $this->buildMinimalProduct(['sort_popularity' => 'I042INUL']);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertTrue($serialized['hasImage']);
+        $this->assertArrayNotHasKey('delivery_speed', $serialized);
+    }
+
+    public function testSortPopularityFieldsMissingWhenNoString(): void
+    {
+        $product = $this->buildMinimalProduct();
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertArrayNotHasKey('hasImage', $serialized);
+        $this->assertArrayNotHasKey('delivery_speed', $serialized);
+    }
+
     // --- Product Identifier Extraction Tests ---
 
     public function testMpnExtractedAsTopLevelField(): void

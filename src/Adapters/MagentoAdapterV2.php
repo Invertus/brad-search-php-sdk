@@ -164,6 +164,25 @@ class MagentoAdapterV2
             $additionalFields['sort_popularity_sales'] = max(0, 1000 - $original);
         }
 
+        // Extract hasImage and delivery_speed from sort_popularity composite string
+        // Format: [stock(1)][sales_rank(3)][has_image(1)][delivery_delay(3)] e.g. "I042I003"
+        if (isset($product['sort_popularity']) && is_string($product['sort_popularity']) && strlen($product['sort_popularity']) === 8) {
+            $sortPopularity = $product['sort_popularity'];
+
+            // Position 5: Has image (I=true, N=false) — used to penalize products without images
+            $imageFlag = $sortPopularity[4];
+            if ($imageFlag === 'I' || $imageFlag === 'N') {
+                $additionalFields['hasImage'] = ($imageFlag === 'I');
+            }
+
+            // Positions 6-8: Delivery delay in days (000-999, NUL = no data)
+            // Invert so higher = faster delivery = bigger boost (same pattern as sort_popularity_sales)
+            $delayPart = substr($sortPopularity, 5, 3);
+            if ($delayPart !== 'NUL' && ctype_digit($delayPart)) {
+                $additionalFields['delivery_speed'] = max(0, 999 - (int) $delayPart);
+            }
+        }
+
         // Process attributes: flat feature_ fields + nested features array + brand
         $this->processAttributes($additionalFields, $product);
 
