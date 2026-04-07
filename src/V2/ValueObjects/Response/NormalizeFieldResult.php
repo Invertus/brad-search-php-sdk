@@ -24,14 +24,16 @@ final readonly class NormalizeFieldResult extends ValueObject
      * @param string $status The result status (success, error)
      * @param float $min The minimum value found
      * @param float $max The maximum value found
-     * @param int $documentsUpdated The number of documents updated
+     * @param int $documentsUpdated The number of documents updated (0 for async responses)
+     * @param string|null $taskId The async task ID (present when operation is async)
      */
     public function __construct(
         public string $field,
         public string $status,
         public float $min,
         public float $max,
-        public int $documentsUpdated
+        public int $documentsUpdated,
+        public ?string $taskId = null,
     ) {
         $this->validateNotEmpty($field, 'field');
         $this->validateNotEmpty($status, 'status');
@@ -61,7 +63,8 @@ final readonly class NormalizeFieldResult extends ValueObject
             status: (string) $data['status'],
             min: (float) $data['min'],
             max: (float) $data['max'],
-            documentsUpdated: (int) $data['documents_updated']
+            documentsUpdated: (int) $data['documents_updated'],
+            taskId: isset($data['task_id']) ? (string) $data['task_id'] : null,
         );
     }
 
@@ -78,13 +81,19 @@ final readonly class NormalizeFieldResult extends ValueObject
      */
     public function jsonSerialize(): array
     {
-        return [
+        $data = [
             'field' => $this->field,
             'status' => $this->status,
             'min' => $this->min,
             'max' => $this->max,
             'documents_updated' => $this->documentsUpdated,
         ];
+
+        if ($this->taskId !== null) {
+            $data['task_id'] = $this->taskId;
+        }
+
+        return $data;
     }
 
     /**
