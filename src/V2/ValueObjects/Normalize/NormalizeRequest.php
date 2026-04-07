@@ -16,9 +16,11 @@ final readonly class NormalizeRequest extends ValueObject
 {
     /**
      * @param array<int, string> $fields Field names to normalize
+     * @param string|null $mode Normalization mode ("linear" or "rank"). Defaults to null (server defaults to "linear").
      */
     public function __construct(
-        public array $fields
+        public array $fields,
+        public ?string $mode = null,
     ) {
         $this->validateFields($fields);
     }
@@ -28,9 +30,15 @@ final readonly class NormalizeRequest extends ValueObject
      */
     public function jsonSerialize(): array
     {
-        return [
+        $data = [
             'fields' => $this->fields,
         ];
+
+        if ($this->mode !== null) {
+            $data['mode'] = $this->mode;
+        }
+
+        return $data;
     }
 
     /**
