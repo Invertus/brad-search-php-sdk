@@ -55,7 +55,6 @@ final readonly class NormalizeFieldResult extends ValueObject
             'status',
             'min',
             'max',
-            'documents_updated',
         ]);
 
         return new self(
@@ -63,7 +62,7 @@ final readonly class NormalizeFieldResult extends ValueObject
             status: (string) $data['status'],
             min: (float) $data['min'],
             max: (float) $data['max'],
-            documentsUpdated: (int) $data['documents_updated'],
+            documentsUpdated: isset($data['documents_updated']) ? (int) $data['documents_updated'] : 0,
             taskId: isset($data['task_id']) ? (string) $data['task_id'] : null,
         );
     }
