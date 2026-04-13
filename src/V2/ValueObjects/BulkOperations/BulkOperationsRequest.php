@@ -17,11 +17,9 @@ final readonly class BulkOperationsRequest extends ValueObject
 {
     /**
      * @param array<int, BulkOperation> $operations Operations to execute
-     * @param string|null $targetIndex Optional physical index name to target directly (bypasses alias resolution)
      */
     public function __construct(
-        public array $operations,
-        public ?string $targetIndex = null,
+        public array $operations
     ) {
         $this->validateOperations($operations);
     }
@@ -33,7 +31,7 @@ final readonly class BulkOperationsRequest extends ValueObject
      */
     public function withOperations(array $operations): self
     {
-        return new self($operations, $this->targetIndex);
+        return new self($operations);
     }
 
     /**
@@ -44,7 +42,7 @@ final readonly class BulkOperationsRequest extends ValueObject
         $operations = $this->operations;
         $operations[] = $operation;
 
-        return new self($operations, $this->targetIndex);
+        return new self($operations);
     }
 
     /**
@@ -52,18 +50,12 @@ final readonly class BulkOperationsRequest extends ValueObject
      */
     public function jsonSerialize(): array
     {
-        $data = [
+        return [
             'operations' => array_map(
                 fn(BulkOperation $operation) => $operation->jsonSerialize(),
                 $this->operations
             ),
         ];
-
-        if ($this->targetIndex !== null) {
-            $data['target_index'] = $this->targetIndex;
-        }
-
-        return $data;
     }
 
     /**
