@@ -12,32 +12,36 @@ use PHPUnit\Framework\TestCase;
 
 class UpdateProductsPayloadTest extends TestCase
 {
-    public function testConstructorWithPartialFields(): void
+    public function testConstructorWithStructuredUpdates(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99],
-            ['id' => '456', 'name' => 'Updated Product'],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
+            ['id' => '456', 'fields' => ['name' => 'Updated Product']],
         ]);
 
         $this->assertCount(2, $payload->updates);
         $this->assertEquals('123', $payload->updates[0]['id']);
-        $this->assertEquals(29.99, $payload->updates[0]['price']);
+        $this->assertEquals(['price' => 29.99], $payload->updates[0]['fields']);
     }
 
-    public function testConstructorWithSingleUpdate(): void
+    public function testConstructorWithUpsertData(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => 'prod-123', 'stock' => 50],
+            [
+                'id' => '123',
+                'fields' => ['price' => 29.99],
+                'upsert' => ['id' => '123', 'name' => 'Full Product', 'price' => 29.99],
+            ],
         ]);
 
         $this->assertCount(1, $payload->updates);
-        $this->assertEquals('prod-123', $payload->updates[0]['id']);
+        $this->assertEquals('Full Product', $payload->updates[0]['upsert']['name']);
     }
 
     public function testExtendsValueObject(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
         ]);
 
         $this->assertInstanceOf(ValueObject::class, $payload);
@@ -46,7 +50,7 @@ class UpdateProductsPayloadTest extends TestCase
     public function testImplementsJsonSerializable(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
         ]);
 
         $this->assertInstanceOf(JsonSerializable::class, $payload);
@@ -55,8 +59,8 @@ class UpdateProductsPayloadTest extends TestCase
     public function testJsonSerialize(): void
     {
         $updates = [
-            ['id' => '123', 'price' => 29.99],
-            ['id' => '456', 'stock' => 100],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
+            ['id' => '456', 'fields' => ['stock' => 100]],
         ];
 
         $payload = new UpdateProductsPayload($updates);
@@ -71,7 +75,7 @@ class UpdateProductsPayloadTest extends TestCase
     public function testToArrayReturnsJsonSerializeOutput(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
         ]);
 
         $this->assertEquals($payload->jsonSerialize(), $payload->toArray());
@@ -80,8 +84,8 @@ class UpdateProductsPayloadTest extends TestCase
     public function testJsonEncodeProducesValidJson(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99],
-            ['id' => '456', 'stock' => 50],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
+            ['id' => '456', 'fields' => ['stock' => 50], 'upsert' => ['id' => '456', 'name' => 'Product']],
         ]);
 
         $json = json_encode($payload);
@@ -89,17 +93,19 @@ class UpdateProductsPayloadTest extends TestCase
 
         $this->assertArrayHasKey('updates', $decoded);
         $this->assertCount(2, $decoded['updates']);
+        $this->assertArrayHasKey('fields', $decoded['updates'][0]);
+        $this->assertArrayHasKey('upsert', $decoded['updates'][1]);
     }
 
     public function testWithUpdatesReturnsNewInstance(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '1', 'price' => 19.99],
+            ['id' => '1', 'fields' => ['price' => 19.99]],
         ]);
 
         $newPayload = $payload->withUpdates([
-            ['id' => '2', 'price' => 29.99],
-            ['id' => '3', 'price' => 39.99],
+            ['id' => '2', 'fields' => ['price' => 29.99]],
+            ['id' => '3', 'fields' => ['price' => 39.99]],
         ]);
 
         $this->assertNotSame($payload, $newPayload);
@@ -110,10 +116,10 @@ class UpdateProductsPayloadTest extends TestCase
     public function testWithAddedUpdateReturnsNewInstance(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '1', 'price' => 19.99],
+            ['id' => '1', 'fields' => ['price' => 19.99]],
         ]);
 
-        $newPayload = $payload->withAddedUpdate(['id' => '2', 'stock' => 50]);
+        $newPayload = $payload->withAddedUpdate(['id' => '2', 'fields' => ['stock' => 50]]);
 
         $this->assertNotSame($payload, $newPayload);
         $this->assertCount(1, $payload->updates);
@@ -135,7 +141,7 @@ class UpdateProductsPayloadTest extends TestCase
         $this->expectExceptionMessage('Update at index 0 must contain a non-empty "id" field.');
 
         new UpdateProductsPayload([
-            ['price' => 29.99],  // Missing 'id'
+            ['fields' => ['price' => 29.99]],
         ]);
     }
 
@@ -145,7 +151,7 @@ class UpdateProductsPayloadTest extends TestCase
         $this->expectExceptionMessage('Update at index 0 must contain a non-empty "id" field.');
 
         new UpdateProductsPayload([
-            ['id' => '', 'price' => 29.99],
+            ['id' => '', 'fields' => ['price' => 29.99]],
         ]);
     }
 
@@ -155,7 +161,7 @@ class UpdateProductsPayloadTest extends TestCase
         $this->expectExceptionMessage('Update at index 0 must contain a non-empty "id" field.');
 
         new UpdateProductsPayload([
-            ['id' => null, 'price' => 29.99],
+            ['id' => null, 'fields' => ['price' => 29.99]],
         ]);
     }
 
@@ -165,6 +171,26 @@ class UpdateProductsPayloadTest extends TestCase
         $this->expectExceptionMessage('Update at index 0 must be an array.');
 
         new UpdateProductsPayload(['not-an-array']);
+    }
+
+    public function testThrowsExceptionWhenFieldsMissing(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Update at index 0 must contain a "fields" array');
+
+        new UpdateProductsPayload([
+            ['id' => '123'],
+        ]);
+    }
+
+    public function testThrowsExceptionWhenFieldsNotArray(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Update at index 0 must contain a "fields" array');
+
+        new UpdateProductsPayload([
+            ['id' => '123', 'fields' => 'not-an-array'],
+        ]);
     }
 
     public function testExceptionContainsArgumentName(): void
@@ -177,31 +203,10 @@ class UpdateProductsPayloadTest extends TestCase
         }
     }
 
-    public function testAcceptsFlexibleFieldsInUpdates(): void
-    {
-        $payload = new UpdateProductsPayload([
-            ['id' => '123', 'price' => 29.99, 'custom_field' => 'value', 'nested' => ['data' => true]],
-        ]);
-
-        $this->assertCount(1, $payload->updates);
-        $this->assertEquals('value', $payload->updates[0]['custom_field']);
-        $this->assertEquals(['data' => true], $payload->updates[0]['nested']);
-    }
-
-    public function testOnlyIdIsRequiredOtherFieldsOptional(): void
-    {
-        $payload = new UpdateProductsPayload([
-            ['id' => '123'],  // Only id, no other fields
-        ]);
-
-        $this->assertCount(1, $payload->updates);
-        $this->assertEquals('123', $payload->updates[0]['id']);
-    }
-
     public function testWithUpdatesValidatesItems(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '1', 'price' => 19.99],
+            ['id' => '1', 'fields' => ['price' => 19.99]],
         ]);
 
         $this->expectException(InvalidArgumentException::class);
@@ -213,12 +218,12 @@ class UpdateProductsPayloadTest extends TestCase
     public function testWithAddedUpdateValidatesMissingId(): void
     {
         $payload = new UpdateProductsPayload([
-            ['id' => '1', 'price' => 19.99],
+            ['id' => '1', 'fields' => ['price' => 19.99]],
         ]);
 
         $this->expectException(InvalidArgumentException::class);
         $this->expectExceptionMessage('Update at index 1 must contain a non-empty "id" field.');
 
-        $payload->withAddedUpdate(['price' => 29.99]);
+        $payload->withAddedUpdate(['fields' => ['price' => 29.99]]);
     }
 }
