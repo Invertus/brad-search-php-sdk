@@ -240,9 +240,8 @@ class SyncV2Sdk
      */
     public function bulkOperations(BulkOperationsRequest $request): BulkOperationsResponse
     {
-        $path = $this->config->targetIndex !== null
-            ? $this->baseApiPath . 'index/' . urlencode($this->config->targetIndex) . '/bulk-operations'
-            : $this->baseApiPath . 'sync/bulk-operations';
+        $indexName = $this->config->targetIndex ?? $this->config->appId;
+        $path = $this->baseApiPath . 'index/' . urlencode($indexName) . '/bulk-operations';
 
         $response = $this->getHttpClient()->post(
             $path,
