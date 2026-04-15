@@ -1,6 +1,7 @@
 {
   "name": "bradsearch/search-sync-sdk",
   "description": "PHP SDK for Brad Search synchronization API",
+  "version": "4.9.1",
   "type": "library",
   "license": "MIT",
   "keywords": [

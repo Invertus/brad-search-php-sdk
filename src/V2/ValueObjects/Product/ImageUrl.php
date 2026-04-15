@@ -15,7 +15,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class ImageUrl extends ValueObject
 {
-    private const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+    private const VALID_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic'];
 
     /**
      * @param string $small URL for small image size (required)
