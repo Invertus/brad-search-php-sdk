@@ -1117,7 +1117,7 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('post')
             ->with(
-                'api/v2/applications/' . self::APP_ID . '/sync/bulk-operations',
+                'api/v2/applications/' . self::APP_ID . '/index/' . self::APP_ID . '/bulk-operations',
                 $request->jsonSerialize()
             )
             ->willReturn($apiResponse);
@@ -1187,7 +1187,7 @@ class SyncV2SdkTest extends TestCase
             ->expects($this->once())
             ->method('post')
             ->with(
-                $this->stringEndsWith('/sync/bulk-operations'),
+                $this->stringEndsWith('/index/' . self::APP_ID . '/bulk-operations'),
                 $this->anything()
             )
             ->willReturn([
