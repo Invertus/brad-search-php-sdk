@@ -338,7 +338,7 @@ class DataValidator
             return false;
         }
 
-        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+        $imageExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'heic'];
         $extension = strtolower(pathinfo(parse_url($url, PHP_URL_PATH) ?: '', PATHINFO_EXTENSION));
 
         return in_array($extension, $imageExtensions, true);
