@@ -11,7 +11,8 @@ readonly class SyncConfigV2
     public function __construct(
         public string $appId,
         public string $apiUrl,
-        public string $token
+        public string $token,
+        public ?string $targetIndex = null,
     ) {
         $this->validate();
     }
