@@ -412,6 +412,39 @@ class ShopifyAdapterTest extends TestCase
     }
 
     /**
+     * Pathological option names made entirely of separators must not
+     * produce an empty key. Must fall back to "unknown" to match
+     * bradsearch-shopify-app1 AttributesController::slugify().
+     */
+    public function testSlugifyAllNonAlphanumericOptionNameDoesNotProduceEmptyKey(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/1', 'name' => '---', 'values' => ['x']],
+        ];
+        $product['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/100',
+                    'sku' => 'SNO-001',
+                    'selectedOptions' => [
+                        ['name' => '---', 'value' => 'x'],
+                    ],
+                ],
+            ]],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en']);
+
+        $attrs = $result['products'][0]['variants'][0]['attrs'];
+        $this->assertArrayNotHasKey('', $attrs);
+        $this->assertArrayHasKey('unknown', $attrs);
+        $this->assertEquals(['en' => 'x'], $attrs['unknown']);
+    }
+
+    /**
      * Slug rule must be Unicode-safe and produce lowercase dash-joined keys.
      * Must match bradsearch-shopify-app1 AttributesController::slugify().
      */

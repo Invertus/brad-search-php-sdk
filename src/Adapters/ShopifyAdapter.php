@@ -8,6 +8,9 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class ShopifyAdapter
 {
+    /** @var array<string, string> memoized option-name slugs */
+    private array $optionSlugCache = [];
+
     public function __construct()
     {
         if (!function_exists('bccomp')) {
@@ -458,13 +461,6 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform variant selectedOptions to locale-keyed attrs format.
-     *
-     * Keys are slugs derived from option names (not Shopify GIDs), because
-     * Shopify assigns a unique GID per product for the same option concept.
-     * The slug rule must match bradsearch-shopify-app1 AttributesController::slugify()
-     * so document keys align with the Elasticsearch mapping keys.
-     *
      * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
      *
      * @return array<string, array<string, string>>
@@ -498,15 +494,24 @@ class ShopifyAdapter
     }
 
     /**
-     * Derive a stable, Unicode-safe slug from an option name.
-     * Mirror of bradsearch-shopify-app1 AttributesController::slugify() — both
-     * repos must use an identical rule or mapping and documents will drift.
+     * Must match byte-for-byte:
+     *   bradsearch-shopify-app1 app/Http/Controllers/API/AttributesController.php::slugify()
+     * See docs/SLUG_RULE.md in that repo.
+     *
+     * Memoized per adapter instance: one compute per unique option name,
+     * not per variant × option. Cache is pure (slug is a deterministic
+     * function of name), so cross-product reuse within a sync is safe.
      */
     private function slugifyOptionName(string $name): string
     {
-        $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', mb_strtolower(trim($name), 'UTF-8'));
+        if (isset($this->optionSlugCache[$name])) {
+            return $this->optionSlugCache[$name];
+        }
 
-        return trim((string) $slug, '-');
+        $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', mb_strtolower(trim($name), 'UTF-8'));
+        $slug = trim((string) $slug, '-');
+
+        return $this->optionSlugCache[$name] = $slug === '' ? 'unknown' : $slug;
     }
 
     /**
