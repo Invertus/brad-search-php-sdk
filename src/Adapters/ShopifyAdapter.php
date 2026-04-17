@@ -459,6 +459,12 @@ class ShopifyAdapter
 
     /**
      * Transform variant selectedOptions to locale-keyed attrs format.
+     *
+     * Keys are slugs derived from option names (not Shopify GIDs), because
+     * Shopify assigns a unique GID per product for the same option concept.
+     * The slug rule must match bradsearch-shopify-app1 AttributesController::slugify()
+     * so document keys align with the Elasticsearch mapping keys.
+     *
      * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
      *
      * @return array<string, array<string, string>>
@@ -469,7 +475,7 @@ class ShopifyAdapter
 
         $result = [];
         foreach ($validOptions as $option) {
-            $result[strtolower($option['name'])] = array_fill_keys($locales, $option['value']);
+            $result[$this->slugifyOptionName($option['name'])] = array_fill_keys($locales, $option['value']);
         }
 
         return $result;
@@ -483,9 +489,24 @@ class ShopifyAdapter
     private function transformVariantOptions(array $selectedOptions): array
     {
         return array_values(array_map(
-            fn($option) => ['name' => strtolower($option['name']), 'value' => $option['value']],
+            fn($option) => [
+                'name' => $this->slugifyOptionName($option['name']),
+                'value' => $option['value'],
+            ],
             array_filter($selectedOptions, $this->isValidOption(...))
         ));
+    }
+
+    /**
+     * Derive a stable, Unicode-safe slug from an option name.
+     * Mirror of bradsearch-shopify-app1 AttributesController::slugify() — both
+     * repos must use an identical rule or mapping and documents will drift.
+     */
+    private function slugifyOptionName(string $name): string
+    {
+        $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', mb_strtolower(trim($name), 'UTF-8'));
+
+        return trim((string) $slug, '-');
     }
 
     /**

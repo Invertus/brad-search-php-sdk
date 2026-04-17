@@ -43,6 +43,10 @@ $shopifyGraphQLResponse = [
                         'vendor' => 'Nike',
                         'productType' => 'Shoes',
                         'tags' => ['Running', 'Athletic', 'Men'],
+                        'options' => [
+                            ['id' => 'gid://shopify/ProductOption/9001', 'name' => 'Size', 'values' => ['10', '11', '12']],
+                            ['id' => 'gid://shopify/ProductOption/9002', 'name' => 'Color', 'values' => ['Blue', 'Red']],
+                        ],
                         'createdAt' => '2024-01-15T10:30:00Z',
                         'updatedAt' => '2024-01-20T15:45:00Z',
                         'publishedAt' => '2024-01-15T12:00:00Z',

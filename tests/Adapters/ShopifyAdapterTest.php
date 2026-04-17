@@ -277,6 +277,10 @@ class ShopifyAdapterTest extends TestCase
     public function testVariantsUseAttrsFormatWithLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/1001', 'name' => 'Color', 'values' => ['White', 'Black']],
+            ['id' => 'gid://shopify/ProductOption/1002', 'name' => 'Size', 'values' => ['S', 'M', 'L']],
+        ];
         $product['node']['variants'] = [
             'edges' => [
                 [
@@ -306,6 +310,9 @@ class ShopifyAdapterTest extends TestCase
     public function testVariantsUseAttributesFormatWithoutLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/1001', 'name' => 'Color', 'values' => ['White', 'Black']],
+        ];
         $product['node']['variants'] = [
             'edges' => [
                 [
@@ -328,6 +335,116 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayHasKey('attributes', $variant);
         $this->assertArrayNotHasKey('attrs', $variant);
         $this->assertEquals([['name' => 'color', 'value' => 'White']], $variant['attributes']);
+    }
+
+    public function testVariantAttrsUseSlugKeyWhenProductOptionsAbsent(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        // No product-level options field; slug is derived from selectedOptions[].name
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/100',
+                        'sku' => 'SNO-001',
+                        'selectedOptions' => [
+                            ['name' => 'Color', 'value' => 'White'],
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en']);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals(['en' => 'White'], $variant['attrs']['color']);
+    }
+
+    /**
+     * Two products with different per-product option GIDs but the same option
+     * name must collapse to the same slug key. This is the invariant the
+     * shared Elasticsearch mapping relies on to avoid field explosion.
+     */
+    public function testSameOptionNameAcrossProductsCollapsesToSingleSlug(): void
+    {
+        $productA = $this->makeProduct('gid://shopify/Product/1', 'A', 'Desc', 'BrandX', 'Sports');
+        $productA['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/111', 'name' => 'Color', 'values' => ['Red']],
+        ];
+        $productA['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/11',
+                    'sku' => 'A-1',
+                    'selectedOptions' => [['name' => 'Color', 'value' => 'Red']],
+                ],
+            ]],
+        ];
+
+        $productB = $this->makeProduct('gid://shopify/Product/2', 'B', 'Desc', 'BrandX', 'Sports');
+        $productB['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/999', 'name' => 'Color', 'values' => ['Blue']],
+        ];
+        $productB['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/22',
+                    'sku' => 'B-1',
+                    'selectedOptions' => [['name' => 'Color', 'value' => 'Blue']],
+                ],
+            ]],
+        ];
+
+        $data = $this->makeShopifyResponse([$productA, $productB], 'en');
+
+        $result = $this->adapter->transform($data, ['en']);
+
+        $variantA = $result['products'][0]['variants'][0];
+        $variantB = $result['products'][1]['variants'][0];
+
+        $this->assertEquals(['en' => 'Red'], $variantA['attrs']['color']);
+        $this->assertEquals(['en' => 'Blue'], $variantB['attrs']['color']);
+        $this->assertArrayNotHasKey('gid://shopify/ProductOption/111', $variantA['attrs']);
+        $this->assertArrayNotHasKey('gid://shopify/ProductOption/999', $variantB['attrs']);
+    }
+
+    /**
+     * Slug rule must be Unicode-safe and produce lowercase dash-joined keys.
+     * Must match bradsearch-shopify-app1 AttributesController::slugify().
+     */
+    public function testSlugifiesMultiWordAndUnicodeOptionNames(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            ['id' => 'gid://shopify/ProductOption/1', 'name' => 'Shoe Size', 'values' => ['42']],
+            ['id' => 'gid://shopify/ProductOption/2', 'name' => 'Größe', 'values' => ['M']],
+            ['id' => 'gid://shopify/ProductOption/3', 'name' => 'Material / Fabric', 'values' => ['Cotton']],
+        ];
+        $product['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/100',
+                    'sku' => 'SNO-001',
+                    'selectedOptions' => [
+                        ['name' => 'Shoe Size', 'value' => '42'],
+                        ['name' => 'Größe', 'value' => 'M'],
+                        ['name' => 'Material / Fabric', 'value' => 'Cotton'],
+                    ],
+                ],
+            ]],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en']);
+
+        $attrs = $result['products'][0]['variants'][0]['attrs'];
+        $this->assertArrayHasKey('shoe-size', $attrs);
+        $this->assertArrayHasKey('größe', $attrs);
+        $this->assertArrayHasKey('material-fabric', $attrs);
     }
 
     // ─── Product URL ───
