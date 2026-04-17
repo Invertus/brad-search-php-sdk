@@ -8,6 +8,9 @@ use BradSearch\SyncSdk\Exceptions\ValidationException;
 
 class ShopifyAdapter
 {
+    /** @var array<string, string> memoized option-name slugs */
+    private array $optionSlugCache = [];
+
     public function __construct()
     {
         if (!function_exists('bccomp')) {
@@ -458,7 +461,6 @@ class ShopifyAdapter
     }
 
     /**
-     * Transform variant selectedOptions to locale-keyed attrs format.
      * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
      *
      * @return array<string, array<string, string>>
@@ -469,7 +471,7 @@ class ShopifyAdapter
 
         $result = [];
         foreach ($validOptions as $option) {
-            $result[strtolower($option['name'])] = array_fill_keys($locales, $option['value']);
+            $result[$this->slugifyOptionName($option['name'])] = array_fill_keys($locales, $option['value']);
         }
 
         return $result;
@@ -483,9 +485,33 @@ class ShopifyAdapter
     private function transformVariantOptions(array $selectedOptions): array
     {
         return array_values(array_map(
-            fn($option) => ['name' => strtolower($option['name']), 'value' => $option['value']],
+            fn($option) => [
+                'name' => $this->slugifyOptionName($option['name']),
+                'value' => $option['value'],
+            ],
             array_filter($selectedOptions, $this->isValidOption(...))
         ));
+    }
+
+    /**
+     * Must match byte-for-byte:
+     *   bradsearch-shopify-app1 app/Http/Controllers/API/AttributesController.php::slugify()
+     * See docs/SLUG_RULE.md in that repo.
+     *
+     * Memoized per adapter instance: one compute per unique option name,
+     * not per variant × option. Cache is pure (slug is a deterministic
+     * function of name), so cross-product reuse within a sync is safe.
+     */
+    private function slugifyOptionName(string $name): string
+    {
+        if (isset($this->optionSlugCache[$name])) {
+            return $this->optionSlugCache[$name];
+        }
+
+        $slug = preg_replace('/[^\p{L}\p{N}]+/u', '-', mb_strtolower(trim($name), 'UTF-8'));
+        $slug = trim((string) $slug, '-');
+
+        return $this->optionSlugCache[$name] = $slug === '' ? 'unknown' : $slug;
     }
 
     /**

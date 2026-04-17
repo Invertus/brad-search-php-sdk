@@ -203,7 +203,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `variants[0].sku` | `sku` | First variant SKU |
 | `variants.*.availableForSale` | `inStock` | Any variant available |
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
-| `variants.selectedOptions` | `variants.attributes` | Attribute names lowercased (e.g., 'Size' → 'size') |
+| `variants.selectedOptions` | `variants.attrs` / `variants.attributes` | Keyed by a slug derived from the option name (Unicode-safe, lowercase, dash-joined). Shopify assigns a unique GID per product for the same option, so GIDs cannot be used as a shared key. |
 
 ### Shopify-Specific Transformations
 
@@ -217,6 +217,9 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 ```
 
 #### Variants with Selected Options
+
+Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOption` GID is ignored on purpose — it is per-product, so using it would create a separate Elasticsearch field for every product's "Color" option.
+
 ```php
 // Shopify input
 "variants": {
@@ -234,7 +237,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
     ]
 }
 
-// BradSearch output
+// BradSearch output (without locales)
 "variants": [
     {
         "id": "123",
@@ -243,6 +246,18 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
             {"name": "size", "value": "42"},
             {"name": "color", "value": "Blue"}
         ]
+    }
+]
+
+// BradSearch output (with locales ['en', 'lt'])
+"variants": [
+    {
+        "id": "123",
+        "sku": "SHOE-BLU-42",
+        "attrs": {
+            "size":  {"en": "42", "lt": "42"},
+            "color": {"en": "Blue", "lt": "Blue"}
+        }
     }
 ]
 ```
