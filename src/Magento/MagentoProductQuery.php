@@ -144,6 +144,7 @@ GRAPHQL;
         is_searchable
         is_filterable
         position
+        has_unit
 GRAPHQL;
 
     private function __construct()
