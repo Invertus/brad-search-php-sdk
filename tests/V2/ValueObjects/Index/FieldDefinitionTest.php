@@ -345,4 +345,82 @@ class FieldDefinitionTest extends TestCase
         $withAttrs = $field->withAttributes([new VariantAttribute('size', FieldType::KEYWORD)]);
         $this->assertEquals(SearchAnalysis::FULL, $withAttrs->searchAnalysis);
     }
+
+    public function testConstructorWithCopyTo(): void
+    {
+        $field = new FieldDefinition('feature_color_lt-LT', FieldType::TEXT, [], SearchAnalysis::BASIC, '_features_text_lt-LT');
+
+        $this->assertEquals('_features_text_lt-LT', $field->copyTo);
+    }
+
+    public function testConstructorWithoutCopyToDefaultsToNull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT);
+
+        $this->assertNull($field->copyTo);
+    }
+
+    public function testWithCopyToReturnsNewInstance(): void
+    {
+        $field = new FieldDefinition('feature_color_lt-LT', FieldType::TEXT);
+        $newField = $field->withCopyTo('_features_text_lt-LT');
+
+        $this->assertNotSame($field, $newField);
+        $this->assertNull($field->copyTo);
+        $this->assertEquals('_features_text_lt-LT', $newField->copyTo);
+    }
+
+    public function testWithCopyToCanSetToNull(): void
+    {
+        $field = new FieldDefinition('feature_color_lt-LT', FieldType::TEXT, [], null, '_features_text_lt-LT');
+        $newField = $field->withCopyTo(null);
+
+        $this->assertEquals('_features_text_lt-LT', $field->copyTo);
+        $this->assertNull($newField->copyTo);
+    }
+
+    public function testJsonSerializeIncludesCopyTo(): void
+    {
+        $field = new FieldDefinition('feature_color_lt-LT', FieldType::TEXT, [], SearchAnalysis::BASIC, '_features_text_lt-LT');
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayHasKey('copy_to', $result);
+        $this->assertEquals('_features_text_lt-LT', $result['copy_to']);
+    }
+
+    public function testJsonSerializeOmitsCopyToWhenNull(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT);
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayNotHasKey('copy_to', $result);
+    }
+
+    public function testJsonSerializeOmitsCopyToWhenEmptyString(): void
+    {
+        $field = new FieldDefinition('name', FieldType::TEXT, [], null, '');
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayNotHasKey('copy_to', $result);
+    }
+
+    public function testImmutableMethodsPreserveCopyTo(): void
+    {
+        $field = new FieldDefinition('feature_color_lt-LT', FieldType::TEXT, [], SearchAnalysis::BASIC, '_features_text_lt-LT');
+
+        $renamed = $field->withName('feature_color_en-US');
+        $this->assertEquals('_features_text_lt-LT', $renamed->copyTo);
+
+        $retyped = $field->withType(FieldType::KEYWORD);
+        $this->assertEquals('_features_text_lt-LT', $retyped->copyTo);
+
+        $withAttrs = $field->withAttributes([new VariantAttribute('size', FieldType::KEYWORD)]);
+        $this->assertEquals('_features_text_lt-LT', $withAttrs->copyTo);
+
+        $reAnalyzed = $field->withSearchAnalysis(SearchAnalysis::FULL);
+        $this->assertEquals('_features_text_lt-LT', $reAnalyzed->copyTo);
+    }
 }

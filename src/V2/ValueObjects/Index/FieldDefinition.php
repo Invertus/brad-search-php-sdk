@@ -20,12 +20,14 @@ final readonly class FieldDefinition extends ValueObject
      * @param FieldType $type The field type
      * @param array<VariantAttribute> $attributes Optional variant attributes (for VARIANTS type)
      * @param SearchAnalysis|null $searchAnalysis Controls which subfields are created
+     * @param string|null $copyTo Target field for index-time value copying (OpenSearch `copy_to`)
      */
     public function __construct(
         public string $name,
         public FieldType $type,
         public array $attributes = [],
         public ?SearchAnalysis $searchAnalysis = null,
+        public ?string $copyTo = null,
     ) {
         if ($name === '') {
             throw new InvalidArgumentException(
@@ -51,7 +53,7 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withName(string $name): self
     {
-        return new self($name, $this->type, $this->attributes, $this->searchAnalysis);
+        return new self($name, $this->type, $this->attributes, $this->searchAnalysis, $this->copyTo);
     }
 
     /**
@@ -59,7 +61,7 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withType(FieldType $type): self
     {
-        return new self($this->name, $type, $this->attributes, $this->searchAnalysis);
+        return new self($this->name, $type, $this->attributes, $this->searchAnalysis, $this->copyTo);
     }
 
     /**
@@ -69,7 +71,7 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withAttributes(array $attributes): self
     {
-        return new self($this->name, $this->type, $attributes, $this->searchAnalysis);
+        return new self($this->name, $this->type, $attributes, $this->searchAnalysis, $this->copyTo);
     }
 
     /**
@@ -77,7 +79,15 @@ final readonly class FieldDefinition extends ValueObject
      */
     public function withSearchAnalysis(?SearchAnalysis $searchAnalysis): self
     {
-        return new self($this->name, $this->type, $this->attributes, $searchAnalysis);
+        return new self($this->name, $this->type, $this->attributes, $searchAnalysis, $this->copyTo);
+    }
+
+    /**
+     * Returns a new instance with a different copy_to target.
+     */
+    public function withCopyTo(?string $copyTo): self
+    {
+        return new self($this->name, $this->type, $this->attributes, $this->searchAnalysis, $copyTo);
     }
 
     /**
@@ -99,6 +109,10 @@ final readonly class FieldDefinition extends ValueObject
 
         if ($this->searchAnalysis !== null) {
             $result['search_analysis'] = $this->searchAnalysis->value;
+        }
+
+        if ($this->copyTo !== null && $this->copyTo !== '') {
+            $result['copy_to'] = $this->copyTo;
         }
 
         return $result;
