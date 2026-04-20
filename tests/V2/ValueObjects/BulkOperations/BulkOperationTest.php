@@ -232,8 +232,8 @@ class BulkOperationTest extends TestCase
     public function testUpdateProductsFactoryMethod(): void
     {
         $updates = [
-            ['id' => '123', 'price' => 29.99],
-            ['id' => '456', 'stock' => 50],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
+            ['id' => '456', 'fields' => ['stock' => 50]],
         ];
         $operation = BulkOperation::updateProducts($updates);
 
@@ -245,16 +245,16 @@ class BulkOperationTest extends TestCase
     public function testUpdateProductsJsonSerialize(): void
     {
         $operation = BulkOperation::updateProducts([
-            ['id' => '123', 'price' => 29.99],
-            ['id' => '456', 'name' => 'Updated Product'],
+            ['id' => '123', 'fields' => ['price' => 29.99]],
+            ['id' => '456', 'fields' => ['name' => 'Updated Product']],
         ]);
 
         $expected = [
             'type' => 'update_products',
             'payload' => [
                 'updates' => [
-                    ['id' => '123', 'price' => 29.99],
-                    ['id' => '456', 'name' => 'Updated Product'],
+                    ['id' => '123', 'fields' => ['price' => 29.99]],
+                    ['id' => '456', 'fields' => ['name' => 'Updated Product']],
                 ],
             ],
         ];
@@ -265,7 +265,7 @@ class BulkOperationTest extends TestCase
     public function testWithPayloadAcceptsUpdateProductsPayload(): void
     {
         $operation = $this->createOperation();
-        $updatePayload = new UpdateProductsPayload([['id' => '1', 'price' => 19.99]]);
+        $updatePayload = new UpdateProductsPayload([['id' => '1', 'fields' => ['price' => 19.99]]]);
         $newOperation = $operation->withPayload($updatePayload);
 
         $this->assertNotSame($operation, $newOperation);
@@ -274,7 +274,7 @@ class BulkOperationTest extends TestCase
 
     public function testConstructorAcceptsUpdateProductsPayload(): void
     {
-        $payload = new UpdateProductsPayload([['id' => '1', 'price' => 19.99]]);
+        $payload = new UpdateProductsPayload([['id' => '1', 'fields' => ['price' => 19.99]]]);
         $operation = new BulkOperation(
             BulkOperationType::UPDATE_PRODUCTS,
             $payload
