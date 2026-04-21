@@ -107,12 +107,16 @@ class ShopifyAdapter
         $title = $this->getRequiredField($product, 'title');
         $description = $this->extractOptionalString($product, 'descriptionHtml', stripHtml: true);
         $brand = $this->extractOptionalString($product, 'vendor');
-        $categoryDefault = $this->extractOptionalString($product, 'productType');
+        $taxonomyCategory = $this->extractTaxonomyCategory($product);
+        $categoryIsTaxonomy = $taxonomyCategory !== '';
+        $categoryDefault = $categoryIsTaxonomy
+            ? $taxonomyCategory
+            : $this->extractOptionalString($product, 'productType');
         $productUrl = $this->extractProductUrl($product);
         $translations = $product['translations'] ?? [];
 
         $result += ! empty($locales)
-            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl)
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $categoryIsTaxonomy)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product);
 
         if (isset($product['images']) && is_array($product['images'])) {
@@ -144,6 +148,7 @@ class ShopifyAdapter
         string $brand,
         string $categoryDefault,
         string $productUrl,
+        bool $categoryIsTaxonomy,
     ): array {
         $fields = [];
 
@@ -159,8 +164,11 @@ class ShopifyAdapter
                 $fields["description_{$locale}"] = $localeDescription;
             }
 
-            $translatedProductType = $this->translated($localeTranslations, 'product_type');
-            $localeCategoryDefault = $translatedProductType ?? $categoryDefault;
+            // Shopify's Standard Product Taxonomy is global English-only; never translate it.
+            // product_type translations only apply to the free-text productType fallback path.
+            $localeCategoryDefault = $categoryIsTaxonomy
+                ? $categoryDefault
+                : ($this->translated($localeTranslations, 'product_type') ?? $categoryDefault);
             $fields["categoryDefault_{$locale}"] = $localeCategoryDefault;
             $fields["categories_{$locale}"] = $this->buildCategories($localeCategoryDefault, $this->extractTags($product));
 
@@ -245,6 +253,39 @@ class ShopifyAdapter
         }
 
         return $stripHtml ? strip_tags($data[$field]) : $data[$field];
+    }
+
+    /**
+     * Extract a hierarchical category string from Shopify's Standard Product Taxonomy.
+     *
+     * Prefers `fullName` ("Apparel & Accessories > Clothing > Shirts") over `name` ("Shirts").
+     * Returns '' when the field is missing, malformed, or the "Uncategorized" literal —
+     * callers should fall back to the free-text `productType` in that case.
+     */
+    private function extractTaxonomyCategory(array $product): string
+    {
+        if (! isset($product['category']) || ! is_array($product['category'])) {
+            return '';
+        }
+
+        $category = $product['category'];
+
+        // Single global "Uncategorized" GID — treat as no category to avoid a junk facet bucket.
+        if (($category['id'] ?? null) === 'gid://shopify/TaxonomyCategory/na') {
+            return '';
+        }
+
+        $fullName = $category['fullName'] ?? null;
+        if (is_string($fullName) && $fullName !== '') {
+            return $fullName;
+        }
+
+        $name = $category['name'] ?? null;
+        if (is_string($name) && $name !== '') {
+            return $name;
+        }
+
+        return '';
     }
 
     /**

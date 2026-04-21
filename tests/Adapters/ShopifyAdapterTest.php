@@ -480,6 +480,172 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayHasKey('material-fabric', $attrs);
     }
 
+    // ─── Taxonomy category ───
+
+    public function testTaxonomyFullNameWinsOverProductType(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+        $result = $this->adapter->transform($data);
+
+        $p = $result['products'][0];
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault']);
+        $this->assertContains('Apparel & Accessories > Clothing > Shirts', $p['categories']);
+        $this->assertNotContains('Shoes', $p['categories']);
+    }
+
+    public function testNullCategoryFallsBackToProductType(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = null;
+
+        $data = $this->makeShopifyResponse([$product]);
+        $result = $this->adapter->transform($data);
+
+        $this->assertEquals('Shoes', $result['products'][0]['categoryDefault']);
+    }
+
+    public function testUncategorizedGidTreatedAsMissing(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/na',
+            'name' => 'Uncategorized',
+            'fullName' => 'Uncategorized',
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+        $result = $this->adapter->transform($data);
+
+        $p = $result['products'][0];
+        $this->assertEquals('Shoes', $p['categoryDefault']);
+        $this->assertNotContains('Uncategorized', $p['categories']);
+    }
+
+    public function testCategoryAndProductTypeBothMissingEmitsEmptyString(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', '');
+        $product['node']['category'] = null;
+
+        $data = $this->makeShopifyResponse([$product]);
+        $result = $this->adapter->transform($data);
+
+        $p = $result['products'][0];
+        // Prior contract: empty string is emitted (not null/absent).
+        $this->assertArrayHasKey('categoryDefault', $p);
+        $this->assertSame('', $p['categoryDefault']);
+        $this->assertSame([], $p['categories']);
+    }
+
+    public function testTaxonomyWinsOverProductTypeTranslationInLocales(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['translations'] = [
+            'lt-LT' => [
+                ['key' => 'product_type', 'value' => 'Batai'],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en-US');
+        $result = $this->adapter->transform($data, ['en-US', 'lt-LT']);
+
+        $p = $result['products'][0];
+        // Taxonomy is English-only; same value across every locale regardless of product_type translation.
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_en-US']);
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_lt-LT']);
+        $this->assertNotEquals('Batai', $p['categoryDefault_lt-LT']);
+    }
+
+    public function testFallbackPathStillTranslatesProductTypeInLocales(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = null;
+        $product['node']['translations'] = [
+            'lt-LT' => [
+                ['key' => 'product_type', 'value' => 'Batai'],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en-US');
+        $result = $this->adapter->transform($data, ['en-US', 'lt-LT']);
+
+        $p = $result['products'][0];
+        $this->assertEquals('Shoes', $p['categoryDefault_en-US']);
+        $this->assertEquals('Batai', $p['categoryDefault_lt-LT']);
+    }
+
+    public function testCategoriesArrayStaysConsistentAcrossSources(): void
+    {
+        // Taxonomy wins: categories = [fullName, ...tags]
+        $taxProduct = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $taxProduct['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $taxProduct['node']['tags'] = ['summer', 'cotton'];
+
+        // Fallback: categories = [productType, ...tags]
+        $fallbackProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
+        $fallbackProduct['node']['category'] = null;
+        $fallbackProduct['node']['tags'] = ['cold'];
+
+        // Both empty: categories = tags only
+        $emptyProduct = $this->makeProduct('gid://shopify/Product/3', 'Mystery', 'Desc', 'BrandX', '');
+        $emptyProduct['node']['category'] = null;
+        $emptyProduct['node']['tags'] = ['gift'];
+
+        $data = $this->makeShopifyResponse([$taxProduct, $fallbackProduct, $emptyProduct]);
+        $result = $this->adapter->transform($data);
+
+        [$a, $b, $c] = $result['products'];
+
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $a['categoryDefault']);
+        $this->assertEqualsCanonicalizing(
+            ['Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
+            $a['categories']
+        );
+
+        $this->assertEquals('Winter', $b['categoryDefault']);
+        $this->assertEqualsCanonicalizing(['Winter', 'cold'], $b['categories']);
+
+        $this->assertSame('', $c['categoryDefault']);
+        $this->assertEquals(['gift'], $c['categories']);
+    }
+
+    public function testMalformedCategoryFieldFallsThroughToProductType(): void
+    {
+        $cases = [
+            'string' => 'not-an-object',
+            'empty-array' => [],
+            'id-only' => ['id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8'],
+            'non-string-names' => ['id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8', 'name' => 42, 'fullName' => null],
+            'empty-names' => ['id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8', 'name' => '', 'fullName' => ''],
+        ];
+
+        foreach ($cases as $label => $categoryValue) {
+            $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+            $product['node']['category'] = $categoryValue;
+
+            $data = $this->makeShopifyResponse([$product]);
+            $result = $this->adapter->transform($data);
+
+            $this->assertEmpty($result['errors'], "case '{$label}' produced errors");
+            $this->assertEquals('Shoes', $result['products'][0]['categoryDefault'], "case '{$label}'");
+        }
+    }
+
     // ─── Product URL ───
 
     public function testProductUrlIncludedWhenPresent(): void
