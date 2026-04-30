@@ -49,6 +49,8 @@ class ShopifyAdapter
 
         $primaryLocale = $shopifyData['locales']['primary'] ?? ($locales[0] ?? 'en');
 
+        $productCollectionsMap = $this->buildProductCollectionsMap($shopifyData['collections'] ?? []);
+
         $transformedProducts = [];
         $errors = [];
 
@@ -65,7 +67,7 @@ class ShopifyAdapter
             }
 
             try {
-                $transformedProducts[] = $this->transformProduct($edge['node'], $locales, $primaryLocale);
+                $transformedProducts[] = $this->transformProduct($edge['node'], $locales, $primaryLocale, $productCollectionsMap);
             } catch (\Throwable $e) {
                 $errors[] = [
                     'type' => 'transformation_error',
@@ -86,8 +88,9 @@ class ShopifyAdapter
      * @param array<string, mixed> $product Shopify product node (may include translations)
      * @param array<string> $locales Locale codes
      * @param string $primaryLocale Primary locale code
+     * @param array<string, array<int, array{default: string, translations: array<string, string>}>> $productCollectionsMap product-GID-keyed list of collection metadata entries
      */
-    private function transformProduct(array $product, array $locales, string $primaryLocale): array
+    private function transformProduct(array $product, array $locales, string $primaryLocale, array $productCollectionsMap = []): array
     {
         $price = $this->extractPrice($product);
         $basePrice = $this->extractBasePrice($product);
@@ -114,10 +117,12 @@ class ShopifyAdapter
             : $this->extractOptionalString($product, 'productType');
         $productUrl = $this->extractProductUrl($product);
         $translations = $product['translations'] ?? [];
+        $productGid = is_string($product['id'] ?? null) ? $product['id'] : '';
+        $productCollections = $productCollectionsMap[$productGid] ?? [];
 
         $result += ! empty($locales)
-            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $categoryIsTaxonomy)
-            : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product);
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $categoryIsTaxonomy, $productCollections)
+            : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product, $productCollections, $primaryLocale);
 
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
@@ -136,6 +141,7 @@ class ShopifyAdapter
     /**
      * Build locale-suffixed fields for all locales.
      *
+     * @param array<int, array{default: string, translations: array<string, string>}> $productCollections
      * @return array<string, mixed>
      */
     private function buildLocaleFields(
@@ -149,6 +155,7 @@ class ShopifyAdapter
         string $categoryDefault,
         string $productUrl,
         bool $categoryIsTaxonomy,
+        array $productCollections = [],
     ): array {
         $fields = [];
 
@@ -179,6 +186,11 @@ class ShopifyAdapter
             if ($productUrl !== '') {
                 $fields["productUrl_{$locale}"] = $productUrl;
             }
+
+            $localeCollections = $this->resolveCollectionTitles($productCollections, $locale, $primaryLocale);
+            if (!empty($localeCollections)) {
+                $fields["collections_{$locale}"] = $localeCollections;
+            }
         }
 
         return $fields;
@@ -187,6 +199,7 @@ class ShopifyAdapter
     /**
      * Build plain (non-localized) fields for backward compatibility.
      *
+     * @param array<int, array{default: string, translations: array<string, string>}> $productCollections
      * @return array<string, mixed>
      */
     private function buildPlainFields(
@@ -196,7 +209,11 @@ class ShopifyAdapter
         string $categoryDefault,
         string $productUrl,
         array $product,
+        array $productCollections,
+        string $primaryLocale,
     ): array {
+        $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
+
         return array_filter([
             'name' => $title,
             'description' => $description !== '' ? $description : null,
@@ -204,7 +221,100 @@ class ShopifyAdapter
             'categoryDefault' => $categoryDefault,
             'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
             'productUrl' => $productUrl !== '' ? $productUrl : null,
+            'collections' => !empty($collections) ? $collections : null,
         ], fn($v) => $v !== null);
+    }
+
+    /**
+     * Invert raw collections metadata into a product-GID-keyed map. Each value is
+     * the list of collection-title entries (default + translations) for the
+     * collections that product belongs to.
+     *
+     * The connector emits each collection node with a `product_gids` array
+     * covering its full membership (paginated server-side), so this method is
+     * the single point at which the join is materialized.
+     *
+     * @param array<int, array<string, mixed>> $rawCollections
+     * @return array<string, array<int, array{default: string, translations: array<string, string>}>>
+     */
+    private function buildProductCollectionsMap(array $rawCollections): array
+    {
+        $map = [];
+
+        foreach ($rawCollections as $collection) {
+            if (!is_array($collection)) {
+                continue;
+            }
+
+            $defaultTitle = $collection['title'] ?? null;
+            if (!is_string($defaultTitle) || $defaultTitle === '') {
+                continue;
+            }
+
+            $translationsByLocale = [];
+            $rawTranslations = $collection['translations'] ?? [];
+            if (is_array($rawTranslations)) {
+                foreach ($rawTranslations as $locale => $entries) {
+                    if (!is_string($locale) || !is_array($entries)) {
+                        continue;
+                    }
+                    foreach ($entries as $entry) {
+                        if (
+                            is_array($entry)
+                            && ($entry['key'] ?? null) === 'title'
+                            && is_string($entry['value'] ?? null)
+                            && $entry['value'] !== ''
+                        ) {
+                            $translationsByLocale[$locale] = $entry['value'];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            $entry = ['default' => $defaultTitle, 'translations' => $translationsByLocale];
+
+            $productGids = $collection['product_gids'] ?? [];
+            if (!is_array($productGids)) {
+                continue;
+            }
+
+            foreach ($productGids as $productGid) {
+                if (!is_string($productGid) || $productGid === '') {
+                    continue;
+                }
+                $map[$productGid][] = $entry;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * Resolve titles for a product's collections in a given locale.
+     * Falls back to the default title when a translation is missing.
+     *
+     * @param array<int, array{default: string, translations: array<string, string>}> $productCollections
+     * @return array<string>
+     */
+    private function resolveCollectionTitles(array $productCollections, string $locale, string $primaryLocale): array
+    {
+        if (empty($productCollections)) {
+            return [];
+        }
+
+        $titles = [];
+        foreach ($productCollections as $entry) {
+            $title = $locale === $primaryLocale
+                ? $entry['default']
+                : ($entry['translations'][$locale] ?? $entry['default']);
+
+            if ($title !== '') {
+                $titles[] = $title;
+            }
+        }
+
+        return array_values(array_unique($titles));
     }
 
     /**
