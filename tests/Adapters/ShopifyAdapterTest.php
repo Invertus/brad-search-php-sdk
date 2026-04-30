@@ -876,6 +876,45 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('collections_en', $result['products'][1]);
     }
 
+    public function testTransformPlainModeEmitsCollectionsField(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+        $data['collections'] = [
+            [
+                'id' => 'gid://shopify/Collection/10',
+                'title' => 'Hyrogen',
+                'translations' => ['lt' => [['key' => 'title', 'value' => 'Hidrogenas']]],
+                'product_gids' => ['gid://shopify/Product/1'],
+            ],
+            [
+                'id' => 'gid://shopify/Collection/20',
+                'title' => 'Automated Collection',
+                'translations' => [],
+                'product_gids' => ['gid://shopify/Product/1'],
+            ],
+        ];
+
+        $result = $this->adapter->transform($data, []);
+        $product = $result['products'][0];
+
+        $this->assertEquals(['Hyrogen', 'Automated Collection'], $product['collections']);
+        $this->assertArrayNotHasKey('collections_en', $product);
+        $this->assertArrayNotHasKey('collections_lt', $product);
+    }
+
+    public function testTransformPlainModeOmitsCollectionsWhenAbsent(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, []);
+
+        $this->assertArrayNotHasKey('collections', $result['products'][0]);
+    }
+
     // ─── Helpers ───
 
     private function makeProduct(string $gid, string $title, string $description, string $vendor, string $productType): array

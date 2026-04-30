@@ -209,8 +209,8 @@ class ShopifyAdapter
         string $categoryDefault,
         string $productUrl,
         array $product,
-        array $productCollections = [],
-        string $primaryLocale = 'en',
+        array $productCollections,
+        string $primaryLocale,
     ): array {
         $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
 
