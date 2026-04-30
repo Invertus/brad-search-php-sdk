@@ -259,7 +259,8 @@ class ShopifyAdapter
                         continue;
                     }
                     foreach ($entries as $entry) {
-                        if (is_array($entry)
+                        if (
+                            is_array($entry)
                             && ($entry['key'] ?? null) === 'title'
                             && is_string($entry['value'] ?? null)
                             && $entry['value'] !== ''
