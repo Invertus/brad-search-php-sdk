@@ -479,4 +479,27 @@ class SearchSettingsRequestBuilderTest extends TestCase
         $this->assertNotNull($request->searchConfig);
         $this->assertNull($request->responseConfig);
     }
+
+    public function testBuildWithSimilarity(): void
+    {
+        $builder = new SearchSettingsRequestBuilder();
+        $request = $builder
+            ->appId('app_123')
+            ->similarity('boolean')
+            ->build();
+
+        $this->assertEquals('boolean', $request->similarity);
+        $this->assertEquals('boolean', $request->jsonSerialize()['similarity']);
+    }
+
+    public function testResetClearsSimilarity(): void
+    {
+        $builder = new SearchSettingsRequestBuilder();
+        $builder->appId('app_123')->similarity('boolean');
+        $builder->reset();
+
+        $request = $builder->appId('app_456')->build();
+
+        $this->assertNull($request->similarity);
+    }
 }

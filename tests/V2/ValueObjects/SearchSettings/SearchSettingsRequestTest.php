@@ -571,4 +571,92 @@ class SearchSettingsRequestTest extends TestCase
         $this->assertEquals(0.1, $serialized['scoring_config']['min_score']);
         $this->assertEquals('sales_count', $serialized['scoring_config']['function_score']['field']);
     }
+
+    public function testConstructorWithSimilarity(): void
+    {
+        $request = new SearchSettingsRequest('app_123', similarity: 'boolean');
+
+        $this->assertEquals('boolean', $request->similarity);
+    }
+
+    public function testSimilarityDefaultsToNull(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+
+        $this->assertNull($request->similarity);
+    }
+
+    public function testJsonSerializeIncludesSimilarity(): void
+    {
+        $request = new SearchSettingsRequest('app_123', similarity: 'boolean');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayHasKey('similarity', $serialized);
+        $this->assertEquals('boolean', $serialized['similarity']);
+    }
+
+    public function testJsonSerializeOmitsNullSimilarity(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('similarity', $serialized);
+    }
+
+    public function testJsonSerializeOmitsEmptySimilarity(): void
+    {
+        $request = new SearchSettingsRequest('app_123', similarity: '');
+        $serialized = $request->jsonSerialize();
+
+        $this->assertArrayNotHasKey('similarity', $serialized);
+    }
+
+    public function testFromSearchConfigurationExtractsSimilarity(): void
+    {
+        $config = [
+            'supported_locales' => ['lt-LT'],
+            'similarity' => 'boolean',
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertEquals('boolean', $request->similarity);
+    }
+
+    public function testFromSearchConfigurationHandlesMissingSimilarity(): void
+    {
+        $config = ['supported_locales' => ['lt-LT']];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertNull($request->similarity);
+    }
+
+    public function testWithMethodsPreserveSimilarity(): void
+    {
+        $request = new SearchSettingsRequest('app_123', similarity: 'boolean');
+
+        $this->assertEquals('boolean', $request->withAppId('app_456')->similarity);
+        $this->assertEquals('boolean', $request->withSearchConfig(null)->similarity);
+        $this->assertEquals('boolean', $request->withScoringConfig(null)->similarity);
+        $this->assertEquals('boolean', $request->withResponseConfig(null)->similarity);
+    }
+
+    public function testWithSimilarityReturnsNewInstance(): void
+    {
+        $request = new SearchSettingsRequest('app_123');
+        $updated = $request->withSimilarity('boolean');
+
+        $this->assertNotSame($request, $updated);
+        $this->assertNull($request->similarity);
+        $this->assertEquals('boolean', $updated->similarity);
+    }
+
+    public function testWithSimilarityCanBeClearedToNull(): void
+    {
+        $request = new SearchSettingsRequest('app_123', similarity: 'boolean');
+        $cleared = $request->withSimilarity(null);
+
+        $this->assertNull($cleared->similarity);
+    }
 }
