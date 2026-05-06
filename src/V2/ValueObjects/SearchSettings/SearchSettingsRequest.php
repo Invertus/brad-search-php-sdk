@@ -26,6 +26,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      * @param array<string>|null $supportedLocales Optional supported locales
      * @param array<string, mixed>|null $rawQueryConfig Optional raw query config (Go-native format, bypasses SearchConfig VOs)
      * @param array<string, mixed>|null $filterConfig Optional filter configuration for facets/aggregations
+     * @param string|null $similarity Optional similarity algorithm applied to text fields in the index mapping (e.g. "boolean")
      */
     public function __construct(
         public string $appId,
@@ -37,6 +38,7 @@ final readonly class SearchSettingsRequest extends ValueObject
         public ?array $filterConfig = null,
         public ?array $featuresKeyValueMap = null,
         public ?array $attributeKeyValueMap = null,
+        public ?string $similarity = null,
     ) {
         $this->validateAppId($appId);
         $this->supportedLocales = $supportedLocales;
@@ -60,6 +62,7 @@ final readonly class SearchSettingsRequest extends ValueObject
             filterConfig: $config['filter_config'] ?? null,
             featuresKeyValueMap: $config['features_key_value_map'] ?? null,
             attributeKeyValueMap: $config['attribute_key_value_map'] ?? null,
+            similarity: $config['similarity'] ?? null,
         );
     }
 
@@ -68,7 +71,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withAppId(string $appId): self
     {
-        return new self($appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap);
+        return new self($appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
     }
 
     /**
@@ -76,7 +79,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withSearchConfig(?SearchConfig $searchConfig): self
     {
-        return new self($this->appId, $searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap);
+        return new self($this->appId, $searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
     }
 
     /**
@@ -84,7 +87,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withScoringConfig(?ScoringConfig $scoringConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap);
+        return new self($this->appId, $this->searchConfig, $scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
     }
 
     /**
@@ -92,7 +95,15 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withResponseConfig(?ResponseConfig $responseConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap);
+        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
+    }
+
+    /**
+     * Returns a new instance with a different similarity setting.
+     */
+    public function withSimilarity(?string $similarity): self
+    {
+        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $similarity);
     }
 
     /**
@@ -141,6 +152,10 @@ final readonly class SearchSettingsRequest extends ValueObject
 
         if ($this->attributeKeyValueMap !== null && count($this->attributeKeyValueMap) > 0) {
             $result['attribute_key_value_map'] = $this->attributeKeyValueMap;
+        }
+
+        if ($this->similarity !== null && $this->similarity !== '') {
+            $result['similarity'] = $this->similarity;
         }
 
         return $result;

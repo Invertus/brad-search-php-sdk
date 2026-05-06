@@ -50,6 +50,8 @@ final class SearchSettingsRequestBuilder
     /** @var array<string, array<string, string>>|null */
     private ?array $attributeKeyValueMap = null;
 
+    private ?string $similarity = null;
+
     /**
      * Sets the application ID.
      */
@@ -200,6 +202,15 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets the similarity algorithm applied to text fields in the index mapping.
+     */
+    public function similarity(string $similarity): self
+    {
+        $this->similarity = $similarity;
+        return $this;
+    }
+
+    /**
      * Sets the complete search config.
      */
     public function searchConfig(SearchConfig $searchConfig): self
@@ -293,6 +304,7 @@ final class SearchSettingsRequestBuilder
             $this->filterConfig,
             $this->featuresKeyValueMap,
             $this->attributeKeyValueMap,
+            $this->similarity,
         );
     }
 
@@ -314,6 +326,7 @@ final class SearchSettingsRequestBuilder
         $this->filterConfig = null;
         $this->featuresKeyValueMap = null;
         $this->attributeKeyValueMap = null;
+        $this->similarity = null;
         return $this;
     }
 }
