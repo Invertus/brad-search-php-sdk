@@ -696,6 +696,21 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('https://shop.example.com/lt/products/snieglente', $p['productUrl_lt']);
     }
 
+    public function testProductUrlFallsBackToUrlParsedHandleWhenHandleFieldMissing(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        // no $product['node']['handle'] — simulates payloads from older shopify-app versions
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/my-board';
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $p = $result['products'][0];
+        $this->assertEquals('https://shop.example.com/products/my-board', $p['productUrl_en']);
+        $this->assertEquals('https://shop.example.com/lt/products/my-board', $p['productUrl_lt']);
+    }
+
     public function testProductUrlPreservesPreviewQueryStringForDevStores(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');

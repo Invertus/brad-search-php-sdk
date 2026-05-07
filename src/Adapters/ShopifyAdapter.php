@@ -485,6 +485,9 @@ class ShopifyAdapter
         if (isset($parsed['query']) && $parsed['query'] !== '') {
             $url .= '?' . $parsed['query'];
         }
+        if (isset($parsed['fragment']) && $parsed['fragment'] !== '') {
+            $url .= '#' . $parsed['fragment'];
+        }
 
         return $url;
     }
