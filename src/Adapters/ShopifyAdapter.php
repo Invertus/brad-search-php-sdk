@@ -133,7 +133,14 @@ class ShopifyAdapter
         }
 
         if (isset($product['variants']) && is_array($product['variants'])) {
-            $result['variants'] = $this->transformVariants($product['variants'], $locales);
+            $result['variants'] = $this->transformVariants(
+                $product['variants'],
+                $locales,
+                $productUrl,
+                $defaultHandle,
+                $translations,
+                $primaryLocale,
+            );
         }
 
         return $result;
@@ -455,6 +462,7 @@ class ShopifyAdapter
         ?string $translatedHandle,
         string $locale,
         string $primaryLocale,
+        array $extraQuery = [],
     ): string {
         if ($baseUrl === '') {
             return '';
@@ -482,8 +490,17 @@ class ShopifyAdapter
             $url .= '/' . $locale;
         }
         $url .= '/products/' . $handle;
+
+        $existingQuery = [];
         if (isset($parsed['query']) && $parsed['query'] !== '') {
-            $url .= '?' . $parsed['query'];
+            parse_str($parsed['query'], $existingQuery);
+        }
+        // $extraQuery wins on key collision: when a base URL already pins a default
+        // variant (e.g. ?variant=111), our per-variant deep-link must override it.
+        // Non-conflicting keys like preview_key are preserved from $existingQuery.
+        $mergedQuery = array_merge($existingQuery, $extraQuery);
+        if (!empty($mergedQuery)) {
+            $url .= '?' . http_build_query($mergedQuery);
         }
         if (isset($parsed['fragment']) && $parsed['fragment'] !== '') {
             $url .= '#' . $parsed['fragment'];
@@ -655,14 +672,35 @@ class ShopifyAdapter
 
     /**
      * Transform Shopify variants to BradSearch format.
+     *
+     * Variant `imageUrl` is intentionally omitted: the parent product's curated
+     * `featuredImage` is the merchant-approved hero image, and we don't want
+     * variant enrichment to swap it for a per-variant photo at search time.
+     *
+     * @param array<string> $locales
+     * @param array<string, mixed> $translations
      */
-    private function transformVariants(array $variantsData, array $locales): array
-    {
+    private function transformVariants(
+        array $variantsData,
+        array $locales,
+        string $productUrl = '',
+        string $defaultHandle = '',
+        array $translations = [],
+        string $primaryLocale = '',
+    ): array {
         if (! isset($variantsData['edges']) || ! is_array($variantsData['edges'])) {
             return [];
         }
 
-        return array_map(function (array $edge) use ($locales): array {
+        // Translated handles are product-level, so resolve once per locale rather
+        // than re-running the lookup for every variant × locale pair.
+        $localeHandles = [];
+        foreach ($locales as $locale) {
+            $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
+            $localeHandles[$locale] = $this->translated($localeTranslations, 'handle');
+        }
+
+        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles): array {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
                 throw new ValidationException('Variant has malformed node structure');
             }
@@ -673,15 +711,60 @@ class ShopifyAdapter
                 throw new ValidationException('Variant is missing required ID field');
             }
 
+            $variantId = $this->extractNumericId($variant['id']);
             $options = $variant['selectedOptions'] ?? [];
 
-            return [
-                'id' => $this->extractNumericId($variant['id']),
-                'sku' => $variant['sku'] ?? '',
-                ...! empty($locales)
-                    ? ['attrs' => $this->transformVariantOptionsWithLocales($options, $locales)]
-                    : ['attributes' => $this->transformVariantOptions($options)],
+            $price = isset($variant['price']) && is_numeric($variant['price']) ? (string) $variant['price'] : '';
+            $compareAt = isset($variant['compareAtPrice']) && is_numeric($variant['compareAtPrice'])
+                ? (string) $variant['compareAtPrice']
+                : '';
+            $basePrice = ($compareAt !== '' && bccomp($compareAt, '0.00', 2) > 0) ? $compareAt : $price;
+
+            $result = [
+                'id' => $variantId,
+                'sku' => is_string($variant['sku'] ?? null) ? $variant['sku'] : '',
             ];
+
+            if ($price !== '') {
+                $result['price'] = $price;
+                $result['priceTaxExcluded'] = $price;
+            }
+            if ($basePrice !== '') {
+                $result['basePrice'] = $basePrice;
+                $result['basePriceTaxExcluded'] = $basePrice;
+            }
+
+            if (! empty($locales)) {
+                $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales);
+                foreach ($locales as $locale) {
+                    $url = $this->buildLocaleProductUrl(
+                        $productUrl,
+                        $defaultHandle,
+                        $localeHandles[$locale] ?? null,
+                        $locale,
+                        $primaryLocale,
+                        ['variant' => $variantId],
+                    );
+                    if ($url !== '') {
+                        $result["productUrl_{$locale}"] = $url;
+                    }
+                }
+            } else {
+                $result['attributes'] = $this->transformVariantOptions($options);
+                $url = $this->buildLocaleProductUrl(
+                    $productUrl,
+                    $defaultHandle,
+                    null,
+                    $primaryLocale,
+                    $primaryLocale,
+                    ['variant' => $variantId],
+                );
+                if ($url !== '') {
+                    $result['productUrl'] = $url;
+                }
+            }
+
+            return $result;
         }, $variantsData['edges']);
     }
 
