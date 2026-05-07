@@ -495,8 +495,10 @@ class ShopifyAdapter
         if (isset($parsed['query']) && $parsed['query'] !== '') {
             parse_str($parsed['query'], $existingQuery);
         }
-        // Existing query (e.g. preview_key) wins on key collision.
-        $mergedQuery = $existingQuery + $extraQuery;
+        // $extraQuery wins on key collision: when a base URL already pins a default
+        // variant (e.g. ?variant=111), our per-variant deep-link must override it.
+        // Non-conflicting keys like preview_key are preserved from $existingQuery.
+        $mergedQuery = array_merge($existingQuery, $extraQuery);
         if (!empty($mergedQuery)) {
             $url .= '?' . http_build_query($mergedQuery);
         }
@@ -690,7 +692,15 @@ class ShopifyAdapter
             return [];
         }
 
-        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $translations, $primaryLocale): array {
+        // Translated handles are product-level, so resolve once per locale rather
+        // than re-running the lookup for every variant × locale pair.
+        $localeHandles = [];
+        foreach ($locales as $locale) {
+            $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
+            $localeHandles[$locale] = $this->translated($localeTranslations, 'handle');
+        }
+
+        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles): array {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
                 throw new ValidationException('Variant has malformed node structure');
             }
@@ -704,8 +714,8 @@ class ShopifyAdapter
             $variantId = $this->extractNumericId($variant['id']);
             $options = $variant['selectedOptions'] ?? [];
 
-            $price = isset($variant['price']) && is_scalar($variant['price']) ? (string) $variant['price'] : '';
-            $compareAt = isset($variant['compareAtPrice']) && is_scalar($variant['compareAtPrice'])
+            $price = isset($variant['price']) && is_numeric($variant['price']) ? (string) $variant['price'] : '';
+            $compareAt = isset($variant['compareAtPrice']) && is_numeric($variant['compareAtPrice'])
                 ? (string) $variant['compareAtPrice']
                 : '';
             $basePrice = ($compareAt !== '' && bccomp($compareAt, '0.00', 2) > 0) ? $compareAt : $price;
@@ -727,11 +737,10 @@ class ShopifyAdapter
             if (! empty($locales)) {
                 $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales);
                 foreach ($locales as $locale) {
-                    $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
                     $url = $this->buildLocaleProductUrl(
                         $productUrl,
                         $defaultHandle,
-                        $this->translated($localeTranslations, 'handle'),
+                        $localeHandles[$locale] ?? null,
                         $locale,
                         $primaryLocale,
                         ['variant' => $variantId],
