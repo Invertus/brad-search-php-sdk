@@ -660,9 +660,10 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('https://shop.example.com/products/snowboard', $result['products'][0]['productUrl']);
     }
 
-    public function testProductUrlDuplicatedAcrossLocales(): void
+    public function testProductUrlPrependsLocalePrefixForNonPrimary(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
         $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
 
         $data = $this->makeShopifyResponse([$product], 'en');
@@ -671,7 +672,59 @@ class ShopifyAdapterTest extends TestCase
 
         $p = $result['products'][0];
         $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_en']);
-        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_lt']);
+        $this->assertEquals('https://shop.example.com/lt/products/snowboard', $p['productUrl_lt']);
+    }
+
+    public function testProductUrlUsesTranslatedHandleWhenPresent(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['translations'] = [
+            'lt' => [
+                ['key' => 'handle', 'value' => 'snieglente'],
+                ['key' => 'title', 'value' => 'Snieglentė'],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $p = $result['products'][0];
+        $this->assertEquals('https://shop.example.com/products/snowboard', $p['productUrl_en']);
+        $this->assertEquals('https://shop.example.com/lt/products/snieglente', $p['productUrl_lt']);
+    }
+
+    public function testProductUrlFallsBackToUrlParsedHandleWhenHandleFieldMissing(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        // no $product['node']['handle'] — simulates payloads from older shopify-app versions
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/my-board';
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $p = $result['products'][0];
+        $this->assertEquals('https://shop.example.com/products/my-board', $p['productUrl_en']);
+        $this->assertEquals('https://shop.example.com/lt/products/my-board', $p['productUrl_lt']);
+    }
+
+    public function testProductUrlPreservesPreviewQueryStringForDevStores(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = null;
+        $product['node']['onlineStorePreviewUrl'] = 'https://shop.myshopify.com/products/snowboard?preview_key=abc123';
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $p = $result['products'][0];
+        $this->assertEquals('https://shop.myshopify.com/products/snowboard?preview_key=abc123', $p['productUrl_en']);
+        $this->assertEquals('https://shop.myshopify.com/lt/products/snowboard?preview_key=abc123', $p['productUrl_lt']);
     }
 
     // ─── Error handling ───

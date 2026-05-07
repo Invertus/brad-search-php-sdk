@@ -116,12 +116,13 @@ class ShopifyAdapter
             ? $taxonomyCategory
             : $this->extractOptionalString($product, 'productType');
         $productUrl = $this->extractProductUrl($product);
+        $defaultHandle = $this->extractDefaultHandle($product, $productUrl);
         $translations = $product['translations'] ?? [];
         $productGid = is_string($product['id'] ?? null) ? $product['id'] : '';
         $productCollections = $productCollectionsMap[$productGid] ?? [];
 
         $result += ! empty($locales)
-            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $categoryIsTaxonomy, $productCollections)
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $defaultHandle, $categoryIsTaxonomy, $productCollections)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product, $productCollections, $primaryLocale);
 
         if (isset($product['images']) && is_array($product['images'])) {
@@ -154,6 +155,7 @@ class ShopifyAdapter
         string $brand,
         string $categoryDefault,
         string $productUrl,
+        string $defaultHandle,
         bool $categoryIsTaxonomy,
         array $productCollections = [],
     ): array {
@@ -183,8 +185,15 @@ class ShopifyAdapter
             if ($brand !== '') {
                 $fields["brand_{$locale}"] = $brand;
             }
-            if ($productUrl !== '') {
-                $fields["productUrl_{$locale}"] = $productUrl;
+            $localeUrl = $this->buildLocaleProductUrl(
+                $productUrl,
+                $defaultHandle,
+                $this->translated($localeTranslations, 'handle'),
+                $locale,
+                $primaryLocale,
+            );
+            if ($localeUrl !== '') {
+                $fields["productUrl_{$locale}"] = $localeUrl;
             }
 
             $localeCollections = $this->resolveCollectionTitles($productCollections, $locale, $primaryLocale);
@@ -405,6 +414,82 @@ class ShopifyAdapter
     {
         return $this->extractOptionalString($product, 'onlineStoreUrl')
             ?: $this->extractOptionalString($product, 'onlineStorePreviewUrl');
+    }
+
+    /**
+     * Default handle preferred from the GraphQL `handle` field; otherwise parsed
+     * from the URL (last path segment after `/products/`) so older payloads and
+     * dev stores without `handle` still work.
+     */
+    private function extractDefaultHandle(array $product, string $productUrl): string
+    {
+        $handle = $this->extractOptionalString($product, 'handle');
+        if ($handle !== '') {
+            return $handle;
+        }
+
+        if ($productUrl === '') {
+            return '';
+        }
+
+        $path = parse_url($productUrl, PHP_URL_PATH);
+        if (!is_string($path) || $path === '') {
+            return '';
+        }
+
+        if (preg_match('~/products/([^/?#]+)~', $path, $m) === 1) {
+            return $m[1];
+        }
+
+        return '';
+    }
+
+    /**
+     * Build a per-locale product URL by injecting the locale prefix and the
+     * translated handle (when present). Falls back to the default handle and
+     * preserves the query string so dev-store preview tokens keep working.
+     */
+    private function buildLocaleProductUrl(
+        string $baseUrl,
+        string $defaultHandle,
+        ?string $translatedHandle,
+        string $locale,
+        string $primaryLocale,
+    ): string {
+        if ($baseUrl === '') {
+            return '';
+        }
+
+        $parsed = parse_url($baseUrl);
+        if (!is_array($parsed) || !isset($parsed['scheme'], $parsed['host'])) {
+            return $baseUrl;
+        }
+
+        $isPrimary = $locale === $primaryLocale;
+        $handle = (!$isPrimary && $translatedHandle !== null && $translatedHandle !== '')
+            ? $translatedHandle
+            : $defaultHandle;
+
+        if ($handle === '') {
+            return $baseUrl;
+        }
+
+        $url = $parsed['scheme'] . '://' . $parsed['host'];
+        if (isset($parsed['port'])) {
+            $url .= ':' . $parsed['port'];
+        }
+        if (!$isPrimary) {
+            $url .= '/' . $locale;
+        }
+        $url .= '/products/' . $handle;
+        if (isset($parsed['query']) && $parsed['query'] !== '') {
+            $url .= '?' . $parsed['query'];
+        }
+        if (isset($parsed['fragment']) && $parsed['fragment'] !== '') {
+            $url .= '#' . $parsed['fragment'];
+        }
+
+        return $url;
     }
 
     /**
