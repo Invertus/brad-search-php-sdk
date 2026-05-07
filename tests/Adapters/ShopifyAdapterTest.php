@@ -480,6 +480,185 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayHasKey('material-fabric', $attrs);
     }
 
+    // ─── Variant URL / price / image ───
+
+    public function testVariantsCarryLocalizedProductUrlWithVariantQueryParam(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['translations'] = [
+            'lt' => [['key' => 'handle', 'value' => 'snieglente']],
+        ];
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '99.95',
+                        'selectedOptions' => [['name' => 'Size', 'value' => 'L']],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals('https://shop.example.com/products/snowboard?variant=12345', $variant['productUrl_en']);
+        $this->assertEquals('https://shop.example.com/lt/products/snieglente?variant=12345', $variant['productUrl_lt']);
+    }
+
+    public function testVariantsCarryProductUrlWithoutLocales(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '99.95',
+                        'selectedOptions' => [['name' => 'Color', 'value' => 'White']],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+
+        $result = $this->adapter->transform($data, []);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals('https://shop.example.com/products/snowboard?variant=12345', $variant['productUrl']);
+    }
+
+    public function testVariantUrlPreservesPreviewKeyAlongsideVariantParam(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = null;
+        $product['node']['onlineStorePreviewUrl'] = 'https://shop.myshopify.com/products/snowboard?preview_key=abc123';
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '99.95',
+                        'selectedOptions' => [],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $result = $this->adapter->transform($data, ['en', 'lt']);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals('https://shop.myshopify.com/products/snowboard?preview_key=abc123&variant=12345', $variant['productUrl_en']);
+        $this->assertEquals('https://shop.myshopify.com/lt/products/snowboard?preview_key=abc123&variant=12345', $variant['productUrl_lt']);
+    }
+
+    public function testVariantsCarryPriceAndBasePriceFromCompareAtPrice(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '79.95',
+                        'compareAtPrice' => '99.95',
+                        'selectedOptions' => [],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+
+        $result = $this->adapter->transform($data, []);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals('79.95', $variant['price']);
+        $this->assertEquals('79.95', $variant['priceTaxExcluded']);
+        $this->assertEquals('99.95', $variant['basePrice']);
+        $this->assertEquals('99.95', $variant['basePriceTaxExcluded']);
+    }
+
+    public function testVariantBasePriceFallsBackToPriceWhenCompareAtMissing(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '79.95',
+                        'compareAtPrice' => null,
+                        'selectedOptions' => [],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+
+        $result = $this->adapter->transform($data, []);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertEquals('79.95', $variant['price']);
+        $this->assertEquals('79.95', $variant['basePrice']);
+    }
+
+    public function testVariantsDoNotCarryImageUrl(): void
+    {
+        // Per merchant feedback: search rows must show the curated featuredImage,
+        // not whatever variant happens to match. Keeping imageUrl off the variant
+        // means variant enrichment can't swap the parent's hero image at search time.
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['handle'] = 'snowboard';
+        $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
+        $product['node']['images'] = [
+            'edges' => [
+                ['node' => ['url' => 'https://cdn.shopify.com/product-image.jpg', 'width' => 800, 'height' => 800]],
+            ],
+        ];
+        $product['node']['variants'] = [
+            'edges' => [
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12345',
+                        'sku' => 'SNO-001',
+                        'price' => '79.95',
+                        'selectedOptions' => [],
+                    ],
+                ],
+            ],
+        ];
+
+        $data = $this->makeShopifyResponse([$product]);
+
+        $result = $this->adapter->transform($data, []);
+
+        $variant = $result['products'][0]['variants'][0];
+        $this->assertArrayNotHasKey('imageUrl', $variant);
+        $this->assertEquals('https://cdn.shopify.com/product-image.jpg', $result['products'][0]['imageUrl']['small']);
+    }
+
     // ─── Taxonomy category ───
 
     public function testTaxonomyFullNameWinsOverProductType(): void
