@@ -36,8 +36,9 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Snowboard', $product['name']);
         $this->assertEquals('Great board', $product['description']);
         $this->assertEquals('BrandX', $product['brand']);
-        $this->assertEquals('Sports', $product['categoryDefault']);
-        $this->assertContains('Sports', $product['categories']);
+        $this->assertEquals('Sports', $product['productType']);
+        $this->assertSame('', $product['categoryDefault']);
+        $this->assertSame([], $product['categories']);
     }
 
     public function testTransformWithoutLocalesOmitsEmptyDescription(): void
@@ -87,9 +88,13 @@ class ShopifyAdapterTest extends TestCase
         // Brand is not translatable in Shopify — same across all locales
         $this->assertEquals('BrandX', $product['brand_en']);
         $this->assertEquals('BrandX', $product['brand_lt']);
-        // categoryDefault falls back to primary when no product_type translation
-        $this->assertEquals('Sports', $product['categoryDefault_en']);
-        $this->assertEquals('Sports', $product['categoryDefault_lt']);
+        // productType is now its own field. Primary locale gets native value;
+        // non-primary without translation gets nothing (no fallback to primary).
+        $this->assertEquals('Sports', $product['productType_en']);
+        $this->assertArrayNotHasKey('productType_lt', $product);
+        // categoryDefault is taxonomy-only — absent when product has no taxonomy.
+        $this->assertArrayNotHasKey('categoryDefault_en', $product);
+        $this->assertArrayNotHasKey('categoryDefault_lt', $product);
 
         // Plain field names should NOT exist
         $this->assertArrayNotHasKey('name', $product);
@@ -133,18 +138,21 @@ class ShopifyAdapterTest extends TestCase
         $result = $this->adapter->transform($data, ['en', 'lt']);
         $p = $result['products'][0];
 
-        // Primary locale uses native productType
-        $this->assertEquals('Sports', $p['categoryDefault_en']);
-        $this->assertContains('Sports', $p['categories_en']);
+        // productType is its own field, locale-suffixed and translated.
+        $this->assertEquals('Sports', $p['productType_en']);
+        $this->assertEquals('Sportas', $p['productType_lt']);
 
-        // Non-primary uses translated product_type
-        $this->assertEquals('Sportas', $p['categoryDefault_lt']);
-        $this->assertContains('Sportas', $p['categories_lt']);
-        // Tags are not translatable — still in English
+        // categoryDefault is taxonomy-only; this product has none.
+        $this->assertArrayNotHasKey('categoryDefault_en', $p);
+        $this->assertArrayNotHasKey('categoryDefault_lt', $p);
+
+        // categories now reflects taxonomy + tags only (productType excluded).
+        $this->assertContains('winter', $p['categories_en']);
+        $this->assertContains('outdoor', $p['categories_en']);
+        $this->assertNotContains('Sports', $p['categories_en']);
         $this->assertContains('winter', $p['categories_lt']);
         $this->assertContains('outdoor', $p['categories_lt']);
-        // Original English productType should NOT be in lt categories
-        $this->assertNotContains('Sports', $p['categories_lt']);
+        $this->assertNotContains('Sportas', $p['categories_lt']);
     }
 
     public function testBrandIsNotTranslatable(): void
@@ -236,20 +244,20 @@ class ShopifyAdapterTest extends TestCase
 
         $p = $result['products'][0];
 
-        // Primary (en): native fields
+        // Primary (en): native productType
         $this->assertEquals('Snowboard', $p['name_en']);
         $this->assertEquals('Great board', $p['description_en']);
-        $this->assertEquals('Sports', $p['categoryDefault_en']);
+        $this->assertEquals('Sports', $p['productType_en']);
 
-        // lt: has translations
+        // lt: translated productType
         $this->assertEquals('Snieglentė', $p['name_lt']);
         $this->assertEquals('Puiki lenta', $p['description_lt']);
-        $this->assertEquals('Sportas', $p['categoryDefault_lt']);
+        $this->assertEquals('Sportas', $p['productType_lt']);
 
-        // fr: no translations — falls back to English
+        // fr: no productType translation — field omitted (no fallback to primary).
         $this->assertEquals('Snowboard', $p['name_fr']);
         $this->assertEquals('Great board', $p['description_fr']);
-        $this->assertEquals('Sports', $p['categoryDefault_fr']);
+        $this->assertArrayNotHasKey('productType_fr', $p);
 
         // Brand is same across all three
         $this->assertEquals('BrandX', $p['brand_en']);
@@ -738,15 +746,16 @@ class ShopifyAdapterTest extends TestCase
         $this->assertNotContains('Shoes', $p['categories']);
     }
 
-    public function testNullCategoryFallsBackToProductType(): void
+    public function testNullCategoryEmitsEmptyCategoryDefaultAndProductTypeField(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
         $product['node']['category'] = null;
 
         $data = $this->makeShopifyResponse([$product]);
-        $result = $this->adapter->transform($data);
+        $p = $this->adapter->transform($data)['products'][0];
 
-        $this->assertEquals('Shoes', $result['products'][0]['categoryDefault']);
+        $this->assertSame('', $p['categoryDefault']);
+        $this->assertEquals('Shoes', $p['productType']);
     }
 
     public function testUncategorizedGidTreatedAsMissing(): void
@@ -759,11 +768,30 @@ class ShopifyAdapterTest extends TestCase
         ];
 
         $data = $this->makeShopifyResponse([$product]);
-        $result = $this->adapter->transform($data);
+        $p = $this->adapter->transform($data)['products'][0];
 
-        $p = $result['products'][0];
-        $this->assertEquals('Shoes', $p['categoryDefault']);
+        $this->assertSame('', $p['categoryDefault']);
+        $this->assertEquals('Shoes', $p['productType']);
         $this->assertNotContains('Uncategorized', $p['categories']);
+        $this->assertNotContains('Shoes', $p['categories']);
+    }
+
+    public function testTaxonomyOnlyWithNoProductTypeOmitsProductTypeField(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', '');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+        $p = $this->adapter->transform($data, ['en', 'lt'])['products'][0];
+
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_en']);
+        $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_lt']);
+        $this->assertArrayNotHasKey('productType_en', $p);
+        $this->assertArrayNotHasKey('productType_lt', $p);
     }
 
     public function testCategoryAndProductTypeBothMissingEmitsEmptyString(): void
@@ -781,7 +809,7 @@ class ShopifyAdapterTest extends TestCase
         $this->assertSame([], $p['categories']);
     }
 
-    public function testTaxonomyWinsOverProductTypeTranslationInLocales(): void
+    public function testTaxonomyAndProductTypeAreIndependentFieldsInLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
         $product['node']['category'] = [
@@ -796,16 +824,17 @@ class ShopifyAdapterTest extends TestCase
         ];
 
         $data = $this->makeShopifyResponse([$product], 'en-US');
-        $result = $this->adapter->transform($data, ['en-US', 'lt-LT']);
+        $p = $this->adapter->transform($data, ['en-US', 'lt-LT'])['products'][0];
 
-        $p = $result['products'][0];
-        // Taxonomy is English-only; same value across every locale regardless of product_type translation.
+        // Taxonomy is English-only; same value across every locale.
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_en-US']);
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault_lt-LT']);
-        $this->assertNotEquals('Batai', $p['categoryDefault_lt-LT']);
+        // productType is translated independently.
+        $this->assertEquals('Shoes', $p['productType_en-US']);
+        $this->assertEquals('Batai', $p['productType_lt-LT']);
     }
 
-    public function testFallbackPathStillTranslatesProductTypeInLocales(): void
+    public function testProductTypeIsTranslatedPerLocaleWhenNoTaxonomy(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
         $product['node']['category'] = null;
@@ -816,16 +845,17 @@ class ShopifyAdapterTest extends TestCase
         ];
 
         $data = $this->makeShopifyResponse([$product], 'en-US');
-        $result = $this->adapter->transform($data, ['en-US', 'lt-LT']);
+        $p = $this->adapter->transform($data, ['en-US', 'lt-LT'])['products'][0];
 
-        $p = $result['products'][0];
-        $this->assertEquals('Shoes', $p['categoryDefault_en-US']);
-        $this->assertEquals('Batai', $p['categoryDefault_lt-LT']);
+        $this->assertArrayNotHasKey('categoryDefault_en-US', $p);
+        $this->assertArrayNotHasKey('categoryDefault_lt-LT', $p);
+        $this->assertEquals('Shoes', $p['productType_en-US']);
+        $this->assertEquals('Batai', $p['productType_lt-LT']);
     }
 
-    public function testCategoriesArrayStaysConsistentAcrossSources(): void
+    public function testCategoriesArrayContainsTaxonomyAndTagsOnly(): void
     {
-        // Taxonomy wins: categories = [fullName, ...tags]
+        // Taxonomy: categories = [fullName, ...tags]
         $taxProduct = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
         $taxProduct['node']['category'] = [
             'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
@@ -834,19 +864,17 @@ class ShopifyAdapterTest extends TestCase
         ];
         $taxProduct['node']['tags'] = ['summer', 'cotton'];
 
-        // Fallback: categories = [productType, ...tags]
-        $fallbackProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
-        $fallbackProduct['node']['category'] = null;
-        $fallbackProduct['node']['tags'] = ['cold'];
+        // No taxonomy: categories = tags only; productType emitted separately.
+        $noTaxProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
+        $noTaxProduct['node']['category'] = null;
+        $noTaxProduct['node']['tags'] = ['cold'];
 
-        // Both empty: categories = tags only
+        // Both empty: categories = tags only.
         $emptyProduct = $this->makeProduct('gid://shopify/Product/3', 'Mystery', 'Desc', 'BrandX', '');
         $emptyProduct['node']['category'] = null;
         $emptyProduct['node']['tags'] = ['gift'];
 
-        $data = $this->makeShopifyResponse([$taxProduct, $fallbackProduct, $emptyProduct]);
-        $result = $this->adapter->transform($data);
-
+        $result = $this->adapter->transform($this->makeShopifyResponse([$taxProduct, $noTaxProduct, $emptyProduct]));
         [$a, $b, $c] = $result['products'];
 
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $a['categoryDefault']);
@@ -854,15 +882,18 @@ class ShopifyAdapterTest extends TestCase
             ['Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
             $a['categories']
         );
+        $this->assertEquals('Shoes', $a['productType']);
 
-        $this->assertEquals('Winter', $b['categoryDefault']);
-        $this->assertEqualsCanonicalizing(['Winter', 'cold'], $b['categories']);
+        $this->assertSame('', $b['categoryDefault']);
+        $this->assertEquals(['cold'], $b['categories']);
+        $this->assertEquals('Winter', $b['productType']);
 
         $this->assertSame('', $c['categoryDefault']);
         $this->assertEquals(['gift'], $c['categories']);
+        $this->assertArrayNotHasKey('productType', $c);
     }
 
-    public function testMalformedCategoryFieldFallsThroughToProductType(): void
+    public function testMalformedCategoryFieldEmitsProductTypeAsOwnField(): void
     {
         $cases = [
             'string' => 'not-an-object',
@@ -876,11 +907,12 @@ class ShopifyAdapterTest extends TestCase
             $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
             $product['node']['category'] = $categoryValue;
 
-            $data = $this->makeShopifyResponse([$product]);
-            $result = $this->adapter->transform($data);
+            $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+            $p = $result['products'][0];
 
             $this->assertEmpty($result['errors'], "case '{$label}' produced errors");
-            $this->assertEquals('Shoes', $result['products'][0]['categoryDefault'], "case '{$label}'");
+            $this->assertSame('', $p['categoryDefault'], "case '{$label}': categoryDefault");
+            $this->assertEquals('Shoes', $p['productType'], "case '{$label}': productType");
         }
     }
 

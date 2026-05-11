@@ -110,11 +110,8 @@ class ShopifyAdapter
         $title = $this->getRequiredField($product, 'title');
         $description = $this->extractOptionalString($product, 'descriptionHtml', stripHtml: true);
         $brand = $this->extractOptionalString($product, 'vendor');
-        $taxonomyCategory = $this->extractTaxonomyCategory($product);
-        $categoryIsTaxonomy = $taxonomyCategory !== '';
-        $categoryDefault = $categoryIsTaxonomy
-            ? $taxonomyCategory
-            : $this->extractOptionalString($product, 'productType');
+        $categoryDefault = $this->extractTaxonomyCategory($product);
+        $nativeProductType = $this->extractOptionalString($product, 'productType');
         $productUrl = $this->extractProductUrl($product);
         $defaultHandle = $this->extractDefaultHandle($product, $productUrl);
         $translations = $product['translations'] ?? [];
@@ -122,8 +119,8 @@ class ShopifyAdapter
         $productCollections = $productCollectionsMap[$productGid] ?? [];
 
         $result += ! empty($locales)
-            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $productUrl, $defaultHandle, $categoryIsTaxonomy, $productCollections)
-            : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $productUrl, $product, $productCollections, $primaryLocale);
+            ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $defaultHandle, $productCollections)
+            : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $product, $productCollections, $primaryLocale);
 
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
@@ -161,9 +158,9 @@ class ShopifyAdapter
         string $description,
         string $brand,
         string $categoryDefault,
+        string $nativeProductType,
         string $productUrl,
         string $defaultHandle,
-        bool $categoryIsTaxonomy,
         array $productCollections = [],
     ): array {
         $fields = [];
@@ -181,12 +178,20 @@ class ShopifyAdapter
             }
 
             // Shopify's Standard Product Taxonomy is global English-only; never translate it.
-            // product_type translations only apply to the free-text productType fallback path.
-            $localeCategoryDefault = $categoryIsTaxonomy
-                ? $categoryDefault
-                : ($this->translated($localeTranslations, 'product_type') ?? $categoryDefault);
-            $fields["categoryDefault_{$locale}"] = $localeCategoryDefault;
-            $fields["categories_{$locale}"] = $this->buildCategories($localeCategoryDefault, $this->extractTags($product));
+            // categoryDefault/categories reflect taxonomy only — productType is its own field.
+            if ($categoryDefault !== '') {
+                $fields["categoryDefault_{$locale}"] = $categoryDefault;
+            }
+            $localeCategories = $this->buildCategories($categoryDefault, $this->extractTags($product));
+            if (!empty($localeCategories)) {
+                $fields["categories_{$locale}"] = $localeCategories;
+            }
+
+            $localeProductType = $this->translated($localeTranslations, 'product_type')
+                ?? ($locale === $primaryLocale ? $nativeProductType : '');
+            if ($localeProductType !== '') {
+                $fields["productType_{$locale}"] = $localeProductType;
+            }
 
             // Non-translatable fields: vendor has no Shopify translation support
             if ($brand !== '') {
@@ -223,6 +228,7 @@ class ShopifyAdapter
         string $description,
         string $brand,
         string $categoryDefault,
+        string $nativeProductType,
         string $productUrl,
         array $product,
         array $productCollections,
@@ -236,6 +242,7 @@ class ShopifyAdapter
             'brand' => $brand !== '' ? $brand : null,
             'categoryDefault' => $categoryDefault,
             'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
+            'productType' => $nativeProductType !== '' ? $nativeProductType : null,
             'productUrl' => $productUrl !== '' ? $productUrl : null,
             'collections' => !empty($collections) ? $collections : null,
         ], fn($v) => $v !== null);
