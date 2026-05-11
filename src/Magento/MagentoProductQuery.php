@@ -71,8 +71,9 @@ final class MagentoProductQuery
                 has_unit
             }
             image_optimized
-            price_range {
+            calculated_price {
                 minimum_price {
+                    regular_price { value currency }
                     final_price { value currency }
                     final_price_excl_tax { value currency }
                 }
@@ -99,8 +100,9 @@ GRAPHQL;
             name
             full_url
             stock_status
-            price_range {
+            calculated_price {
                 minimum_price {
+                    regular_price { value currency }
                     final_price { value currency }
                     final_price_excl_tax { value currency }
                 }
