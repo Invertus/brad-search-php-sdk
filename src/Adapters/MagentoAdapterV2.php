@@ -306,7 +306,7 @@ class MagentoAdapterV2
     }
 
     /**
-     * Extract pricing from Magento price_range structure.
+     * Extract pricing from Magento calculated_price structure.
      *
      * @param array<string, mixed> $product
      * @return ProductPricing
@@ -315,19 +315,24 @@ class MagentoAdapterV2
     {
         $price = (float) (AdapterUtils::getNestedValue(
             $product,
-            ['price_range', 'minimum_price', 'final_price', 'value']
+            ['calculated_price', 'minimum_price', 'final_price', 'value']
         ) ?? 0);
 
         $priceTaxExcluded = (float) (AdapterUtils::getNestedValue(
             $product,
-            ['price_range', 'minimum_price', 'final_price_excl_tax', 'value']
+            ['calculated_price', 'minimum_price', 'final_price_excl_tax', 'value']
+        ) ?? $price);
+
+        $basePrice = (float) (AdapterUtils::getNestedValue(
+            $product,
+            ['calculated_price', 'minimum_price', 'regular_price', 'value']
         ) ?? $price);
 
         return new ProductPricing(
             price: $price,
-            basePrice: $price,
+            basePrice: $basePrice,
             priceTaxExcluded: $priceTaxExcluded,
-            basePriceTaxExcluded: $priceTaxExcluded
+            basePriceTaxExcluded: $basePrice,
         );
     }
 

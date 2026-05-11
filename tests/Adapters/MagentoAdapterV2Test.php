@@ -513,8 +513,9 @@ class MagentoAdapterV2Test extends TestCase
     public function testPriceFlattenedFromNestedStructure(): void
     {
         $product = $this->buildMinimalProduct([
-            'price_range' => [
+            'calculated_price' => [
                 'minimum_price' => [
+                    'regular_price' => ['value' => 29.99],
                     'final_price' => ['value' => 29.99],
                     'final_price_excl_tax' => ['value' => 24.79],
                 ],
@@ -527,7 +528,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(29.99, $serialized['price']);
         $this->assertSame(29.99, $serialized['basePrice']);
         $this->assertSame(24.79, $serialized['priceTaxExcluded']);
-        $this->assertSame(24.79, $serialized['basePriceTaxExcluded']);
+        $this->assertSame(29.99, $serialized['basePriceTaxExcluded']);
     }
 
     public function testPriceFallsBackToZeroWhenMissing(): void
@@ -543,7 +544,7 @@ class MagentoAdapterV2Test extends TestCase
     public function testPriceTaxExcludedFallsBackToPrice(): void
     {
         $product = $this->buildMinimalProduct([
-            'price_range' => [
+            'calculated_price' => [
                 'minimum_price' => [
                     'final_price' => ['value' => 15.50],
                     // no final_price_excl_tax
@@ -556,6 +557,47 @@ class MagentoAdapterV2Test extends TestCase
 
         $this->assertSame(15.50, $serialized['price']);
         $this->assertSame(15.50, $serialized['priceTaxExcluded']);
+    }
+
+    public function testBasePriceUsesRegularPriceWhenDiscounted(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'calculated_price' => [
+                'minimum_price' => [
+                    'regular_price' => ['value' => 50.00],
+                    'final_price' => ['value' => 40.00],
+                    'final_price_excl_tax' => ['value' => 33.06],
+                ],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame(40.00, $serialized['price']);
+        $this->assertSame(50.00, $serialized['basePrice']);
+        $this->assertSame(33.06, $serialized['priceTaxExcluded']);
+        $this->assertSame(50.00, $serialized['basePriceTaxExcluded']);
+    }
+
+    public function testBasePriceFallsBackToPriceWhenRegularPriceMissing(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'calculated_price' => [
+                'minimum_price' => [
+                    'final_price' => ['value' => 12.34],
+                    'final_price_excl_tax' => ['value' => 10.20],
+                ],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame(12.34, $serialized['price']);
+        $this->assertSame(12.34, $serialized['basePrice']);
+        $this->assertSame(10.20, $serialized['priceTaxExcluded']);
+        $this->assertSame(12.34, $serialized['basePriceTaxExcluded']);
     }
 
     // --- Image URL Tests ---
@@ -731,8 +773,9 @@ class MagentoAdapterV2Test extends TestCase
             'short_description' => ['html' => '<p>Drill bit</p>'],
             'image_optimized' => 'https://shop.example.com/drill.jpg',
             'is_in_stock' => true,
-            'price_range' => [
+            'calculated_price' => [
                 'minimum_price' => [
+                    'regular_price' => ['value' => 5.99],
                     'final_price' => ['value' => 5.99],
                     'final_price_excl_tax' => ['value' => 4.95],
                 ],
