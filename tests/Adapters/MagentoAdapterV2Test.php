@@ -528,7 +528,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(29.99, $serialized['price']);
         $this->assertSame(29.99, $serialized['basePrice']);
         $this->assertSame(24.79, $serialized['priceTaxExcluded']);
-        $this->assertSame(29.99, $serialized['basePriceTaxExcluded']);
+        $this->assertEqualsWithDelta(24.79, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
     public function testPriceFallsBackToZeroWhenMissing(): void
@@ -577,7 +577,8 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(40.00, $serialized['price']);
         $this->assertSame(50.00, $serialized['basePrice']);
         $this->assertSame(33.06, $serialized['priceTaxExcluded']);
-        $this->assertSame(50.00, $serialized['basePriceTaxExcluded']);
+        // 50.00 * (33.06 / 40.00) = 41.325
+        $this->assertEqualsWithDelta(41.325, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
     public function testBasePriceFallsBackToPriceWhenRegularPriceMissing(): void
@@ -597,7 +598,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(12.34, $serialized['price']);
         $this->assertSame(12.34, $serialized['basePrice']);
         $this->assertSame(10.20, $serialized['priceTaxExcluded']);
-        $this->assertSame(12.34, $serialized['basePriceTaxExcluded']);
+        $this->assertEqualsWithDelta(10.20, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
     // --- Image URL Tests ---

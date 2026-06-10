@@ -328,11 +328,15 @@ class MagentoAdapterV2
             ['calculated_price', 'minimum_price', 'regular_price', 'value']
         ) ?? $price);
 
+        // No regular_price_excl_tax from the API; derive it via the final-price tax ratio.
+        $taxRatio = $price > 0.0 ? $priceTaxExcluded / $price : 1.0;
+        $basePriceTaxExcluded = $basePrice * $taxRatio;
+
         return new ProductPricing(
             price: $price,
             basePrice: $basePrice,
             priceTaxExcluded: $priceTaxExcluded,
-            basePriceTaxExcluded: $basePrice,
+            basePriceTaxExcluded: $basePriceTaxExcluded,
         );
     }
 
