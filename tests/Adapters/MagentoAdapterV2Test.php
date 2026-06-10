@@ -601,6 +601,25 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertEqualsWithDelta(10.20, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
+    public function testBasePriceTaxExcludedFallsBackToBasePriceWhenPriceIsZero(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'calculated_price' => [
+                'minimum_price' => [
+                    'regular_price' => ['value' => 50.00],
+                    'final_price' => ['value' => 0.0],
+                    'final_price_excl_tax' => ['value' => 0.0],
+                ],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame(50.00, $serialized['basePrice']);
+        $this->assertEqualsWithDelta(50.00, $serialized['basePriceTaxExcluded'], 0.001);
+    }
+
     /** @dataProvider taxExcludedDiscountProvider */
     public function testBasePriceTaxExcludedReflectsTrueDiscountRate(
         float $price,
