@@ -528,7 +528,7 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(29.99, $serialized['price']);
         $this->assertSame(29.99, $serialized['basePrice']);
         $this->assertSame(24.79, $serialized['priceTaxExcluded']);
-        $this->assertSame(29.99, $serialized['basePriceTaxExcluded']);
+        $this->assertEqualsWithDelta(24.79, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
     public function testPriceFallsBackToZeroWhenMissing(): void
@@ -577,7 +577,8 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(40.00, $serialized['price']);
         $this->assertSame(50.00, $serialized['basePrice']);
         $this->assertSame(33.06, $serialized['priceTaxExcluded']);
-        $this->assertSame(50.00, $serialized['basePriceTaxExcluded']);
+        // 50.00 * (33.06 / 40.00) = 41.325
+        $this->assertEqualsWithDelta(41.325, $serialized['basePriceTaxExcluded'], 0.001);
     }
 
     public function testBasePriceFallsBackToPriceWhenRegularPriceMissing(): void
@@ -597,7 +598,69 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertSame(12.34, $serialized['price']);
         $this->assertSame(12.34, $serialized['basePrice']);
         $this->assertSame(10.20, $serialized['priceTaxExcluded']);
-        $this->assertSame(12.34, $serialized['basePriceTaxExcluded']);
+        $this->assertEqualsWithDelta(10.20, $serialized['basePriceTaxExcluded'], 0.001);
+    }
+
+    public function testBasePriceTaxExcludedFallsBackToBasePriceWhenPriceIsZero(): void
+    {
+        $product = $this->buildMinimalProduct([
+            'calculated_price' => [
+                'minimum_price' => [
+                    'regular_price' => ['value' => 50.00],
+                    'final_price' => ['value' => 0.0],
+                    'final_price_excl_tax' => ['value' => 0.0],
+                ],
+            ],
+        ]);
+
+        $result = $this->adapter->transformProduct($product);
+        $serialized = $result->jsonSerialize();
+
+        $this->assertSame(50.00, $serialized['basePrice']);
+        $this->assertEqualsWithDelta(50.00, $serialized['basePriceTaxExcluded'], 0.001);
+    }
+
+    /** @dataProvider taxExcludedDiscountProvider */
+    public function testBasePriceTaxExcludedReflectsTrueDiscountRate(
+        float $price,
+        float $priceTaxExcluded,
+        float $basePrice,
+        float $expectedBasePriceTaxExcluded
+    ): void {
+        $product = $this->buildMinimalProduct([
+            'calculated_price' => [
+                'minimum_price' => [
+                    'regular_price' => ['value' => $basePrice],
+                    'final_price' => ['value' => $price],
+                    'final_price_excl_tax' => ['value' => $priceTaxExcluded],
+                ],
+            ],
+        ]);
+
+        $serialized = $this->adapter->transformProduct($product)->jsonSerialize();
+
+        $this->assertEqualsWithDelta($expectedBasePriceTaxExcluded, $serialized['basePriceTaxExcluded'], 0.01);
+
+        // tax-excluded discount must equal the gross discount
+        $grossDiscount = ($basePrice - $price) / $basePrice;
+        $netDiscount = ($serialized['basePriceTaxExcluded'] - $serialized['priceTaxExcluded'])
+            / $serialized['basePriceTaxExcluded'];
+        $this->assertEqualsWithDelta($grossDiscount, $netDiscount, 0.001);
+    }
+
+    /** @return array<string, array{0: float, 1: float, 2: float, 3: float}> */
+    public static function taxExcludedDiscountProvider(): array
+    {
+        return [
+            // real Verkter products, full price
+            'real Stanley STA10080' => [6.97, 5.76, 6.97, 5.76],
+            'real Metabo STA18 LTX' => [291.44, 240.86, 291.44, 240.86],
+            'real Yato YT-0682' => [18.62, 15.39, 18.62, 15.39],
+            // synthetic discounts (LT 21% VAT)
+            'synthetic 100.00 -> 80.00' => [80.00, 66.12, 100.00, 82.65],
+            'synthetic 49.99 -> 39.99' => [39.99, 33.05, 49.99, 41.31],
+            'synthetic 1200.00 -> 999.00' => [999.00, 825.62, 1200.00, 991.74],
+        ];
     }
 
     // --- Image URL Tests ---
