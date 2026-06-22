@@ -150,6 +150,20 @@ class SynonymResponseTest extends TestCase
         $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
     }
 
+    public function testFromArrayDropsEmptyTermsFromSolrStringGroups(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                'laptop, , notebook',
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
     public function testFromArrayThrowsOnMissingLanguage(): void
     {
         $this->expectException(InvalidArgumentException::class);

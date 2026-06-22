@@ -22,15 +22,29 @@ trait NormalizesSynonymGroups
     private static function normalizeGroup(mixed $group): array
     {
         if (is_string($group)) {
-            return array_map('trim', explode(',', $group));
+            return self::trimTerms(explode(',', $group));
         }
 
         if (!is_array($group)) {
             return [];
         }
 
+        return self::trimTerms(array_map(
+            static fn(mixed $term): string => is_string($term) ? $term : '',
+            $group
+        ));
+    }
+
+    /**
+     * Trims terms and discards any that are empty after trimming.
+     *
+     * @param array<int, string> $terms
+     * @return array<int, string>
+     */
+    private static function trimTerms(array $terms): array
+    {
         return array_values(array_filter(
-            array_map(static fn(mixed $term): string => is_string($term) ? trim($term) : '', $group),
+            array_map('trim', $terms),
             static fn(string $term): bool => $term !== ''
         ));
     }
