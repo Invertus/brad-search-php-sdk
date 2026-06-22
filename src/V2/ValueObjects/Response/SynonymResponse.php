@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\V2\ValueObjects\Response;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\NormalizesSynonymGroups;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -18,6 +19,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class SynonymResponse extends ValueObject
 {
+    use NormalizesSynonymGroups;
+
     private const LANGUAGE_PATTERN = '/^[a-z]{2}$/';
 
     /**
@@ -65,7 +68,7 @@ final readonly class SynonymResponse extends ValueObject
      * The API returns each synonym group as a Solr-format string
      * ("laptop, notebook"); normalize those into term arrays.
      *
-     * @param array<int, string|array<int, string>>|null $synonyms
+     * @param array<int, mixed>|null $synonyms
      * @return array<int, array<int, string>>|null
      */
     private static function normalizeSynonyms(?array $synonyms): ?array
@@ -74,12 +77,7 @@ final readonly class SynonymResponse extends ValueObject
             return null;
         }
 
-        return array_map(
-            static fn(string|array $group): array => is_string($group)
-                ? array_map('trim', explode(',', $group))
-                : $group,
-            $synonyms
-        );
+        return array_map(self::normalizeGroup(...), $synonyms);
     }
 
     /**

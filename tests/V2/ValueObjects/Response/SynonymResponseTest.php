@@ -244,23 +244,29 @@ class SynonymResponseTest extends TestCase
      */
     public function testMatchesOpenApiExampleResponse(): void
     {
-        $apiResponse = [
-            'language' => 'en',
-            'synonym_count' => 3,
-            'requires_reindex' => true,
-            'synonyms' => [
+        $fixture = json_decode(
+            (string) file_get_contents(
+                __DIR__ . '/../../../fixtures/openapi-examples/synonyms-ecommerce-en.json'
+            ),
+            true
+        );
+
+        // The fixture is the Solr-string GET shape and omits count/reindex.
+        $response = SynonymResponse::fromArray($fixture + [
+            'synonym_count' => count($fixture['synonyms']),
+            'requires_reindex' => false,
+        ]);
+
+        $this->assertEquals('en', $response->language);
+        $this->assertEquals(3, $response->synonymCount);
+        $this->assertEquals(
+            [
                 ['laptop', 'notebook', 'computer'],
                 ['phone', 'mobile', 'smartphone'],
                 ['shoes', 'footwear', 'sneakers'],
             ],
-        ];
-
-        $response = SynonymResponse::fromArray($apiResponse);
-
-        $this->assertEquals('en', $response->language);
-        $this->assertEquals(3, $response->synonymCount);
-        $this->assertTrue($response->requiresReindex);
-        $this->assertCount(3, $response->synonyms);
+            $response->synonyms
+        );
     }
 
     public function testJsonEncodeProducesValidJson(): void

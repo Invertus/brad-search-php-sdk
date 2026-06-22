@@ -184,6 +184,7 @@ class SynonymConfigurationTest extends TestCase
             ],
         ]);
 
+        $this->assertNotNull($config);
         $this->assertEquals('en', $config->language);
         $this->assertEquals(
             [
@@ -192,6 +193,18 @@ class SynonymConfigurationTest extends TestCase
             ],
             $config->synonyms
         );
+    }
+
+    public function testFromApiResponseReturnsNullForEmptySynonyms(): void
+    {
+        $this->assertNull(SynonymConfiguration::fromApiResponse([
+            'language' => 'en',
+            'synonyms' => [],
+        ]));
+
+        $this->assertNull(SynonymConfiguration::fromApiResponse([
+            'language' => 'en',
+        ]));
     }
 
     public function testToArrayReturnsJsonSerializeOutput(): void
@@ -398,10 +411,10 @@ class SynonymConfigurationTest extends TestCase
 
     public function testAcceptsManySynonymGroups(): void
     {
-        $synonyms = [];
-        for ($i = 0; $i < 100; $i++) {
-            $synonyms[] = ["term{$i}a", "term{$i}b"];
-        }
+        $synonyms = array_map(
+            fn(int $i): array => ["term{$i}a", "term{$i}b"],
+            range(0, 99)
+        );
 
         $config = new SynonymConfiguration('en', $synonyms);
 
