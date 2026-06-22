@@ -109,6 +109,33 @@ class SynonymResponseTest extends TestCase
         );
     }
 
+    public function testFromArrayHandlesNonArraySynonymsWithoutTypeError(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 0,
+            'requires_reindex' => false,
+            'synonyms' => 'laptop, notebook',
+        ]);
+
+        $this->assertNull($response->synonyms);
+    }
+
+    public function testFromArrayDropsMalformedGroupsThatNormalizeToEmpty(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                'laptop, notebook',
+                123,
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
     public function testFromArrayThrowsOnMissingLanguage(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -251,11 +278,12 @@ class SynonymResponseTest extends TestCase
             true
         );
 
-        // The fixture is the Solr-string GET shape and omits count/reindex.
-        $response = SynonymResponse::fromArray($fixture + [
+        // The fixture is the Solr-string GET shape and omits count/reindex;
+        // supply defaults that the fixture overrides if it ever gains them.
+        $response = SynonymResponse::fromArray(array_merge([
             'synonym_count' => count($fixture['synonyms']),
             'requires_reindex' => false,
-        ]);
+        ], $fixture));
 
         $this->assertEquals('en', $response->language);
         $this->assertEquals(3, $response->synonymCount);

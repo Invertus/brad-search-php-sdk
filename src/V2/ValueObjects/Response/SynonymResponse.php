@@ -68,16 +68,24 @@ final readonly class SynonymResponse extends ValueObject
      * The API returns each synonym group as a Solr-format string
      * ("laptop, notebook"); normalize those into term arrays.
      *
-     * @param array<int, mixed>|null $synonyms
+     * Non-array payloads (null, or the whole field arriving as a single
+     * string) yield null rather than a TypeError, since fromArray() is public.
+     * Malformed entries that normalize to an empty group are dropped so the
+     * result never carries an untraceable [].
+     *
+     * @param mixed $synonyms
      * @return array<int, array<int, string>>|null
      */
-    private static function normalizeSynonyms(?array $synonyms): ?array
+    private static function normalizeSynonyms(mixed $synonyms): ?array
     {
-        if ($synonyms === null) {
+        if (!is_array($synonyms)) {
             return null;
         }
 
-        return array_map(self::normalizeGroup(...), $synonyms);
+        return array_values(array_filter(
+            array_map(self::normalizeGroup(...), $synonyms),
+            static fn(array $group): bool => !empty($group)
+        ));
     }
 
     /**
