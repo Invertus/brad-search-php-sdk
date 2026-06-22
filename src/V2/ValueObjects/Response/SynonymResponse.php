@@ -57,7 +57,28 @@ final readonly class SynonymResponse extends ValueObject
             language: (string) $data['language'],
             synonymCount: (int) $data['synonym_count'],
             requiresReindex: (bool) $data['requires_reindex'],
-            synonyms: $data['synonyms'] ?? null
+            synonyms: self::normalizeSynonyms($data['synonyms'] ?? null)
+        );
+    }
+
+    /**
+     * The API returns each synonym group as a Solr-format string
+     * ("laptop, notebook"); normalize those into term arrays.
+     *
+     * @param array<int, string|array<int, string>>|null $synonyms
+     * @return array<int, array<int, string>>|null
+     */
+    private static function normalizeSynonyms(?array $synonyms): ?array
+    {
+        if ($synonyms === null) {
+            return null;
+        }
+
+        return array_map(
+            static fn(string|array $group): array => is_string($group)
+                ? array_map('trim', explode(',', $group))
+                : $group,
+            $synonyms
         );
     }
 

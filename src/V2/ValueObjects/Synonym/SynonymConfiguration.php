@@ -58,13 +58,35 @@ final readonly class SynonymConfiguration extends ValueObject
     }
 
     /**
+     * Creates a SynonymConfiguration from an API response payload, where each
+     * synonym group is a Solr-format string (e.g. "laptop, notebook").
+     *
+     * @param array<string, mixed> $data
+     */
+    public static function fromApiResponse(array $data): self
+    {
+        $synonyms = array_map(
+            static fn(string $group): array => array_map('trim', explode(',', $group)),
+            $data['synonyms'] ?? []
+        );
+
+        return new self((string) ($data['language'] ?? ''), $synonyms);
+    }
+
+    /**
+     * The API expects each synonym group as a Solr-format equivalence string
+     * ("laptop, notebook, computer"), not as a nested array.
+     *
      * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {
         return [
             'language' => $this->language,
-            'synonyms' => $this->synonyms,
+            'synonyms' => array_map(
+                static fn(array $group): string => implode(', ', $group),
+                $this->synonyms
+            ),
         ];
     }
 
@@ -145,6 +167,19 @@ final readonly class SynonymConfiguration extends ValueObject
                             'Synonym term at index [%d][%d] cannot be empty.',
                             $index,
                             $termIndex
+                        ),
+                        'synonyms',
+                        $synonyms
+                    );
+                }
+
+                if (str_contains($term, ',') || str_contains($term, '=>')) {
+                    throw new InvalidArgumentException(
+                        sprintf(
+                            'Synonym term at index [%d][%d] must not contain "," or "=>" (Solr syntax characters), got "%s".',
+                            $index,
+                            $termIndex,
+                            $term
                         ),
                         'synonyms',
                         $synonyms

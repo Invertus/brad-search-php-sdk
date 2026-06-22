@@ -216,7 +216,15 @@ class SyncV2Sdk
             $this->baseApiPath . 'synonyms?language=' . urlencode($language)
         );
 
-        return SynonymResponse::fromArray($response);
+        // GET returns {language, synonyms} without count/reindex fields.
+        $synonyms = $response['synonyms'] ?? [];
+
+        return SynonymResponse::fromArray([
+            'language' => $response['language'] ?? $language,
+            'synonym_count' => $response['synonym_count'] ?? count($synonyms),
+            'requires_reindex' => $response['requires_reindex'] ?? false,
+            'synonyms' => $synonyms,
+        ]);
     }
 
     /**
