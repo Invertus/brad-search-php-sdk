@@ -207,6 +207,10 @@ class SyncV2Sdk
     /**
      * Get search synonyms for a specific language.
      *
+     * The returned response always carries a non-null synonyms array (empty
+     * when there are none), unlike SynonymResponse::fromArray() called directly
+     * without a synonyms key, which yields null.
+     *
      * @param  string  $language  Language code (e.g., "en", "lt")
      * @return SynonymResponse Typed response with synonyms data
      */

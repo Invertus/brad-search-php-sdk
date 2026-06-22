@@ -136,6 +136,20 @@ class SynonymResponseTest extends TestCase
         $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
     }
 
+    public function testFromArrayTrimsArrayFormGroupsAndDropsNonStringElements(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                ['laptop ', ' notebook', 123],
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
     public function testFromArrayThrowsOnMissingLanguage(): void
     {
         $this->expectException(InvalidArgumentException::class);

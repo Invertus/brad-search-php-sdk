@@ -13,8 +13,9 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Synonym;
 trait NormalizesSynonymGroups
 {
     /**
-     * Normalizes a single synonym group: Solr-format strings are split on
-     * commas, arrays pass through, anything else collapses to an empty group.
+     * Normalizes a single synonym group into trimmed string terms: Solr-format
+     * strings are split on commas; arrays have their string elements trimmed and
+     * non-string elements discarded; anything else collapses to an empty group.
      *
      * @return array<int, string>
      */
@@ -24,6 +25,13 @@ trait NormalizesSynonymGroups
             return array_map('trim', explode(',', $group));
         }
 
-        return is_array($group) ? array_values($group) : [];
+        if (!is_array($group)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            array_map(static fn(mixed $term): string => is_string($term) ? trim($term) : '', $group),
+            static fn(string $term): bool => $term !== ''
+        ));
     }
 }

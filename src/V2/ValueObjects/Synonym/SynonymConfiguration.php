@@ -68,6 +68,12 @@ final readonly class SynonymConfiguration extends ValueObject
      * one group.
      *
      * @param array<string, mixed> $data
+     *
+     * @throws InvalidArgumentException If a synonym group cannot be parsed
+     *                                  (e.g. a non-string/non-array entry that
+     *                                  normalizes to an empty group), unlike
+     *                                  SynonymResponse::normalizeSynonyms()
+     *                                  which drops such groups silently.
      */
     public static function fromApiResponse(array $data): ?self
     {
