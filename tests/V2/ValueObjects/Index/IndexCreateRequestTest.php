@@ -10,6 +10,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 use JsonSerializable;
 use PHPUnit\Framework\TestCase;
@@ -461,6 +462,64 @@ class IndexCreateRequestTest extends TestCase
                 ['name' => 'invalid', 'type' => 'text'],
                 new FieldDefinition('price', FieldType::DOUBLE),
             ]
+        );
+    }
+
+    public function testSynonymsDefaultToEmptyAndAreOmittedFromSerialization(): void
+    {
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [new FieldDefinition('id', FieldType::KEYWORD)]
+        );
+
+        $this->assertEquals([], $request->synonyms);
+        $this->assertArrayNotHasKey('synonyms', $request->jsonSerialize());
+    }
+
+    public function testSynonymsAreSerializedAsSolrStringsWhenProvided(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US', 'lt-LT'],
+            [new FieldDefinition('name', FieldType::TEXT)],
+            [
+                new SynonymConfiguration('en', [['laptop', 'notebook']]),
+                new SynonymConfiguration('lt', [['telefonas', 'mobilusis']]),
+            ]
+        );
+
+        $this->assertEquals(
+            [
+                ['language' => 'en', 'synonyms' => ['laptop, notebook']],
+                ['language' => 'lt', 'synonyms' => ['telefonas, mobilusis']],
+            ],
+            $request->jsonSerialize()['synonyms']
+        );
+    }
+
+    public function testWithSynonymsReturnsNewInstance(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)]
+        );
+
+        $synonyms = [new SynonymConfiguration('en', [['laptop', 'notebook']])];
+        $updated = $request->withSynonyms($synonyms);
+
+        $this->assertNotSame($request, $updated);
+        $this->assertEquals([], $request->synonyms);
+        $this->assertEquals($synonyms, $updated->synonyms);
+    }
+
+    public function testThrowsExceptionForInvalidSynonymEntry(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Synonym at index 0 must be an instance of SynonymConfiguration.');
+
+        new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)],
+            [['language' => 'en', 'synonyms' => [['laptop', 'notebook']]]]
         );
     }
 }

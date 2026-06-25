@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\V2\ValueObjects\Index;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -14,6 +15,9 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * This immutable ValueObject contains the required data for creating a new index:
  * - locales: Array of locale codes in 'xx-XX' format
  * - fields: Array of FieldDefinition objects
+ * - synonyms: Optional per-language synonym configurations, applied at index
+ *   creation so they take effect on activation without a separate post-activation
+ *   update (which would briefly close the active index).
  */
 final readonly class IndexCreateRequest extends ValueObject
 {
@@ -25,13 +29,16 @@ final readonly class IndexCreateRequest extends ValueObject
     /**
      * @param array<string> $locales Array of locale codes (e.g., ['lt-LT', 'en-US'])
      * @param array<FieldDefinition> $fields Array of field definitions
+     * @param array<SynonymConfiguration> $synonyms Optional per-language synonym configurations
      */
     public function __construct(
         array $locales,
-        public array $fields
+        public array $fields,
+        public array $synonyms = []
     ) {
         $this->validateLocales($locales);
         $this->validateFields($fields);
+        $this->validateSynonyms($synonyms);
         $this->locales = $locales;
     }
 
@@ -42,7 +49,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withLocales(array $locales): self
     {
-        return new self($locales, $this->fields);
+        return new self($locales, $this->fields, $this->synonyms);
     }
 
     /**
@@ -52,7 +59,17 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withFields(array $fields): self
     {
-        return new self($this->locales, $fields);
+        return new self($this->locales, $fields, $this->synonyms);
+    }
+
+    /**
+     * Returns a new instance with different synonym configurations.
+     *
+     * @param array<SynonymConfiguration> $synonyms
+     */
+    public function withSynonyms(array $synonyms): self
+    {
+        return new self($this->locales, $this->fields, $synonyms);
     }
 
     /**
@@ -60,7 +77,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withAddedLocale(string $locale): self
     {
-        return new self([...$this->locales, $locale], $this->fields);
+        return new self([...$this->locales, $locale], $this->fields, $this->synonyms);
     }
 
     /**
@@ -68,7 +85,15 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withAddedField(FieldDefinition $field): self
     {
-        return new self($this->locales, [...$this->fields, $field]);
+        return new self($this->locales, [...$this->fields, $field], $this->synonyms);
+    }
+
+    /**
+     * Returns a new instance with an additional synonym configuration.
+     */
+    public function withAddedSynonym(SynonymConfiguration $synonym): self
+    {
+        return new self($this->locales, $this->fields, [...$this->synonyms, $synonym]);
     }
 
     /**
@@ -76,13 +101,22 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function jsonSerialize(): array
     {
-        return [
+        $data = [
             'locales' => $this->locales,
             'fields' => array_map(
                 fn(FieldDefinition $field) => $field->jsonSerialize(),
                 $this->fields
             ),
         ];
+
+        if ($this->synonyms !== []) {
+            $data['synonyms'] = array_map(
+                fn(SynonymConfiguration $synonym) => $synonym->jsonSerialize(),
+                $this->synonyms
+            );
+        }
+
+        return $data;
     }
 
     /**
@@ -139,6 +173,28 @@ final readonly class IndexCreateRequest extends ValueObject
                     sprintf('Field at index %d must be an instance of FieldDefinition.', $index),
                     'fields',
                     $field
+                );
+            }
+        }
+    }
+
+    /**
+     * Validates that all synonym entries are SynonymConfiguration instances.
+     *
+     * @param array<mixed> $synonyms
+     * @throws InvalidArgumentException If an entry is not a SynonymConfiguration
+     */
+    private function validateSynonyms(array $synonyms): void
+    {
+        foreach ($synonyms as $index => $synonym) {
+            if (!$synonym instanceof SynonymConfiguration) {
+                throw new InvalidArgumentException(
+                    sprintf(
+                        'Synonym at index %d must be an instance of SynonymConfiguration.',
+                        $index
+                    ),
+                    'synonyms',
+                    $synonym
                 );
             }
         }
