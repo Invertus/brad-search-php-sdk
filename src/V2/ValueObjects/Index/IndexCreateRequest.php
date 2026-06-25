@@ -179,13 +179,17 @@ final readonly class IndexCreateRequest extends ValueObject
     }
 
     /**
-     * Validates that all synonym entries are SynonymConfiguration instances.
+     * Validates that all synonym entries are SynonymConfiguration instances and
+     * that each language appears at most once.
      *
      * @param array<mixed> $synonyms
      * @throws InvalidArgumentException If an entry is not a SynonymConfiguration
+     *                                  or a language is configured more than once
      */
     private function validateSynonyms(array $synonyms): void
     {
+        $seenLanguages = [];
+
         foreach ($synonyms as $index => $synonym) {
             if (!$synonym instanceof SynonymConfiguration) {
                 throw new InvalidArgumentException(
@@ -197,6 +201,20 @@ final readonly class IndexCreateRequest extends ValueObject
                     $synonym
                 );
             }
+
+            if (isset($seenLanguages[$synonym->language])) {
+                throw new InvalidArgumentException(
+                    sprintf(
+                        'Duplicate synonym configuration for language "%s" at index %d; each language must appear at most once.',
+                        $synonym->language,
+                        $index
+                    ),
+                    'synonyms',
+                    $synonyms
+                );
+            }
+
+            $seenLanguages[$synonym->language] = true;
         }
     }
 }
