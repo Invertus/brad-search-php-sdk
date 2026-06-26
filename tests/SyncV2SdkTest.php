@@ -967,13 +967,12 @@ class SyncV2SdkTest extends TestCase
     {
         $language = 'en';
 
+        // GET returns the SynonymConfiguration shape: Solr strings, no count/reindex fields
         $apiResponse = [
             'language' => 'en',
-            'synonym_count' => 2,
-            'requires_reindex' => false,
             'synonyms' => [
-                ['happy', 'joyful', 'cheerful'],
-                ['sad', 'unhappy', 'sorrowful'],
+                'happy, joyful, cheerful',
+                'sad, unhappy, sorrowful',
             ],
         ];
 
@@ -991,7 +990,31 @@ class SyncV2SdkTest extends TestCase
         $this->assertEquals('en', $result->language);
         $this->assertEquals(2, $result->synonymCount);
         $this->assertFalse($result->requiresReindex);
-        $this->assertCount(2, $result->synonyms);
+        $this->assertEquals(
+            [
+                ['happy', 'joyful', 'cheerful'],
+                ['sad', 'unhappy', 'sorrowful'],
+            ],
+            $result->synonyms
+        );
+    }
+
+    public function testGetSynonymsHandlesEmptyResult(): void
+    {
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('get')
+            ->willReturn([
+                'language' => 'en',
+                'synonyms' => null,
+            ]);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->getSynonyms('en');
+
+        $this->assertEquals(0, $result->synonymCount);
+        $this->assertEquals([], $result->synonyms);
     }
 
     public function testGetSynonymsAppIdIncludedInUrlPath(): void

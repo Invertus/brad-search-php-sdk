@@ -15,6 +15,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class SynonymConfiguration extends ValueObject
 {
+    use NormalizesSynonymGroups;
+
     private const LANGUAGE_PATTERN = '/^[a-z]{2}$/';
 
     /**
@@ -58,13 +60,49 @@ final readonly class SynonymConfiguration extends ValueObject
     }
 
     /**
+     * Creates a SynonymConfiguration from an API response payload, where each
+     * synonym group is a Solr-format string (e.g. "laptop, notebook").
+     *
+     * Returns null when the response carries no synonyms — an empty list is a
+     * valid API state, whereas constructing a config to send requires at least
+     * one group.
+     *
+     * @param array<string, mixed> $data
+     *
+     * @throws InvalidArgumentException If a synonym group cannot be parsed
+     *                                  (e.g. a non-string/non-array entry that
+     *                                  normalizes to an empty group), unlike
+     *                                  SynonymResponse::normalizeSynonyms()
+     *                                  which drops such groups silently.
+     */
+    public static function fromApiResponse(array $data): ?self
+    {
+        $rawSynonyms = $data['synonyms'] ?? [];
+        $rawSynonyms = is_array($rawSynonyms) ? $rawSynonyms : [];
+
+        if (empty($rawSynonyms)) {
+            return null;
+        }
+
+        $synonyms = array_map(self::normalizeGroup(...), $rawSynonyms);
+
+        return new self((string) ($data['language'] ?? ''), $synonyms);
+    }
+
+    /**
+     * The API expects each synonym group as a Solr-format equivalence string
+     * ("laptop, notebook, computer"), not as a nested array.
+     *
      * @return array<string, mixed>
      */
     public function jsonSerialize(): array
     {
         return [
             'language' => $this->language,
-            'synonyms' => $this->synonyms,
+            'synonyms' => array_map(
+                static fn(array $group): string => implode(', ', $group),
+                $this->synonyms
+            ),
         ];
     }
 
@@ -105,52 +143,90 @@ final readonly class SynonymConfiguration extends ValueObject
         }
 
         foreach ($synonyms as $index => $synonymGroup) {
-            if (!is_array($synonymGroup)) {
-                throw new InvalidArgumentException(
-                    sprintf(
-                        'Synonym group at index %d must be an array, got %s.',
-                        $index,
-                        gettype($synonymGroup)
-                    ),
-                    'synonyms',
-                    $synonyms
-                );
-            }
+            $this->validateSynonymGroup($index, $synonymGroup, $synonyms);
+        }
+    }
 
-            if (empty($synonymGroup)) {
-                throw new InvalidArgumentException(
-                    sprintf('Synonym group at index %d cannot be empty.', $index),
-                    'synonyms',
-                    $synonyms
-                );
-            }
+    /**
+     * Validates a single synonym group: it must be a non-empty array of terms.
+     *
+     * @param array<int, array<int, string>> $synonyms Full set, for error context
+     *
+     * @throws InvalidArgumentException If the group is not a non-empty array
+     */
+    private function validateSynonymGroup(int $index, mixed $synonymGroup, array $synonyms): void
+    {
+        if (!is_array($synonymGroup)) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym group at index %d must be an array, got %s.',
+                    $index,
+                    gettype($synonymGroup)
+                ),
+                'synonyms',
+                $synonyms
+            );
+        }
 
-            foreach ($synonymGroup as $termIndex => $term) {
-                if (!is_string($term)) {
-                    throw new InvalidArgumentException(
-                        sprintf(
-                            'Synonym term at index [%d][%d] must be a string, got %s.',
-                            $index,
-                            $termIndex,
-                            gettype($term)
-                        ),
-                        'synonyms',
-                        $synonyms
-                    );
-                }
+        if (empty($synonymGroup)) {
+            throw new InvalidArgumentException(
+                sprintf('Synonym group at index %d cannot be empty.', $index),
+                'synonyms',
+                $synonyms
+            );
+        }
 
-                if (trim($term) === '') {
-                    throw new InvalidArgumentException(
-                        sprintf(
-                            'Synonym term at index [%d][%d] cannot be empty.',
-                            $index,
-                            $termIndex
-                        ),
-                        'synonyms',
-                        $synonyms
-                    );
-                }
-            }
+        foreach ($synonymGroup as $termIndex => $term) {
+            $this->validateSynonymTerm($index, $termIndex, $term, $synonyms);
+        }
+    }
+
+    /**
+     * Validates a single synonym term: a non-empty string free of Solr syntax
+     * characters ("," and "=>").
+     *
+     * @param array<int, array<int, string>> $synonyms Full set, for error context
+     *
+     * @throws InvalidArgumentException If the term is invalid
+     */
+    private function validateSynonymTerm(int $index, int $termIndex, mixed $term, array $synonyms): void
+    {
+        if (!is_string($term)) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym term at index [%d][%d] must be a string, got %s.',
+                    $index,
+                    $termIndex,
+                    gettype($term)
+                ),
+                'synonyms',
+                $synonyms
+            );
+        }
+
+        if (trim($term) === '') {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym term at index [%d][%d] cannot be empty.',
+                    $index,
+                    $termIndex
+                ),
+                'synonyms',
+                $synonyms
+            );
+        }
+
+        if (str_contains($term, ',') || str_contains($term, '=>')) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym term at index [%d][%d] must not contain "," or "=>" (Solr syntax characters), got "%s".',
+                    $index,
+                    $termIndex,
+                    $term
+                ),
+                'synonyms',
+                $synonyms
+            );
         }
     }
 }

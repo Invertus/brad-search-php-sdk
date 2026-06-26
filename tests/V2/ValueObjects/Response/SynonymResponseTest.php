@@ -88,6 +88,82 @@ class SynonymResponseTest extends TestCase
         $this->assertEquals($synonyms, $response->synonyms);
     }
 
+    public function testFromArrayNormalizesSolrStringSynonymsIntoGroups(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 2,
+            'requires_reindex' => false,
+            'synonyms' => [
+                'laptop, notebook,computer',
+                'phone, mobile',
+            ],
+        ]);
+
+        $this->assertEquals(
+            [
+                ['laptop', 'notebook', 'computer'],
+                ['phone', 'mobile'],
+            ],
+            $response->synonyms
+        );
+    }
+
+    public function testFromArrayHandlesNonArraySynonymsWithoutTypeError(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 0,
+            'requires_reindex' => false,
+            'synonyms' => 'laptop, notebook',
+        ]);
+
+        $this->assertNull($response->synonyms);
+    }
+
+    public function testFromArrayDropsMalformedGroupsThatNormalizeToEmpty(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                'laptop, notebook',
+                123,
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
+    public function testFromArrayTrimsArrayFormGroupsAndDropsNonStringElements(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                ['laptop ', ' notebook', 123],
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
+    public function testFromArrayDropsEmptyTermsFromSolrStringGroups(): void
+    {
+        $response = SynonymResponse::fromArray([
+            'language' => 'en',
+            'synonym_count' => 1,
+            'requires_reindex' => false,
+            'synonyms' => [
+                'laptop, , notebook',
+            ],
+        ]);
+
+        $this->assertEquals([['laptop', 'notebook']], $response->synonyms);
+    }
+
     public function testFromArrayThrowsOnMissingLanguage(): void
     {
         $this->expectException(InvalidArgumentException::class);
@@ -223,23 +299,30 @@ class SynonymResponseTest extends TestCase
      */
     public function testMatchesOpenApiExampleResponse(): void
     {
-        $apiResponse = [
-            'language' => 'en',
-            'synonym_count' => 3,
-            'requires_reindex' => true,
-            'synonyms' => [
+        $fixture = json_decode(
+            (string) file_get_contents(
+                __DIR__ . '/../../../fixtures/openapi-examples/synonyms-ecommerce-en.json'
+            ),
+            true
+        );
+
+        // The fixture is the Solr-string GET shape and omits count/reindex;
+        // supply defaults that the fixture overrides if it ever gains them.
+        $response = SynonymResponse::fromArray(array_merge([
+            'synonym_count' => count($fixture['synonyms']),
+            'requires_reindex' => false,
+        ], $fixture));
+
+        $this->assertEquals('en', $response->language);
+        $this->assertEquals(3, $response->synonymCount);
+        $this->assertEquals(
+            [
                 ['laptop', 'notebook', 'computer'],
                 ['phone', 'mobile', 'smartphone'],
                 ['shoes', 'footwear', 'sneakers'],
             ],
-        ];
-
-        $response = SynonymResponse::fromArray($apiResponse);
-
-        $this->assertEquals('en', $response->language);
-        $this->assertEquals(3, $response->synonymCount);
-        $this->assertTrue($response->requiresReindex);
-        $this->assertCount(3, $response->synonyms);
+            $response->synonyms
+        );
     }
 
     public function testJsonEncodeProducesValidJson(): void

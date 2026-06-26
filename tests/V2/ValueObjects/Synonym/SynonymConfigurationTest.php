@@ -138,7 +138,7 @@ class SynonymConfigurationTest extends TestCase
         new SynonymConfiguration('en', [['   ', 'laptop']]);
     }
 
-    public function testJsonSerializeReturnsCorrectStructure(): void
+    public function testJsonSerializeReturnsSolrFormatStrings(): void
     {
         $synonyms = [
             ['laptop', 'notebook'],
@@ -149,10 +149,62 @@ class SynonymConfigurationTest extends TestCase
 
         $expected = [
             'language' => 'en',
-            'synonyms' => $synonyms,
+            'synonyms' => [
+                'laptop, notebook',
+                'phone, mobile',
+            ],
         ];
 
         $this->assertEquals($expected, $config->jsonSerialize());
+    }
+
+    public function testRejectsCommaInSynonymTerm(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('must not contain "," or "=>"');
+
+        new SynonymConfiguration('en', [['laptop, notebook', 'computer']]);
+    }
+
+    public function testRejectsExplicitMappingArrowInSynonymTerm(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('must not contain "," or "=>"');
+
+        new SynonymConfiguration('en', [['laptop => notebook', 'computer']]);
+    }
+
+    public function testFromApiResponseParsesSolrStringsIntoGroups(): void
+    {
+        $config = SynonymConfiguration::fromApiResponse([
+            'language' => 'en',
+            'synonyms' => [
+                'laptop, notebook,computer',
+                'phone, mobile',
+            ],
+        ]);
+
+        $this->assertNotNull($config);
+        $this->assertEquals('en', $config->language);
+        $this->assertEquals(
+            [
+                ['laptop', 'notebook', 'computer'],
+                ['phone', 'mobile'],
+            ],
+            $config->synonyms
+        );
+    }
+
+    public function testFromApiResponseReturnsNullForEmptySynonyms(): void
+    {
+        $this->assertNull(SynonymConfiguration::fromApiResponse([
+            'language' => 'en',
+            'synonyms' => [],
+        ]));
+
+        $this->assertNull(SynonymConfiguration::fromApiResponse([
+            'language' => 'en',
+        ]));
     }
 
     public function testToArrayReturnsJsonSerializeOutput(): void
@@ -242,7 +294,13 @@ class SynonymConfigurationTest extends TestCase
         $decoded = json_decode($json, true);
 
         $this->assertEquals('en', $decoded['language']);
-        $this->assertEquals($synonyms, $decoded['synonyms']);
+        $this->assertEquals(
+            [
+                'laptop, notebook, computer',
+                'phone, mobile, smartphone',
+            ],
+            $decoded['synonyms']
+        );
     }
 
     public function testChainedWithMethods(): void
@@ -313,9 +371,9 @@ class SynonymConfigurationTest extends TestCase
         $expected = [
             'language' => 'en',
             'synonyms' => [
-                ['laptop', 'notebook', 'computer'],
-                ['phone', 'mobile', 'smartphone'],
-                ['shoes', 'footwear', 'sneakers'],
+                'laptop, notebook, computer',
+                'phone, mobile, smartphone',
+                'shoes, footwear, sneakers',
             ],
         ];
 
@@ -353,10 +411,10 @@ class SynonymConfigurationTest extends TestCase
 
     public function testAcceptsManySynonymGroups(): void
     {
-        $synonyms = [];
-        for ($i = 0; $i < 100; $i++) {
-            $synonyms[] = ["term{$i}a", "term{$i}b"];
-        }
+        $synonyms = array_map(
+            fn(int $i): array => ["term{$i}a", "term{$i}b"],
+            range(0, 99)
+        );
 
         $config = new SynonymConfiguration('en', $synonyms);
 
