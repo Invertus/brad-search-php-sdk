@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\V2\ValueObjects\Response;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\ValueObjects\Synonym\NormalizesSynonymGroups;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -18,6 +19,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class SynonymResponse extends ValueObject
 {
+    use NormalizesSynonymGroups;
+
     private const LANGUAGE_PATTERN = '/^[a-z]{2}$/';
 
     /**
@@ -57,8 +60,32 @@ final readonly class SynonymResponse extends ValueObject
             language: (string) $data['language'],
             synonymCount: (int) $data['synonym_count'],
             requiresReindex: (bool) $data['requires_reindex'],
-            synonyms: $data['synonyms'] ?? null
+            synonyms: self::normalizeSynonyms($data['synonyms'] ?? null)
         );
+    }
+
+    /**
+     * The API returns each synonym group as a Solr-format string
+     * ("laptop, notebook"); normalize those into term arrays.
+     *
+     * Non-array payloads (null, or the whole field arriving as a single
+     * string) yield null rather than a TypeError, since fromArray() is public.
+     * Malformed entries that normalize to an empty group are dropped so the
+     * result never carries an untraceable [].
+     *
+     * @param mixed $synonyms
+     * @return array<int, array<int, string>>|null
+     */
+    private static function normalizeSynonyms(mixed $synonyms): ?array
+    {
+        if (!is_array($synonyms)) {
+            return null;
+        }
+
+        return array_values(array_filter(
+            array_map(self::normalizeGroup(...), $synonyms),
+            static fn(array $group): bool => !empty($group)
+        ));
     }
 
     /**

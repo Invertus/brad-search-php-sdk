@@ -207,6 +207,10 @@ class SyncV2Sdk
     /**
      * Get search synonyms for a specific language.
      *
+     * The returned response always carries a non-null synonyms array (empty
+     * when there are none), unlike SynonymResponse::fromArray() called directly
+     * without a synonyms key, which yields null.
+     *
      * @param  string  $language  Language code (e.g., "en", "lt")
      * @return SynonymResponse Typed response with synonyms data
      */
@@ -216,7 +220,29 @@ class SyncV2Sdk
             $this->baseApiPath . 'synonyms?language=' . urlencode($language)
         );
 
-        return SynonymResponse::fromArray($response);
+        return SynonymResponse::fromArray(
+            $this->withSynonymGetDefaults($response, $language)
+        );
+    }
+
+    /**
+     * The GET endpoint may omit synonym_count/requires_reindex; default them so
+     * SynonymResponse::fromArray() always receives its required fields.
+     *
+     * @param  array<string, mixed>  $response
+     * @return array<string, mixed>
+     */
+    private function withSynonymGetDefaults(array $response, string $language): array
+    {
+        $synonyms = $response['synonyms'] ?? [];
+        $synonyms = is_array($synonyms) ? $synonyms : [];
+
+        return [
+            'language' => $response['language'] ?? $language,
+            'synonym_count' => $response['synonym_count'] ?? count($synonyms),
+            'requires_reindex' => $response['requires_reindex'] ?? false,
+            'synonyms' => $synonyms,
+        ];
     }
 
     /**
