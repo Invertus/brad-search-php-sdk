@@ -916,6 +916,28 @@ class MagentoAdapterV2Test extends TestCase
 
     // --- Helpers ---
 
+    public function testCategoriesFlatContainsUniqueLevels(): void
+    {
+        $product = $this->adapter->transformProduct($this->buildMinimalProduct([
+            'categories' => [
+                ['id' => '2', 'name' => 'Tools', 'path' => '1/2', 'level' => 1],
+                ['id' => '5', 'name' => 'Drills', 'path' => '1/2/5', 'level' => 2],
+            ],
+        ]));
+        $serialized = $product->jsonSerialize();
+
+        $this->assertSame(['Tools', 'Tools > Drills'], $serialized['categories_lt-LT']);
+        $this->assertSame(['Tools', 'Drills'], $serialized['categoriesFlat_lt-LT']);
+    }
+
+    public function testNoCategoriesFlatWithoutCategories(): void
+    {
+        $product = $this->adapter->transformProduct($this->buildMinimalProduct());
+        $serialized = $product->jsonSerialize();
+
+        $this->assertArrayNotHasKey('categoriesFlat_lt-LT', $serialized);
+    }
+
     /**
      * @param array<string, mixed> $overrides
      * @return array<string, mixed>

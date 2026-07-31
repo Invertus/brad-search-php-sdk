@@ -186,6 +186,11 @@ class ShopifyAdapter
             if (!empty($localeCategories)) {
                 $fields["categories_{$locale}"] = $localeCategories;
             }
+            // Taxonomy only: tags are already flat single values with nothing to split.
+            $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
+            if (!empty($flatCategories)) {
+                $fields["categoriesFlat_{$locale}"] = $flatCategories;
+            }
 
             $localeProductType = $this->translated($localeTranslations, 'product_type')
                 ?? ($locale === $primaryLocale ? $nativeProductType : '');
@@ -235,6 +240,8 @@ class ShopifyAdapter
         string $primaryLocale,
     ): array {
         $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
+        // Taxonomy only: tags are already flat single values with nothing to split.
+        $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
 
         return array_filter([
             'name' => $title,
@@ -242,6 +249,7 @@ class ShopifyAdapter
             'brand' => $brand !== '' ? $brand : null,
             'categoryDefault' => $categoryDefault,
             'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
+            'categoriesFlat' => !empty($flatCategories) ? $flatCategories : null,
             'productType' => $nativeProductType !== '' ? $nativeProductType : null,
             'productUrl' => $productUrl !== '' ? $productUrl : null,
             'collections' => !empty($collections) ? $collections : null,

@@ -161,4 +161,38 @@ final class AdapterUtils
             'exception' => $exception,
         ];
     }
+
+    /**
+     * Split hierarchical category paths into their unique level values,
+     * preserving first-seen order.
+     *
+     * ["Store > Summer > Men", "Store > Spring"] -> ["Store", "Summer", "Men", "Spring"]
+     *
+     * Feeds the search-only categoriesFlat field: each level is analyzed from
+     * position 0, so synonym and stemmed matching reach every level of a long
+     * path. Only ' > ' with surrounding spaces delimits levels — a bare '>'
+     * inside a category name is not split.
+     *
+     * @param array<mixed> $paths
+     * @return array<string>
+     */
+    public static function splitCategoryLevels(array $paths): array
+    {
+        $levels = [];
+
+        foreach ($paths as $path) {
+            if (!is_string($path) || $path === '') {
+                continue;
+            }
+
+            foreach (explode(' > ', $path) as $level) {
+                $level = trim($level);
+                if ($level !== '' && !in_array($level, $levels, true)) {
+                    $levels[] = $level;
+                }
+            }
+        }
+
+        return $levels;
+    }
 }

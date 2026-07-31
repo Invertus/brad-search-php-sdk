@@ -893,6 +893,47 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('productType', $c);
     }
 
+    public function testCategoriesFlatContainsTaxonomyLevelsOnly(): void
+    {
+        $taxProduct = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $taxProduct['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $taxProduct['node']['tags'] = ['summer', 'cotton'];
+
+        // No taxonomy: tags alone are already flat single values — nothing to split.
+        $noTaxProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
+        $noTaxProduct['node']['category'] = null;
+        $noTaxProduct['node']['tags'] = ['cold'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$taxProduct, $noTaxProduct]));
+        [$a, $b] = $result['products'];
+
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $a['categoriesFlat']);
+        $this->assertNotContains('summer', $a['categoriesFlat']);
+        $this->assertArrayNotHasKey('categoriesFlat', $b);
+    }
+
+    public function testCategoriesFlatIsLocaleSuffixedInLocaleMode(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['tags'] = ['summer'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt']);
+        $p = $result['products'][0];
+
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_en']);
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_lt']);
+        $this->assertNotContains('summer', $p['categoriesFlat_en']);
+    }
+
     public function testMalformedCategoryFieldEmitsProductTypeAsOwnField(): void
     {
         $cases = [
