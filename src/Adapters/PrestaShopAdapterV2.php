@@ -145,6 +145,8 @@ class PrestaShopAdapterV2
         // Handle features
         $this->transformFeatures($additionalFields, (array) ($product['features'] ?? []));
 
+        $this->transformCustomFields($additionalFields, (array) ($product['customFields'] ?? []));
+
         // Handle tags
         $this->transformTags($additionalFields, $product['tags'] ?? []);
 
@@ -585,6 +587,55 @@ class PrestaShopAdapterV2
                 $fieldName = "feature_{$featureId}_{$locale}";
                 $result[$fieldName] = $value;
             }
+        }
+    }
+
+    /**
+     * Transform merchant-selected custom product columns to flat prefixed fields.
+     *
+     * The `custom_` prefix is mandatory: Product::fromArray() treats id/sku/price/
+     * basePrice/priceTaxExcluded/basePriceTaxExcluded/imageUrl/inStock/isNew as core
+     * fields, so an unprefixed merchant column named `price` would be swallowed and
+     * one named `id` would corrupt product identity.
+     *
+     * Every locale is suffixed, including the first — PrestaShopAdapterV2 takes no
+     * locale list and has no notion of a default locale, unlike the Shopify and
+     * Magento adapters.
+     *
+     * @param array<string, mixed> $result
+     * @param array<int, mixed> $customFields
+     */
+    private function transformCustomFields(array &$result, array $customFields): void
+    {
+        foreach ($customFields as $field) {
+            if (!is_array($field)) {
+                continue;
+            }
+
+            $name = isset($field['name']) && is_string($field['name']) ? $field['name'] : '';
+            if ($name === '') {
+                continue;
+            }
+
+            $fieldName = 'custom_' . $name;
+
+            if (isset($field['localizedValues']) && is_array($field['localizedValues'])) {
+                foreach ($field['localizedValues'] as $locale => $value) {
+                    if (!is_string($locale) || $locale === '' || $value === null || $value === '') {
+                        continue;
+                    }
+
+                    $result["{$fieldName}_{$locale}"] = $value;
+                }
+
+                continue;
+            }
+
+            if (!isset($field['value']) || $field['value'] === null || $field['value'] === '') {
+                continue;
+            }
+
+            $result[$fieldName] = $field['value'];
         }
     }
 

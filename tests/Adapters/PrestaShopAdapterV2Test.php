@@ -1129,6 +1129,85 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('updatedAt', $product->additionalFields);
     }
 
+    public function testTransformLocalizedCustomFieldSuffixesEveryLocale(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'Cotton shirt', 'lt-LT' => 'Medvilniniai'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+
+        $this->assertSame('Cotton shirt', $product->additionalFields['custom_internal_name_en-US']);
+        $this->assertSame('Medvilniniai', $product->additionalFields['custom_internal_name_lt-LT']);
+        $this->assertArrayNotHasKey('custom_internal_name', $product->additionalFields);
+    }
+
+    public function testTransformNonLocalizedCustomFieldHasNoLocaleSuffix(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('A-12', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
+    public function testCustomFieldPrefixPreventsCollisionWithCoreFields(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'price', 'type' => 'double', 'value' => '0.01'],
+            ['name' => 'id', 'type' => 'integer', 'value' => '999999'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+        $serialized = $product->jsonSerialize();
+
+        $this->assertSame('0.01', $product->additionalFields['custom_price']);
+        $this->assertSame('999999', $product->additionalFields['custom_id']);
+        $this->assertSame('1807', $serialized['id']);
+        $this->assertSame(99.99, $serialized['price']);
+    }
+
+    public function testMissingCustomFieldsKeyIsHarmless(): void
+    {
+        $result = $this->adapter->transform($this->getMinimalValidProduct());
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame([], array_filter(
+            array_keys($result['products'][0]->additionalFields),
+            static fn (string $key): bool => str_starts_with($key, 'custom_')
+        ));
+    }
+
+    public function testMalformedCustomFieldEntriesAreSkippedNotFatal(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            'not-an-array',
+            ['type' => 'text', 'value' => 'no name key'],
+            ['name' => '', 'type' => 'text', 'value' => 'empty name'],
+            ['name' => 'internal_name', 'type' => 'text', 'localizedValues' => ['en-US' => '']],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('kept', $additional['custom_good']);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *
