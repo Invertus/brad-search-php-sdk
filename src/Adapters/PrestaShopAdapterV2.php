@@ -591,17 +591,6 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Transform merchant-selected custom product columns to flat prefixed fields.
-     *
-     * The `custom_` prefix is mandatory: Product::fromArray() treats id/sku/price/
-     * basePrice/priceTaxExcluded/basePriceTaxExcluded/imageUrl/inStock/isNew as core
-     * fields, so an unprefixed merchant column named `price` would be swallowed and
-     * one named `id` would corrupt product identity.
-     *
-     * Every locale is suffixed, including the first — PrestaShopAdapterV2 takes no
-     * locale list and has no notion of a default locale, unlike the Shopify and
-     * Magento adapters.
-     *
      * @param array<string, mixed> $result
      * @param array<int, mixed> $customFields
      */
