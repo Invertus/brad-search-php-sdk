@@ -609,13 +609,7 @@ class PrestaShopAdapterV2
             $fieldName = 'custom_' . $name;
 
             if (isset($field['localizedValues']) && is_array($field['localizedValues'])) {
-                foreach ($field['localizedValues'] as $locale => $value) {
-                    if (!is_string($locale) || $locale === '' || $value === null || $value === '') {
-                        continue;
-                    }
-
-                    $result["{$fieldName}_{$locale}"] = $value;
-                }
+                $this->addLocalizedField($result, $fieldName, $field['localizedValues']);
 
                 continue;
             }
@@ -624,7 +618,7 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            $result[$fieldName] = $field['value'];
+            $result[$fieldName] = strip_tags((string) $field['value']);
         }
     }
 

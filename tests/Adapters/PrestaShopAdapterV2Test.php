@@ -1178,6 +1178,35 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertSame(99.99, $serialized['price']);
     }
 
+    public function testTransformLocalizedCustomFieldStripsHtml(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '<b>ALPHA</b>-7741'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+
+        $this->assertSame('ALPHA-7741', $product->additionalFields['custom_internal_name_en-US']);
+    }
+
+    public function testTransformNonLocalizedCustomFieldStripsHtml(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => '<b>ALPHA</b>-7741'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('ALPHA-7741', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
     public function testMissingCustomFieldsKeyIsHarmless(): void
     {
         $result = $this->adapter->transform($this->getMinimalValidProduct());
