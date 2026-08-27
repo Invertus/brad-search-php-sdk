@@ -75,7 +75,7 @@ $result = $adapter->transform($prestaShopData);
 | PrestaShop Field       | BradSearch Field                 | Notes                   |
 | ---------------------- | -------------------------------- | ----------------------- |
 | `remoteId`             | `id`                             | Required                |
-| `sku`                  | `sku`                            | Required                |
+| `sku`                  | `sku`                            | Optional, `''` if none  |
 | `localizedNames`       | `name` (+ locale suffixes)       | Multi-locale support    |
 | `brand.localizedNames` | `brand` (+ locale suffixes)      | Multi-locale support    |
 | `productUrl`           | `productUrl` (+ locale suffixes) | Multi-locale support    |
@@ -135,7 +135,7 @@ PrestaShop variants are transformed to match BradSearch requirements:
 
 The adapter validates input data and throws `ValidationException` for:
 
-- Missing required fields (`remoteId`, `sku`)
+- Missing required fields (`remoteId`)
 - Invalid data structure
 - Missing product array
 

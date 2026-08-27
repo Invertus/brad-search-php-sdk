@@ -446,6 +446,63 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->adapter->transformVariant($variant, 'en-US');
     }
 
+    public function testTransformProductWithNullSku(): void
+    {
+        $product = $this->getMinimalProductData('1807', 'SKU-123');
+        $product['sku'] = null;
+
+        $result = $this->adapter->transformProduct($product);
+
+        $this->assertEquals('1807', $result->id);
+        $this->assertSame('', $result->sku);
+        $this->assertSame('', $result->jsonSerialize()['sku']);
+    }
+
+    public function testTransformProductWithEmptySku(): void
+    {
+        $product = $this->getMinimalProductData('1807', '');
+
+        $result = $this->adapter->transformProduct($product);
+
+        $this->assertEquals('1807', $result->id);
+        $this->assertSame('', $result->sku);
+        $this->assertSame('', $result->jsonSerialize()['sku']);
+    }
+
+    public function testTransformProductWithMissingSku(): void
+    {
+        $product = $this->getMinimalProductData('1807', 'SKU-123');
+        unset($product['sku']);
+
+        $result = $this->adapter->transform(['products' => [$product]]);
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertCount(1, $result['products']);
+        $this->assertSame('', $result['products'][0]->sku);
+    }
+
+    public function testTransformVariantWithEmptySku(): void
+    {
+        $variant = $this->getMinimalVariantData();
+        $variant['sku'] = '';
+
+        $result = $this->adapter->transformVariant($variant, 'en-US');
+
+        $this->assertEquals('12345', $result->id);
+        $this->assertSame('', $result->sku);
+    }
+
+    public function testTransformVariantWithMissingSku(): void
+    {
+        $variant = $this->getMinimalVariantData();
+        unset($variant['sku']);
+
+        $result = $this->adapter->transformVariant($variant, 'en-US');
+
+        $this->assertSame('', $result->sku);
+        $this->assertSame('', $result->jsonSerialize()['sku']);
+    }
+
     public function testTransformProductWithMissingRequiredFields(): void
     {
         $prestaShopData = [
@@ -1139,6 +1196,32 @@ class PrestaShopAdapterV2Test extends TestCase
         return [
             'products' => [
                 $this->getMinimalProductData('1807', 'SKU-123'),
+            ],
+        ];
+    }
+
+    /**
+     * Helper method to get minimal variant data.
+     *
+     * @return array<string, mixed>
+     */
+    private function getMinimalVariantData(): array
+    {
+        return [
+            'remoteId' => '12345',
+            'sku' => 'VARIANT-SKU',
+            'price' => 29.99,
+            'basePrice' => 39.99,
+            'priceTaxExcluded' => 24.79,
+            'basePriceTaxExcluded' => 33.05,
+            'productUrl' => [
+                'localizedValues' => [
+                    'en-US' => 'http://example.com/variant',
+                ],
+            ],
+            'imageUrl' => [
+                'small' => 'http://example.com/small.jpg',
+                'medium' => 'http://example.com/medium.jpg',
             ],
         ];
     }

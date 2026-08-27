@@ -17,7 +17,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 final class ProductBuilder
 {
     private ?string $id = null;
-    private ?string $sku = null;
+    private string $sku = '';
     private ?ProductPricing $pricing = null;
     private ?ImageUrl $imageUrl = null;
     private ?bool $inStock = null;
@@ -149,14 +149,6 @@ final class ProductBuilder
             );
         }
 
-        if ($this->sku === null) {
-            throw new InvalidArgumentException(
-                'Product SKU is required.',
-                'sku',
-                null
-            );
-        }
-
         if ($this->pricing === null) {
             throw new InvalidArgumentException(
                 'Product pricing is required.',
@@ -190,7 +182,7 @@ final class ProductBuilder
     public function reset(): self
     {
         $this->id = null;
-        $this->sku = null;
+        $this->sku = '';
         $this->pricing = null;
         $this->imageUrl = null;
         $this->inStock = null;
