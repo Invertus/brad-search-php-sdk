@@ -1274,6 +1274,58 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertSame('kept', $additional['custom_internal_name_lt-LT']);
     }
 
+    public function testStringableValueOnCoreLocalizedFieldIsAccepted(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['localizedNames'] = ['en-US' => new StringableFieldValue('Test Product')];
+        $data['description'] = ['en-US' => new StringableFieldValue('<p>Cotton shirt</p>')];
+        $data['descriptionShort'] = ['en-US' => new StringableFieldValue('Cotton')];
+        $data['brand'] = ['localizedNames' => ['en-US' => new StringableFieldValue('Acme')]];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('Test Product', $additional['name_en-US']);
+        $this->assertSame('Cotton shirt', $additional['description_en-US']);
+        $this->assertSame('Cotton', $additional['descriptionShort_en-US']);
+        $this->assertSame('Acme', $additional['brand_en-US']);
+    }
+
+    public function testStringableValueOnLocalizedCustomFieldIsAccepted(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => new StringableFieldValue('ALPHA-7741')],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame(
+            'ALPHA-7741',
+            $result['products'][0]->additionalFields['custom_internal_name_en-US']
+        );
+    }
+
+    public function testNonStringableValuesOnCoreLocalizedFieldAreRejected(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['localizedNames'] = ['en-US' => 'Test Product', 'lt-LT' => ['nested', 'array']];
+        $data['description'] = ['en-US' => new \stdClass()];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('Test Product', $additional['name_en-US']);
+        $this->assertArrayNotHasKey('name_lt-LT', $additional);
+        $this->assertArrayNotHasKey('description_en-US', $additional);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *
@@ -1314,5 +1366,17 @@ class PrestaShopAdapterV2Test extends TestCase
             'categories' => [],
             'variants' => [],
         ];
+    }
+}
+
+class StringableFieldValue implements \Stringable
+{
+    public function __construct(private string $value)
+    {
+    }
+
+    public function __toString(): string
+    {
+        return $this->value;
     }
 }

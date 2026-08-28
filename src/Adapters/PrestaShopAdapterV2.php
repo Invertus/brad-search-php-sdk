@@ -657,7 +657,7 @@ class PrestaShopAdapterV2
      *
      * @param array<string, mixed> $result
      * @param string $fieldName
-     * @param array<string, string> $localizedValues
+     * @param array<array-key, mixed> $localizedValues
      */
     private function addLocalizedField(array &$result, string $fieldName, array $localizedValues): void
     {
@@ -666,17 +666,33 @@ class PrestaShopAdapterV2
         }
 
         foreach ($localizedValues as $locale => $value) {
-            if (
-                !is_string($locale) || $locale === '' ||
-                !is_scalar($value) || $value === ''
-            ) {
+            if (!is_string($locale) || $locale === '' || $value === '') {
                 continue;
             }
 
-            $cleanValue = strip_tags((string) $value);
+            $stringValue = $this->stringifyFieldValue($value);
 
-            $result["{$fieldName}_{$locale}"] = $cleanValue;
+            if ($stringValue === null) {
+                continue;
+            }
+
+            $result["{$fieldName}_{$locale}"] = strip_tags($stringValue);
         }
+    }
+
+    /**
+     * Convert a field value to a string, or reject it outright.
+     *
+     * Scalars and Stringable objects are accepted. Arrays, null and every other object
+     * are rejected: stringifying them yields "Array"/a fatal error, not indexable data.
+     */
+    private function stringifyFieldValue(mixed $value): ?string
+    {
+        if (is_scalar($value) || $value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        return null;
     }
 
     /**
