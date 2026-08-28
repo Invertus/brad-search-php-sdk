@@ -18,6 +18,25 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 class PrestaShopAdapterV2
 {
     /**
+     * The only engine type whose values are HTML-bearing free text, and so the only
+     * one that may be run through strip_tags(). Mirrors CustomFieldTypeMapper in the
+     * PrestaShop module, whose other types are integer, double, boolean and date.
+     */
+    private const CUSTOM_FIELD_TYPE_TEXT = 'text';
+
+    /**
+     * Matches every `<` that cannot open a well-formed HTML tag, i.e. every `<` that is
+     * literal data ("30<x<40", "5<3") rather than markup.
+     */
+    private const LITERAL_ANGLE_PATTERN = '/<(?![a-zA-Z\/!?][^<>]*>)/';
+
+    /**
+     * Placeholder those literal `<` are parked behind while strip_tags() runs. Must be a
+     * byte strip_tags() passes through untouched, which rules out NUL.
+     */
+    private const LITERAL_ANGLE_SENTINEL = "\x01";
+
+    /**
      * @var array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
      */
     private array $errors = [];
@@ -606,20 +625,58 @@ class PrestaShopAdapterV2
                 continue;
             }
 
+            $type = isset($field['type']) && is_string($field['type']) ? $field['type'] : self::CUSTOM_FIELD_TYPE_TEXT;
             $fieldName = 'custom_' . $name;
 
             if (isset($field['localizedValues']) && is_array($field['localizedValues'])) {
-                $this->addLocalizedField($result, $fieldName, $field['localizedValues']);
+                $this->addLocalizedField($result, $fieldName, $field['localizedValues'], $type);
 
                 continue;
             }
 
-            if (!isset($field['value']) || !is_scalar($field['value']) || $field['value'] === '') {
+            if (!isset($field['value'])) {
                 continue;
             }
 
-            $result[$fieldName] = strip_tags((string) $field['value']);
+            $stringValue = $this->stringifyFieldValue($field['value']);
+
+            if ($stringValue === null) {
+                continue;
+            }
+
+            $cleanValue = $this->cleanCustomFieldValue($stringValue, $type);
+
+            if ($cleanValue === null) {
+                continue;
+            }
+
+            $result[$fieldName] = $cleanValue;
         }
+    }
+
+    /**
+     * Clean one custom field value for indexing, or reject it.
+     *
+     * HTML is removed from text-typed values only. An integer/double/boolean/date column
+     * holds codes and numbers, never markup, so running an HTML sanitiser over one can
+     * only damage it.
+     *
+     * The emptiness check runs on the cleaned value, not the raw one: brad-app maps
+     * non-text custom fields as integer/double/date, and an empty string on one of
+     * those makes the search backend reject the whole product document.
+     *
+     * @return string|null Cleaned value, or null when the field must be skipped
+     */
+    private function cleanCustomFieldValue(string $value, string $type): ?string
+    {
+        $cleanValue = $type === self::CUSTOM_FIELD_TYPE_TEXT ? $this->stripHtmlTags($value) : $value;
+        $cleanValue = trim($cleanValue);
+
+        if ($cleanValue === '') {
+            return null;
+        }
+
+        return $cleanValue;
     }
 
     /**
@@ -658,9 +715,17 @@ class PrestaShopAdapterV2
      * @param array<string, mixed> $result
      * @param string $fieldName
      * @param array<array-key, mixed> $localizedValues
+     * @param string|null $customFieldType Engine type of the custom field being added, which
+     *                                     switches on type-aware cleaning. Null (the default)
+     *                                     keeps the always-strip behaviour the core fields
+     *                                     name/description/descriptionShort/brand/features rely on.
      */
-    private function addLocalizedField(array &$result, string $fieldName, array $localizedValues): void
-    {
+    private function addLocalizedField(
+        array &$result,
+        string $fieldName,
+        array $localizedValues,
+        ?string $customFieldType = null
+    ): void {
         if (empty($localizedValues)) {
             return;
         }
@@ -676,8 +741,37 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            $result["{$fieldName}_{$locale}"] = strip_tags($stringValue);
+            if ($customFieldType === null) {
+                $result["{$fieldName}_{$locale}"] = strip_tags($stringValue);
+
+                continue;
+            }
+
+            $cleanValue = $this->cleanCustomFieldValue($stringValue, $customFieldType);
+
+            if ($cleanValue === null) {
+                continue;
+            }
+
+            $result["{$fieldName}_{$locale}"] = $cleanValue;
         }
+    }
+
+    /**
+     * Remove HTML tags from a custom field value without truncating it at a literal `<`.
+     *
+     * strip_tags() discards everything from an unmatched `<` to the end of the string, so on
+     * its own it corrupts the codes, ranges and notes merchants keep in custom columns:
+     * "30<x<40" becomes "30" and "S<M<L" becomes "S". Every `<` that cannot open a well-formed
+     * tag is therefore parked behind a sentinel, leaving strip_tags() to remove only real
+     * markup (tags, comments, processing instructions), and restored afterwards.
+     */
+    private function stripHtmlTags(string $value): string
+    {
+        $guarded = str_replace(self::LITERAL_ANGLE_SENTINEL, '', $value);
+        $guarded = preg_replace(self::LITERAL_ANGLE_PATTERN, self::LITERAL_ANGLE_SENTINEL, $guarded) ?? $guarded;
+
+        return str_replace(self::LITERAL_ANGLE_SENTINEL, '<', strip_tags($guarded));
     }
 
     /**

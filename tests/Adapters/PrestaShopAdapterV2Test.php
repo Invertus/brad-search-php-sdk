@@ -1326,6 +1326,106 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('description_en-US', $additional);
     }
 
+    public function testTextCustomFieldValueWithBareLessThanSurvivesIntact(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'size_range', 'type' => 'text', 'value' => '30<x<40'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('30<x<40', $result['products'][0]->additionalFields['custom_size_range']);
+    }
+
+    public function testLocalizedTextCustomFieldValueWithBareLessThanSurvivesIntact(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'size_range',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'S<M<L', 'lt-LT' => '30<x<40'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('S<M<L', $additional['custom_size_range_en-US']);
+        $this->assertSame('30<x<40', $additional['custom_size_range_lt-LT']);
+    }
+
+    public function testNonTextCustomFieldValuesAreNotHtmlStripped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'stock_note', 'type' => 'integer', 'value' => '5<3'],
+            ['name' => 'weight_note', 'type' => 'double', 'value' => '0.5<1.5'],
+            ['name' => 'flag_note', 'type' => 'boolean', 'value' => 'false<true'],
+            [
+                'name' => 'localized_stock_note',
+                'type' => 'integer',
+                'localizedValues' => ['en-US' => '5<3'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('5<3', $additional['custom_stock_note']);
+        $this->assertSame('0.5<1.5', $additional['custom_weight_note']);
+        $this->assertSame('false<true', $additional['custom_flag_note']);
+        $this->assertSame('5<3', $additional['custom_localized_stock_note_en-US']);
+    }
+
+    public function testTextCustomFieldValueThatBecomesEmptyAfterStrippingIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => '<n/a>'],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '<n/a>', 'lt-LT' => 'kept'],
+            ],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_warehouse_slot', $additional);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_internal_name_lt-LT']);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testCustomFieldValuesAreTrimmed(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12                            '],
+            ['name' => 'stock_count', 'type' => 'integer', 'value' => ' 42 '],
+            ['name' => 'blank_slot', 'type' => 'text', 'value' => '     '],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '  ALPHA-7741  ', 'lt-LT' => '   '],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('A-12', $additional['custom_warehouse_slot']);
+        $this->assertSame('42', $additional['custom_stock_count']);
+        $this->assertArrayNotHasKey('custom_blank_slot', $additional);
+        $this->assertSame('ALPHA-7741', $additional['custom_internal_name_en-US']);
+        $this->assertArrayNotHasKey('custom_internal_name_lt-LT', $additional);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *
