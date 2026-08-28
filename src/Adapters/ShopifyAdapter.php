@@ -680,10 +680,6 @@ class ShopifyAdapter
     /**
      * Transform Shopify variants to BradSearch format.
      *
-     * Variant `imageUrl` is intentionally omitted: the parent product's curated
-     * `featuredImage` is the merchant-approved hero image, and we don't want
-     * variant enrichment to swap it for a per-variant photo at search time.
-     *
      * @param array<string> $locales
      * @param array<string, mixed> $translations
      */
@@ -739,6 +735,11 @@ class ShopifyAdapter
             if ($basePrice !== '') {
                 $result['basePrice'] = $basePrice;
                 $result['basePriceTaxExcluded'] = $basePrice;
+            }
+
+            $variantImage = $variant['image']['url'] ?? null;
+            if (is_string($variantImage) && $variantImage !== '') {
+                $result['imageUrl'] = ['small' => $variantImage, 'medium' => $variantImage];
             }
 
             if (! empty($locales)) {
