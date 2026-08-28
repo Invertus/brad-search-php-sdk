@@ -1466,6 +1466,47 @@ class PrestaShopAdapterV2Test extends TestCase
         );
     }
 
+    public function testCustomFieldWithUnsafeNameIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'nested.path', 'type' => 'text', 'value' => 'dotted'],
+            ['name' => str_repeat('a', 65), 'type' => 'text', 'value' => 'too long'],
+            ['name' => 'spaced name', 'type' => 'text', 'value' => 'spaced'],
+            ['name' => 'weird-name', 'type' => 'text', 'value' => 'hyphen'],
+            [
+                'name' => 'localized.path',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'dotted localized'],
+            ],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_nested.path', $additional);
+        $this->assertArrayNotHasKey('custom_' . str_repeat('a', 65), $additional);
+        $this->assertArrayNotHasKey('custom_spaced name', $additional);
+        $this->assertArrayNotHasKey('custom_weird-name', $additional);
+        $this->assertArrayNotHasKey('custom_localized.path_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testCustomFieldNameAtMaximumLengthIsKept(): void
+    {
+        $name = str_repeat('a', 64);
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => $name, 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('kept', $result['products'][0]->additionalFields['custom_' . $name]);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *

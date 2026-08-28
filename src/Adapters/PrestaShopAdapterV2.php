@@ -25,6 +25,14 @@ class PrestaShopAdapterV2
     private const CUSTOM_FIELD_TYPE_TEXT = 'text';
 
     /**
+     * Custom field names arrive over the network and become search field paths, so they are
+     * held to the module's own column-name rule (EnabledCustomFieldProvider::COLUMN_NAME_PATTERN).
+     * A `.` would turn the field into an object path in the index; an over-long name would be
+     * rejected by the backend.
+     */
+    private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/';
+
+    /**
      * Engine type of DATE/DATETIME/TIMESTAMP columns, per CustomFieldTypeMapper in the module.
      */
     private const CUSTOM_FIELD_TYPE_DATE = 'date';
@@ -633,7 +641,7 @@ class PrestaShopAdapterV2
             }
 
             $name = isset($field['name']) && is_string($field['name']) ? $field['name'] : '';
-            if ($name === '') {
+            if (preg_match(self::CUSTOM_FIELD_NAME_PATTERN, $name) !== 1) {
                 continue;
             }
 
