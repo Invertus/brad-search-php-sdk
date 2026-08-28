@@ -1237,6 +1237,43 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
     }
 
+    public function testNonScalarCustomFieldValueIsSkippedNotStringified(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'broken', 'type' => 'text', 'value' => ['a', 'b']],
+            ['name' => 'nested', 'type' => 'text', 'value' => ['k' => 'v']],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_broken', $additional);
+        $this->assertArrayNotHasKey('custom_nested', $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testNonScalarLocalizedCustomFieldValueIsSkippedNotStringified(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => ['a', 'b'], 'lt-LT' => 'kept'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_internal_name_lt-LT']);
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *

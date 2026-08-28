@@ -614,7 +614,7 @@ class PrestaShopAdapterV2
                 continue;
             }
 
-            if (!isset($field['value']) || $field['value'] === null || $field['value'] === '') {
+            if (!isset($field['value']) || !is_scalar($field['value']) || $field['value'] === '') {
                 continue;
             }
 
@@ -668,7 +668,7 @@ class PrestaShopAdapterV2
         foreach ($localizedValues as $locale => $value) {
             if (
                 !is_string($locale) || $locale === '' ||
-                $value === null || $value === ''
+                !is_scalar($value) || $value === ''
             ) {
                 continue;
             }
