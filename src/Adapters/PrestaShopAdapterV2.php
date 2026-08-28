@@ -21,19 +21,14 @@ class PrestaShopAdapterV2
 
     private const CUSTOM_FIELD_TYPE_TEXT = 'text';
 
-    // Mirrors the module's column-name rule: a `.` would make the field an object path in the index.
     private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/';
 
     private const CUSTOM_FIELD_TYPE_DATE = 'date';
 
-    // Nullable DATE columns hand this out instead of NULL, and a date-mapped field that
-    // rejects it takes the whole product document down with it.
     private const MYSQL_ZERO_DATE_PREFIX = '0000-00-00';
 
-    // Every `<` that cannot open a well-formed tag, i.e. is data ("30<x<40") not markup.
     private const LITERAL_ANGLE_PATTERN = '/<(?![a-zA-Z\/!?][^<>]*>)/';
 
-    // strip_tags() eats NUL bytes, so the placeholder cannot be "\x00".
     private const LITERAL_ANGLE_SENTINEL = "\x01";
 
     /**
@@ -610,12 +605,8 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Every locale is suffixed, including the first: this adapter takes no locale list and
-     * has no notion of a default locale, unlike the Shopify and Magento adapters.
-     *
      * @param array<string, mixed> $result
-     * @param array<int, mixed> $customFields Entries of ['name' => string, 'type' => string,
-     *                                        'value' => mixed] or 'localizedValues' => [locale => mixed]
+     * @param array<int, mixed> $customFields
      */
     private function transformCustomFields(array &$result, array $customFields): void
     {
@@ -659,11 +650,7 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * The emptiness check runs on the cleaned value, not the raw one: brad-app maps non-text
-     * custom fields as integer/double/date, and an empty string on one of those makes the
-     * search backend reject the whole product document.
-     *
-     * @return string|null Cleaned value, or null when the field must be skipped
+     * @return string|null
      */
     private function cleanCustomFieldValue(string $value, string $type): ?string
     {
@@ -717,8 +704,7 @@ class PrestaShopAdapterV2
      * @param array<string, mixed> $result
      * @param string $fieldName
      * @param array<array-key, mixed> $localizedValues
-     * @param string|null $customFieldType Null (the default) keeps the always-strip behaviour
-     *                                     the core fields rely on.
+     * @param string|null $customFieldType
      */
     private function addLocalizedField(
         array &$result,
@@ -757,15 +743,6 @@ class PrestaShopAdapterV2
         }
     }
 
-    /**
-     * strip_tags() alone discards everything from an unmatched `<` to the end of the string,
-     * corrupting the ranges merchants keep in custom columns ("30<x<40" becomes "30"). Literal
-     * `<` are therefore parked behind a sentinel while strip_tags() removes the real markup.
-     *
-     * The two are indistinguishable when unterminated, so "<img src=x onerror=..." with no
-     * closing `>` now survives where strip_tags() dropped it. Output escaping, not this
-     * function, is the boundary that has to hold.
-     */
     private function stripHtmlTags(string $value): string
     {
         $guarded = str_replace(self::LITERAL_ANGLE_SENTINEL, '', $value);
