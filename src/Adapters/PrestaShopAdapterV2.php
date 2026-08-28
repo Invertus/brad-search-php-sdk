@@ -17,50 +17,23 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
  */
 class PrestaShopAdapterV2
 {
-    /**
-     * Prefix every merchant custom product field carries in `additionalFields`. Public because
-     * the same `custom_<name>` / `custom_<name>_<locale>` names are built and read by brad-app
-     * and by the PrestaShop module; consumers should reference this instead of the literal.
-     */
     public const CUSTOM_FIELD_PREFIX = 'custom_';
 
-    /**
-     * The only engine type whose values are HTML-bearing free text, and so the only
-     * one that may be run through strip_tags(). Mirrors CustomFieldTypeMapper in the
-     * PrestaShop module, whose other types are integer, double, boolean and date.
-     */
     private const CUSTOM_FIELD_TYPE_TEXT = 'text';
 
-    /**
-     * Custom field names arrive over the network and become search field paths, so they are
-     * held to the module's own column-name rule (EnabledCustomFieldProvider::COLUMN_NAME_PATTERN).
-     * A `.` would turn the field into an object path in the index; an over-long name would be
-     * rejected by the backend.
-     */
+    // Mirrors the module's column-name rule: a `.` would make the field an object path in the index.
     private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/';
 
-    /**
-     * Engine type of DATE/DATETIME/TIMESTAMP columns, per CustomFieldTypeMapper in the module.
-     */
     private const CUSTOM_FIELD_TYPE_DATE = 'date';
 
-    /**
-     * MySQL's zero date, which nullable DATE/DATETIME columns hand out instead of NULL. The
-     * module normalizes it away for the core createdAt/updatedAt fields but not for custom
-     * columns, and a date-mapped field that rejects it takes the whole product document with it.
-     */
+    // Nullable DATE columns hand this out instead of NULL, and a date-mapped field that
+    // rejects it takes the whole product document down with it.
     private const MYSQL_ZERO_DATE_PREFIX = '0000-00-00';
 
-    /**
-     * Matches every `<` that cannot open a well-formed HTML tag, i.e. every `<` that is
-     * literal data ("30<x<40", "5<3") rather than markup.
-     */
+    // Every `<` that cannot open a well-formed tag, i.e. is data ("30<x<40") not markup.
     private const LITERAL_ANGLE_PATTERN = '/<(?![a-zA-Z\/!?][^<>]*>)/';
 
-    /**
-     * Placeholder those literal `<` are parked behind while strip_tags() runs. Must be a
-     * byte strip_tags() passes through untouched, which rules out NUL.
-     */
+    // strip_tags() eats NUL bytes, so the placeholder cannot be "\x00".
     private const LITERAL_ANGLE_SENTINEL = "\x01";
 
     /**
@@ -637,39 +610,12 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Transform merchant-selected custom product columns to flat prefixed fields.
-     *
-     * Input format (one entry per column the merchant enabled, from the PrestaShop module;
-     * `value` and `localizedValues` are mutually exclusive):
-     * [
-     *     'name' => 'warehouse_slot',
-     *     'type' => 'text',
-     *     'value' => 'A-12',
-     * ]
-     * [
-     *     'name' => 'internal_name',
-     *     'type' => 'text',
-     *     'localizedValues' => [
-     *         'en-US' => 'Cotton shirt',
-     *         'lt-LT' => 'Medvilniniai',
-     *     ],
-     * ]
-     *
-     * `name` must match CUSTOM_FIELD_NAME_PATTERN. `type` is one of text, integer, double,
-     * boolean or date, and defaults to text; boolean values arrive as the strings
-     * 'true'/'false'. Entries that fail either rule, or whose value cleans down to nothing,
-     * are skipped rather than reported as errors.
-     *
-     * Output format:
-     * $result['custom_warehouse_slot'] = 'A-12';
-     * $result['custom_internal_name_en-US'] = 'Cotton shirt';
-     * $result['custom_internal_name_lt-LT'] = 'Medvilniniai';
-     *
      * Every locale is suffixed, including the first: this adapter takes no locale list and
      * has no notion of a default locale, unlike the Shopify and Magento adapters.
      *
      * @param array<string, mixed> $result
-     * @param array<int, mixed> $customFields
+     * @param array<int, mixed> $customFields Entries of ['name' => string, 'type' => string,
+     *                                        'value' => mixed] or 'localizedValues' => [locale => mixed]
      */
     private function transformCustomFields(array &$result, array $customFields): void
     {
@@ -713,16 +659,9 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Clean one custom field value for indexing, or reject it.
-     *
-     * HTML is removed from text-typed values only. An integer/double/boolean/date column
-     * holds codes and numbers, never markup, so running an HTML sanitiser over one can
-     * only damage it.
-     *
-     * The emptiness check runs on the cleaned value, not the raw one: brad-app maps
-     * non-text custom fields as integer/double/date, and an empty string on one of
-     * those makes the search backend reject the whole product document. MySQL's zero
-     * date is rejected on date-typed fields for the same reason.
+     * The emptiness check runs on the cleaned value, not the raw one: brad-app maps non-text
+     * custom fields as integer/double/date, and an empty string on one of those makes the
+     * search backend reject the whole product document.
      *
      * @return string|null Cleaned value, or null when the field must be skipped
      */
@@ -778,10 +717,8 @@ class PrestaShopAdapterV2
      * @param array<string, mixed> $result
      * @param string $fieldName
      * @param array<array-key, mixed> $localizedValues
-     * @param string|null $customFieldType Engine type of the custom field being added, which
-     *                                     switches on type-aware cleaning. Null (the default)
-     *                                     keeps the always-strip behaviour the core fields
-     *                                     name/description/descriptionShort/brand/features rely on.
+     * @param string|null $customFieldType Null (the default) keeps the always-strip behaviour
+     *                                     the core fields rely on.
      */
     private function addLocalizedField(
         array &$result,
@@ -821,13 +758,13 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Remove HTML tags from a custom field value without truncating it at a literal `<`.
+     * strip_tags() alone discards everything from an unmatched `<` to the end of the string,
+     * corrupting the ranges merchants keep in custom columns ("30<x<40" becomes "30"). Literal
+     * `<` are therefore parked behind a sentinel while strip_tags() removes the real markup.
      *
-     * strip_tags() discards everything from an unmatched `<` to the end of the string, so on
-     * its own it corrupts the codes, ranges and notes merchants keep in custom columns:
-     * "30<x<40" becomes "30" and "S<M<L" becomes "S". Every `<` that cannot open a well-formed
-     * tag is therefore parked behind a sentinel, leaving strip_tags() to remove only real
-     * markup (tags, comments, processing instructions), and restored afterwards.
+     * The two are indistinguishable when unterminated, so "<img src=x onerror=..." with no
+     * closing `>` now survives where strip_tags() dropped it. Output escaping, not this
+     * function, is the boundary that has to hold.
      */
     private function stripHtmlTags(string $value): string
     {
@@ -837,12 +774,6 @@ class PrestaShopAdapterV2
         return str_replace(self::LITERAL_ANGLE_SENTINEL, '<', strip_tags($guarded));
     }
 
-    /**
-     * Convert a field value to a string, or reject it outright.
-     *
-     * Scalars and Stringable objects are accepted. Arrays, null and every other object
-     * are rejected: stringifying them yields "Array"/a fatal error, not indexable data.
-     */
     private function stringifyFieldValue(mixed $value): ?string
     {
         if (is_scalar($value) || $value instanceof \Stringable) {
