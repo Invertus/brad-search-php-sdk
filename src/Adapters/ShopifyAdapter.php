@@ -737,7 +737,7 @@ class ShopifyAdapter
                 $result['basePriceTaxExcluded'] = $basePrice;
             }
 
-            $variantImage = $variant['image']['url'] ?? null;
+            $variantImage = $variant['media']['nodes'][0]['image']['url'] ?? null;
             if (is_string($variantImage) && $variantImage !== '') {
                 $result['imageUrl'] = ['small' => $variantImage, 'medium' => $variantImage];
             }

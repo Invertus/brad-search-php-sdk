@@ -709,7 +709,7 @@ class ShopifyAdapterTest extends TestCase
                         'sku' => 'SNO-S',
                         'price' => '79.95',
                         'selectedOptions' => [],
-                        'image' => ['url' => 'https://cdn.shopify.com/variant-s.jpg', 'width' => 800, 'height' => 800],
+                        'media' => ['nodes' => [['image' => ['url' => 'https://cdn.shopify.com/variant-s.jpg', 'width' => 800, 'height' => 800]]]],
                     ],
                 ],
                 [
@@ -718,7 +718,7 @@ class ShopifyAdapterTest extends TestCase
                         'sku' => 'SNO-L',
                         'price' => '79.95',
                         'selectedOptions' => [],
-                        'image' => null,
+                        'media' => ['nodes' => []],
                     ],
                 ],
             ],
