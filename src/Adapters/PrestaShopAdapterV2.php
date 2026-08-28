@@ -18,6 +18,13 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 class PrestaShopAdapterV2
 {
     /**
+     * Prefix every merchant custom product field carries in `additionalFields`. Public because
+     * the same `custom_<name>` / `custom_<name>_<locale>` names are built and read by brad-app
+     * and by the PrestaShop module; consumers should reference this instead of the literal.
+     */
+    public const CUSTOM_FIELD_PREFIX = 'custom_';
+
+    /**
      * The only engine type whose values are HTML-bearing free text, and so the only
      * one that may be run through strip_tags(). Mirrors CustomFieldTypeMapper in the
      * PrestaShop module, whose other types are integer, double, boolean and date.
@@ -630,6 +637,37 @@ class PrestaShopAdapterV2
     }
 
     /**
+     * Transform merchant-selected custom product columns to flat prefixed fields.
+     *
+     * Input format (one entry per column the merchant enabled, from the PrestaShop module;
+     * `value` and `localizedValues` are mutually exclusive):
+     * [
+     *     'name' => 'warehouse_slot',
+     *     'type' => 'text',
+     *     'value' => 'A-12',
+     * ]
+     * [
+     *     'name' => 'internal_name',
+     *     'type' => 'text',
+     *     'localizedValues' => [
+     *         'en-US' => 'Cotton shirt',
+     *         'lt-LT' => 'Medvilniniai',
+     *     ],
+     * ]
+     *
+     * `name` must match CUSTOM_FIELD_NAME_PATTERN. `type` is one of text, integer, double,
+     * boolean or date, and defaults to text; boolean values arrive as the strings
+     * 'true'/'false'. Entries that fail either rule, or whose value cleans down to nothing,
+     * are skipped rather than reported as errors.
+     *
+     * Output format:
+     * $result['custom_warehouse_slot'] = 'A-12';
+     * $result['custom_internal_name_en-US'] = 'Cotton shirt';
+     * $result['custom_internal_name_lt-LT'] = 'Medvilniniai';
+     *
+     * Every locale is suffixed, including the first: this adapter takes no locale list and
+     * has no notion of a default locale, unlike the Shopify and Magento adapters.
+     *
      * @param array<string, mixed> $result
      * @param array<int, mixed> $customFields
      */
@@ -646,7 +684,7 @@ class PrestaShopAdapterV2
             }
 
             $type = isset($field['type']) && is_string($field['type']) ? $field['type'] : self::CUSTOM_FIELD_TYPE_TEXT;
-            $fieldName = 'custom_' . $name;
+            $fieldName = self::CUSTOM_FIELD_PREFIX . $name;
 
             if (isset($field['localizedValues']) && is_array($field['localizedValues'])) {
                 $this->addLocalizedField($result, $fieldName, $field['localizedValues'], $type);

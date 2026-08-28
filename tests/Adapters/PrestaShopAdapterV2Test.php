@@ -1507,6 +1507,29 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertSame('kept', $result['products'][0]->additionalFields['custom_' . $name]);
     }
 
+    public function testCustomFieldPrefixConstMatchesTheEmittedFieldNames(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'ALPHA-7741'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('custom_', PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX);
+        $this->assertSame('A-12', $additional[PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX . 'warehouse_slot']);
+        $this->assertSame(
+            'ALPHA-7741',
+            $additional[PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX . 'internal_name_en-US']
+        );
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *
