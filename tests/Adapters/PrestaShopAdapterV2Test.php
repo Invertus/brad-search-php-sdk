@@ -1426,6 +1426,46 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('custom_internal_name_lt-LT', $additional);
     }
 
+    public function testDateCustomFieldWithMysqlZeroDateIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'available_from', 'type' => 'date', 'value' => '0000-00-00 00:00:00'],
+            ['name' => 'discontinued_on', 'type' => 'date', 'value' => '0000-00-00'],
+            ['name' => 'restocked_at', 'type' => 'date', 'value' => '2026-01-05 10:00:00'],
+            [
+                'name' => 'localized_date',
+                'type' => 'date',
+                'localizedValues' => ['en-US' => '0000-00-00 00:00:00', 'lt-LT' => '2026-01-05'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_available_from', $additional);
+        $this->assertArrayNotHasKey('custom_discontinued_on', $additional);
+        $this->assertSame('2026-01-05 10:00:00', $additional['custom_restocked_at']);
+        $this->assertArrayNotHasKey('custom_localized_date_en-US', $additional);
+        $this->assertSame('2026-01-05', $additional['custom_localized_date_lt-LT']);
+    }
+
+    public function testTextCustomFieldHoldingMysqlZeroDateIsKept(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'legacy_note', 'type' => 'text', 'value' => '0000-00-00 is the import placeholder'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame(
+            '0000-00-00 is the import placeholder',
+            $result['products'][0]->additionalFields['custom_legacy_note']
+        );
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *

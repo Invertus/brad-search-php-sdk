@@ -25,6 +25,18 @@ class PrestaShopAdapterV2
     private const CUSTOM_FIELD_TYPE_TEXT = 'text';
 
     /**
+     * Engine type of DATE/DATETIME/TIMESTAMP columns, per CustomFieldTypeMapper in the module.
+     */
+    private const CUSTOM_FIELD_TYPE_DATE = 'date';
+
+    /**
+     * MySQL's zero date, which nullable DATE/DATETIME columns hand out instead of NULL. The
+     * module normalizes it away for the core createdAt/updatedAt fields but not for custom
+     * columns, and a date-mapped field that rejects it takes the whole product document with it.
+     */
+    private const MYSQL_ZERO_DATE_PREFIX = '0000-00-00';
+
+    /**
      * Matches every `<` that cannot open a well-formed HTML tag, i.e. every `<` that is
      * literal data ("30<x<40", "5<3") rather than markup.
      */
@@ -663,7 +675,8 @@ class PrestaShopAdapterV2
      *
      * The emptiness check runs on the cleaned value, not the raw one: brad-app maps
      * non-text custom fields as integer/double/date, and an empty string on one of
-     * those makes the search backend reject the whole product document.
+     * those makes the search backend reject the whole product document. MySQL's zero
+     * date is rejected on date-typed fields for the same reason.
      *
      * @return string|null Cleaned value, or null when the field must be skipped
      */
@@ -673,6 +686,10 @@ class PrestaShopAdapterV2
         $cleanValue = trim($cleanValue);
 
         if ($cleanValue === '') {
+            return null;
+        }
+
+        if ($type === self::CUSTOM_FIELD_TYPE_DATE && str_starts_with($cleanValue, self::MYSQL_ZERO_DATE_PREFIX)) {
             return null;
         }
 
