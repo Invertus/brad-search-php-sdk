@@ -907,12 +907,12 @@ class ShopifyAdapterTest extends TestCase
         $noTaxProduct['node']['category'] = null;
         $noTaxProduct['node']['tags'] = ['cold'];
 
-        $result = $this->adapter->transform($this->makeShopifyResponse([$taxProduct, $noTaxProduct]));
+        $result = $this->adapter->transform($this->makeShopifyResponse([$taxProduct, $noTaxProduct], 'en'), ['en']);
         [$a, $b] = $result['products'];
 
-        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $a['categoriesFlat']);
-        $this->assertNotContains('summer', $a['categoriesFlat']);
-        $this->assertArrayNotHasKey('categoriesFlat', $b);
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $a['categoriesFlat_en']);
+        $this->assertNotContains('summer', $a['categoriesFlat_en']);
+        $this->assertArrayNotHasKey('categoriesFlat_en', $b);
     }
 
     public function testCategoriesFlatIsLocaleSuffixedInLocaleMode(): void
@@ -931,6 +931,32 @@ class ShopifyAdapterTest extends TestCase
         $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_en']);
         $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_lt']);
         $this->assertNotContains('summer', $p['categoriesFlat_en']);
+    }
+
+    /**
+     * The no-locale branch also serves the V1 sync path, whose bulk payload is
+     * pushed without a field whitelist. A V1 tenant must not start receiving a
+     * field its index never mapped.
+     */
+    public function testCategoriesFlatIsNotEmittedWithoutLocales(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['tags'] = ['summer'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $p = $result['products'][0];
+
+        foreach (array_keys($p) as $key) {
+            $this->assertStringStartsNotWith('categoriesFlat', (string) $key);
+        }
+
+        $this->assertSame('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault']);
+        $this->assertContains('Apparel & Accessories > Clothing > Shirts', $p['categories']);
     }
 
     public function testMalformedCategoryFieldEmitsProductTypeAsOwnField(): void

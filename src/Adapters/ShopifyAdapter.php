@@ -225,6 +225,10 @@ class ShopifyAdapter
     /**
      * Build plain (non-localized) fields for backward compatibility.
      *
+     * This branch also serves the V1 sync path, whose bulk payload is pushed
+     * without a field whitelist, so no new field may be added here:
+     * categoriesFlat is emitted only in locale mode (buildLocaleFields).
+     *
      * @param array<int, array{default: string, translations: array<string, string>}> $productCollections
      * @return array<string, mixed>
      */
@@ -240,8 +244,6 @@ class ShopifyAdapter
         string $primaryLocale,
     ): array {
         $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
-        // Taxonomy only: tags are already flat single values with nothing to split.
-        $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
 
         return array_filter([
             'name' => $title,
@@ -249,7 +251,6 @@ class ShopifyAdapter
             'brand' => $brand !== '' ? $brand : null,
             'categoryDefault' => $categoryDefault,
             'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
-            'categoriesFlat' => !empty($flatCategories) ? $flatCategories : null,
             'productType' => $nativeProductType !== '' ? $nativeProductType : null,
             'productUrl' => $productUrl !== '' ? $productUrl : null,
             'collections' => !empty($collections) ? $collections : null,
