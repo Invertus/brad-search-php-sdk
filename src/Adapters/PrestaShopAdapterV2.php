@@ -81,7 +81,7 @@ class PrestaShopAdapterV2
     public function transformProduct(array $product): Product
     {
         $id = $this->getRequiredField($product, 'remoteId');
-        $sku = $this->getRequiredField($product, 'sku');
+        $sku = (string) ($product['sku'] ?? '');
 
         $pricing = new ProductPricing(
             $this->extractPrice($product, 'price'),
@@ -180,9 +180,6 @@ class PrestaShopAdapterV2
         }
 
         $sku = (string) ($variant['sku'] ?? '');
-        if ($sku === '') {
-            throw new ValidationException("Variant 'sku' is required");
-        }
 
         $pricing = new ProductPricing(
             $this->extractPrice($variant, 'price'),

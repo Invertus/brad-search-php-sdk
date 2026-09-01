@@ -34,7 +34,6 @@ final readonly class ProductVariant extends ValueObject
         public array $attrs = []
     ) {
         $this->validateId($id);
-        $this->validateSku($sku);
         $this->validateProductUrl($productUrl);
     }
 
@@ -169,20 +168,6 @@ final readonly class ProductVariant extends ValueObject
                 'The variant ID cannot be empty.',
                 'id',
                 $id
-            );
-        }
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    private function validateSku(string $sku): void
-    {
-        if (trim($sku) === '') {
-            throw new InvalidArgumentException(
-                'The variant SKU cannot be empty.',
-                'sku',
-                $sku
             );
         }
     }

@@ -36,7 +36,6 @@ final readonly class Product extends ValueObject
         public array $additionalFields = []
     ) {
         $this->validateId($id);
-        $this->validateSku($sku);
     }
 
     /**
@@ -236,20 +235,6 @@ final readonly class Product extends ValueObject
                 'The product ID cannot be empty.',
                 'id',
                 $id
-            );
-        }
-    }
-
-    /**
-     * @throws InvalidArgumentException
-     */
-    private function validateSku(string $sku): void
-    {
-        if (trim($sku) === '') {
-            throw new InvalidArgumentException(
-                'The product SKU cannot be empty.',
-                'sku',
-                $sku
             );
         }
     }

@@ -354,30 +354,45 @@ class ProductTest extends TestCase
         );
     }
 
-    public function testThrowsExceptionForEmptySku(): void
+    public function testAcceptsEmptySku(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The product SKU cannot be empty.');
-
-        new Product(
+        $product = new Product(
             self::PRODUCT_ID,
             '',
             $this->createPricing(),
             $this->createImageUrl()
         );
+
+        $this->assertSame('', $product->sku);
+        $this->assertSame('', $product->jsonSerialize()['sku']);
     }
 
-    public function testThrowsExceptionForWhitespaceOnlySku(): void
+    public function testAcceptsWhitespaceOnlySkuUnchanged(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The product SKU cannot be empty.');
-
-        new Product(
+        $product = new Product(
             self::PRODUCT_ID,
             '   ',
             $this->createPricing(),
             $this->createImageUrl()
         );
+
+        $this->assertSame('   ', $product->sku);
+    }
+
+    public function testFromArrayWithoutSkuDefaultsToEmptyString(): void
+    {
+        $product = Product::fromArray([
+            'id' => self::PRODUCT_ID,
+            'price' => self::PRICE,
+            'basePrice' => self::BASE_PRICE,
+            'priceTaxExcluded' => self::PRICE_TAX_EXCLUDED,
+            'basePriceTaxExcluded' => self::BASE_PRICE_TAX_EXCLUDED,
+            'imageUrl' => ['small' => self::SMALL_IMAGE, 'medium' => self::MEDIUM_IMAGE],
+        ]);
+
+        $this->assertSame(self::PRODUCT_ID, $product->id);
+        $this->assertSame('', $product->sku);
+        $this->assertSame('', $product->jsonSerialize()['sku']);
     }
 
     public function testExceptionContainsArgumentName(): void
@@ -406,14 +421,13 @@ class ProductTest extends TestCase
         $product->withId('');
     }
 
-    public function testWithSkuValidatesNewValue(): void
+    public function testWithSkuAcceptsEmptyValue(): void
     {
         $product = $this->createProduct();
+        $newProduct = $product->withSku('');
 
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The product SKU cannot be empty.');
-
-        $product->withSku('');
+        $this->assertSame(self::SKU, $product->sku);
+        $this->assertSame('', $newProduct->sku);
     }
 
     public function testJsonSerializeMatchesDarboDrabuziaiExample(): void
