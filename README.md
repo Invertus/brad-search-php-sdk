@@ -236,7 +236,7 @@ The SDK includes comprehensive validation and error handling. For testing:
 
 1. Use the validation methods to check data before syncing.
 2. Start with small batches to verify configuration
-3. Monitor API responses for any issues
+3. Monitor API responses for any issues.
 
 ## License
 
