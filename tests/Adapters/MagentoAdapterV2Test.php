@@ -914,8 +914,6 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('description', $serialized);
     }
 
-    // --- Helpers ---
-
     public function testCategoriesFlatContainsUniqueLevels(): void
     {
         $product = $this->adapter->transformProduct($this->buildMinimalProduct([
@@ -937,6 +935,8 @@ class MagentoAdapterV2Test extends TestCase
 
         $this->assertArrayNotHasKey('categoriesFlat_lt-LT', $serialized);
     }
+
+    // --- Helpers ---
 
     /**
      * @param array<string, mixed> $overrides

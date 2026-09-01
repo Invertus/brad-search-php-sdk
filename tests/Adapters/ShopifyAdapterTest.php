@@ -903,7 +903,6 @@ class ShopifyAdapterTest extends TestCase
         ];
         $taxProduct['node']['tags'] = ['summer', 'cotton'];
 
-        // No taxonomy: tags alone are already flat single values — nothing to split.
         $noTaxProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
         $noTaxProduct['node']['category'] = null;
         $noTaxProduct['node']['tags'] = ['cold'];
