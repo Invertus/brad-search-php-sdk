@@ -58,7 +58,7 @@ class PrestaShopAdapter
     {
         $result = [
             'id' => $this->getRequiredField($product, 'remoteId'),
-            'sku' => $this->getRequiredField($product, 'sku'),
+            'sku' => (string) ($product['sku'] ?? ''),
             'price' => $this->getRequiredField($product, 'price'),
             'basePrice' => $this->getRequiredField($product, 'basePrice'),
             'priceTaxExcluded' => $this->getRequiredField($product, 'priceTaxExcluded'),

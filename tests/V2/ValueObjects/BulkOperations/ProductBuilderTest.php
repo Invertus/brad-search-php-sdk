@@ -194,18 +194,16 @@ class ProductBuilderTest extends TestCase
             ->build();
     }
 
-    public function testThrowsExceptionForMissingSku(): void
+    public function testBuildWithoutSkuDefaultsToEmptyString(): void
     {
         $builder = new ProductBuilder();
-
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Product SKU is required.');
-
-        $builder
+        $product = $builder
             ->id(self::PRODUCT_ID)
             ->pricing($this->createPricing())
             ->imageUrl($this->createImageUrl())
             ->build();
+
+        $this->assertSame('', $product->sku);
     }
 
     public function testThrowsExceptionForMissingPricing(): void

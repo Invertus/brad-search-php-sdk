@@ -283,18 +283,18 @@ class ProductVariantTest extends TestCase
         );
     }
 
-    public function testThrowsExceptionForEmptySku(): void
+    public function testAcceptsEmptySku(): void
     {
-        $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('The variant SKU cannot be empty.');
-
-        new ProductVariant(
+        $variant = new ProductVariant(
             self::VARIANT_ID,
             '',
             $this->createPricing(),
             self::PRODUCT_URL,
             $this->createImageUrl()
         );
+
+        $this->assertSame('', $variant->sku);
+        $this->assertSame('', $variant->jsonSerialize()['sku']);
     }
 
     public function testThrowsExceptionForEmptyProductUrl(): void
