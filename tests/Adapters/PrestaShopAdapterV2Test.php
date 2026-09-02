@@ -1186,6 +1186,475 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertArrayNotHasKey('updatedAt', $product->additionalFields);
     }
 
+    public function testTransformLocalizedCustomFieldSuffixesEveryLocale(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'Cotton shirt', 'lt-LT' => 'Medvilniniai'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+
+        $this->assertSame('Cotton shirt', $product->additionalFields['custom_internal_name_en-US']);
+        $this->assertSame('Medvilniniai', $product->additionalFields['custom_internal_name_lt-LT']);
+        $this->assertArrayNotHasKey('custom_internal_name', $product->additionalFields);
+    }
+
+    public function testTransformNonLocalizedCustomFieldHasNoLocaleSuffix(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('A-12', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
+    public function testCustomFieldPrefixPreventsCollisionWithCoreFields(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'price', 'type' => 'double', 'value' => '0.01'],
+            ['name' => 'id', 'type' => 'integer', 'value' => '999999'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+        $serialized = $product->jsonSerialize();
+
+        $this->assertSame('0.01', $product->additionalFields['custom_price']);
+        $this->assertSame('999999', $product->additionalFields['custom_id']);
+        $this->assertSame('1807', $serialized['id']);
+        $this->assertSame(99.99, $serialized['price']);
+    }
+
+    public function testTransformLocalizedCustomFieldStripsHtml(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '<b>ALPHA</b>-7741'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $product = $result['products'][0];
+
+        $this->assertSame('ALPHA-7741', $product->additionalFields['custom_internal_name_en-US']);
+    }
+
+    public function testTransformNonLocalizedCustomFieldStripsHtml(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => '<b>ALPHA</b>-7741'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('ALPHA-7741', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
+    public function testMissingCustomFieldsKeyIsHarmless(): void
+    {
+        $result = $this->adapter->transform($this->getMinimalValidProduct());
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame([], array_filter(
+            array_keys($result['products'][0]->additionalFields),
+            static fn (string $key): bool => str_starts_with($key, 'custom_')
+        ));
+    }
+
+    public function testMalformedCustomFieldEntriesAreSkippedNotFatal(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            'not-an-array',
+            ['type' => 'text', 'value' => 'no name key'],
+            ['name' => '', 'type' => 'text', 'value' => 'empty name'],
+            ['name' => 'internal_name', 'type' => 'text', 'localizedValues' => ['en-US' => '']],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('kept', $additional['custom_good']);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+    }
+
+    public function testNonScalarCustomFieldValueIsSkippedNotStringified(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'broken', 'type' => 'text', 'value' => ['a', 'b']],
+            ['name' => 'nested', 'type' => 'text', 'value' => ['k' => 'v']],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_broken', $additional);
+        $this->assertArrayNotHasKey('custom_nested', $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testNonScalarLocalizedCustomFieldValueIsSkippedNotStringified(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => ['a', 'b'], 'lt-LT' => 'kept'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_internal_name_lt-LT']);
+    }
+
+    public function testStringableValueOnCoreLocalizedFieldIsAccepted(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['localizedNames'] = ['en-US' => new StringableFieldValue('Test Product')];
+        $data['description'] = ['en-US' => new StringableFieldValue('<p>Cotton shirt</p>')];
+        $data['descriptionShort'] = ['en-US' => new StringableFieldValue('Cotton')];
+        $data['brand'] = ['localizedNames' => ['en-US' => new StringableFieldValue('Acme')]];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('Test Product', $additional['name_en-US']);
+        $this->assertSame('Cotton shirt', $additional['description_en-US']);
+        $this->assertSame('Cotton', $additional['descriptionShort_en-US']);
+        $this->assertSame('Acme', $additional['brand_en-US']);
+    }
+
+    public function testStringableValueOnLocalizedCustomFieldIsAccepted(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => new StringableFieldValue('ALPHA-7741')],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame(
+            'ALPHA-7741',
+            $result['products'][0]->additionalFields['custom_internal_name_en-US']
+        );
+    }
+
+    public function testNonStringableValuesOnCoreLocalizedFieldAreRejected(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['localizedNames'] = ['en-US' => 'Test Product', 'lt-LT' => ['nested', 'array']];
+        $data['description'] = ['en-US' => new \stdClass()];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('Test Product', $additional['name_en-US']);
+        $this->assertArrayNotHasKey('name_lt-LT', $additional);
+        $this->assertArrayNotHasKey('description_en-US', $additional);
+    }
+
+    public function testTextCustomFieldValueWithBareLessThanSurvivesIntact(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'size_range', 'type' => 'text', 'value' => '30<x<40'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('30<x<40', $result['products'][0]->additionalFields['custom_size_range']);
+    }
+
+    public function testLocalizedTextCustomFieldValueWithBareLessThanSurvivesIntact(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            [
+                'name' => 'size_range',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'S<M<L', 'lt-LT' => '30<x<40'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('S<M<L', $additional['custom_size_range_en-US']);
+        $this->assertSame('30<x<40', $additional['custom_size_range_lt-LT']);
+    }
+
+    public function testNonTextCustomFieldValuesAreNotHtmlStripped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'stock_note', 'type' => 'integer', 'value' => '5<3'],
+            ['name' => 'weight_note', 'type' => 'double', 'value' => '0.5<1.5'],
+            ['name' => 'flag_note', 'type' => 'boolean', 'value' => 'false<true'],
+            [
+                'name' => 'localized_stock_note',
+                'type' => 'integer',
+                'localizedValues' => ['en-US' => '5<3'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('5<3', $additional['custom_stock_note']);
+        $this->assertSame('0.5<1.5', $additional['custom_weight_note']);
+        $this->assertSame('false<true', $additional['custom_flag_note']);
+        $this->assertSame('5<3', $additional['custom_localized_stock_note_en-US']);
+    }
+
+    public function testTextCustomFieldValueThatBecomesEmptyAfterStrippingIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => '<n/a>'],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '<n/a>', 'lt-LT' => 'kept'],
+            ],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_warehouse_slot', $additional);
+        $this->assertArrayNotHasKey('custom_internal_name_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_internal_name_lt-LT']);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testCustomFieldValuesAreTrimmed(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12                            '],
+            ['name' => 'stock_count', 'type' => 'integer', 'value' => ' 42 '],
+            ['name' => 'blank_slot', 'type' => 'text', 'value' => '     '],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => '  ALPHA-7741  ', 'lt-LT' => '   '],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('A-12', $additional['custom_warehouse_slot']);
+        $this->assertSame('42', $additional['custom_stock_count']);
+        $this->assertArrayNotHasKey('custom_blank_slot', $additional);
+        $this->assertSame('ALPHA-7741', $additional['custom_internal_name_en-US']);
+        $this->assertArrayNotHasKey('custom_internal_name_lt-LT', $additional);
+    }
+
+    public function testDateCustomFieldWithMysqlZeroDateIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'available_from', 'type' => 'date', 'value' => '0000-00-00 00:00:00'],
+            ['name' => 'discontinued_on', 'type' => 'date', 'value' => '0000-00-00'],
+            ['name' => 'restocked_at', 'type' => 'date', 'value' => '2026-01-05 10:00:00'],
+            [
+                'name' => 'localized_date',
+                'type' => 'date',
+                'localizedValues' => ['en-US' => '0000-00-00 00:00:00', 'lt-LT' => '2026-01-05'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_available_from', $additional);
+        $this->assertArrayNotHasKey('custom_discontinued_on', $additional);
+        $this->assertSame('2026-01-05 10:00:00', $additional['custom_restocked_at']);
+        $this->assertArrayNotHasKey('custom_localized_date_en-US', $additional);
+        $this->assertSame('2026-01-05', $additional['custom_localized_date_lt-LT']);
+    }
+
+    public function testTextCustomFieldHoldingMysqlZeroDateIsKept(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'legacy_note', 'type' => 'text', 'value' => '0000-00-00 is the import placeholder'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame(
+            '0000-00-00 is the import placeholder',
+            $result['products'][0]->additionalFields['custom_legacy_note']
+        );
+    }
+
+    public function testCustomFieldWithUnsafeNameIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'nested.path', 'type' => 'text', 'value' => 'dotted'],
+            ['name' => str_repeat('a', 65), 'type' => 'text', 'value' => 'too long'],
+            ['name' => 'spaced name', 'type' => 'text', 'value' => 'spaced'],
+            ['name' => 'weird-name', 'type' => 'text', 'value' => 'hyphen'],
+            [
+                'name' => 'localized.path',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'dotted localized'],
+            ],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey('custom_nested.path', $additional);
+        $this->assertArrayNotHasKey('custom_' . str_repeat('a', 65), $additional);
+        $this->assertArrayNotHasKey('custom_spaced name', $additional);
+        $this->assertArrayNotHasKey('custom_weird-name', $additional);
+        $this->assertArrayNotHasKey('custom_localized.path_en-US', $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testBooleanCustomFieldValuesAreNormalisedToTrueFalseStrings(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'is_featured', 'type' => 'boolean', 'value' => true],
+            ['name' => 'is_hidden', 'type' => 'boolean', 'value' => false],
+            [
+                'name' => 'is_local',
+                'type' => 'boolean',
+                'localizedValues' => ['en-US' => true, 'lt-LT' => false],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('true', $additional['custom_is_featured']);
+        $this->assertSame('false', $additional['custom_is_hidden']);
+        $this->assertSame('true', $additional['custom_is_local_en-US']);
+        $this->assertSame('false', $additional['custom_is_local_lt-LT']);
+    }
+
+    public function testCustomFieldNameWithTrailingNewlineIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => "good\n", 'type' => 'text', 'value' => 'newline'],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey("custom_good\n", $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testDuplicateCustomFieldNameLastEntryWins(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'first'],
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'second'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('second', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
+    public function testCustomFieldsGivenAsAssociativeMapIsHandledWithoutErrors(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            'warehouse_slot' => ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+            'stock_count' => '42',
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('A-12', $additional['custom_warehouse_slot']);
+        $this->assertArrayNotHasKey('custom_stock_count', $additional);
+    }
+
+    public function testCustomFieldNameAtMaximumLengthIsKept(): void
+    {
+        $name = str_repeat('a', 64);
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => $name, 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('kept', $result['products'][0]->additionalFields['custom_' . $name]);
+    }
+
+    public function testCustomFieldPrefixConstMatchesTheEmittedFieldNames(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+            [
+                'name' => 'internal_name',
+                'type' => 'text',
+                'localizedValues' => ['en-US' => 'ALPHA-7741'],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertSame('custom_', PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX);
+        $this->assertSame('A-12', $additional[PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX . 'warehouse_slot']);
+        $this->assertSame(
+            'ALPHA-7741',
+            $additional[PrestaShopAdapterV2::CUSTOM_FIELD_PREFIX . 'internal_name_en-US']
+        );
+    }
+
     /**
      * Helper method to get minimal valid product data.
      *
@@ -1252,5 +1721,17 @@ class PrestaShopAdapterV2Test extends TestCase
             'categories' => [],
             'variants' => [],
         ];
+    }
+}
+
+class StringableFieldValue implements \Stringable
+{
+    public function __construct(private string $value)
+    {
+    }
+
+    public function __toString(): string
+    {
+        return $this->value;
     }
 }
