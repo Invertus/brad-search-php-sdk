@@ -21,7 +21,7 @@ class PrestaShopAdapterV2
 
     private const CUSTOM_FIELD_TYPE_TEXT = 'text';
 
-    private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/';
+    private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/D';
 
     private const CUSTOM_FIELD_TYPE_DATE = 'date';
 
@@ -605,6 +605,8 @@ class PrestaShopAdapterV2
     }
 
     /**
+     * Entry shape: array{name: string, type: 'text'|'integer'|'double'|'boolean'|'date', value?: mixed, localizedValues?: array<string, mixed>}
+     *
      * @param array<string, mixed> $result
      * @param array<int, mixed> $customFields
      */
@@ -753,6 +755,10 @@ class PrestaShopAdapterV2
 
     private function stringifyFieldValue(mixed $value): ?string
     {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
         if (is_scalar($value) || $value instanceof \Stringable) {
             return (string) $value;
         }

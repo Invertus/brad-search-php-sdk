@@ -1494,6 +1494,74 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertSame('kept', $additional['custom_good']);
     }
 
+    public function testBooleanCustomFieldValuesAreNormalisedToTrueFalseStrings(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'is_featured', 'type' => 'boolean', 'value' => true],
+            ['name' => 'is_hidden', 'type' => 'boolean', 'value' => false],
+            [
+                'name' => 'is_local',
+                'type' => 'boolean',
+                'localizedValues' => ['en-US' => true, 'lt-LT' => false],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('true', $additional['custom_is_featured']);
+        $this->assertSame('false', $additional['custom_is_hidden']);
+        $this->assertSame('true', $additional['custom_is_local_en-US']);
+        $this->assertSame('false', $additional['custom_is_local_lt-LT']);
+    }
+
+    public function testCustomFieldNameWithTrailingNewlineIsSkipped(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => "good\n", 'type' => 'text', 'value' => 'newline'],
+            ['name' => 'good', 'type' => 'text', 'value' => 'kept'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertArrayNotHasKey("custom_good\n", $additional);
+        $this->assertSame('kept', $additional['custom_good']);
+    }
+
+    public function testDuplicateCustomFieldNameLastEntryWins(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'first'],
+            ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'second'],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+
+        $this->assertSame('second', $result['products'][0]->additionalFields['custom_warehouse_slot']);
+    }
+
+    public function testCustomFieldsGivenAsAssociativeMapIsHandledWithoutErrors(): void
+    {
+        $data = $this->getMinimalProductData('1807', 'SKU-123');
+        $data['customFields'] = [
+            'warehouse_slot' => ['name' => 'warehouse_slot', 'type' => 'text', 'value' => 'A-12'],
+            'stock_count' => '42',
+        ];
+
+        $result = $this->adapter->transform(['products' => [$data]]);
+        $additional = $result['products'][0]->additionalFields;
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertSame('A-12', $additional['custom_warehouse_slot']);
+        $this->assertArrayNotHasKey('custom_stock_count', $additional);
+    }
+
     public function testCustomFieldNameAtMaximumLengthIsKept(): void
     {
         $name = str_repeat('a', 64);
