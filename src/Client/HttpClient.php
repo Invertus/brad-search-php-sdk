@@ -4,15 +4,33 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\Client;
 
+use BradSearch\SyncSdk\Client\Transport\CurlTransport;
+use BradSearch\SyncSdk\Client\Transport\HttpRequest;
+use BradSearch\SyncSdk\Client\Transport\HttpResponse;
+use BradSearch\SyncSdk\Client\Transport\NativeSleeper;
+use BradSearch\SyncSdk\Client\Transport\Sleeper;
+use BradSearch\SyncSdk\Client\Transport\Transport;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Exceptions\ApiException;
-use CurlHandle;
+use BradSearch\SyncSdk\Exceptions\TransportException;
 
 class HttpClient
 {
+    private readonly Transport $transport;
+
+    private readonly Sleeper $sleeper;
+
+    /**
+     * @param list<string> $extraHeaders Additional raw header lines sent with every request
+     */
     public function __construct(
-        private readonly SyncConfig $config
+        private readonly SyncConfig $config,
+        ?Transport $transport = null,
+        ?Sleeper $sleeper = null,
+        private readonly array $extraHeaders = [],
     ) {
+        $this->transport = $transport ?? new CurlTransport();
+        $this->sleeper = $sleeper ?? new NativeSleeper();
     }
 
     /**
@@ -20,15 +38,18 @@ class HttpClient
      */
     public function get(string $endpoint): array
     {
-        return $this->request('GET', $endpoint);
+        return $this->request('GET', $endpoint, null, true);
     }
 
     /**
-     * Make a POST request
+     * Make a POST request.
+     *
+     * POST is not retried unless the caller marks it idempotent (bulk operations keyed by id,
+     * pure computations). Configuration mutations must leave the flag false.
      */
-    public function post(string $endpoint, array $data = []): array
+    public function post(string $endpoint, array $data = [], bool $idempotent = false): array
     {
-        return $this->request('POST', $endpoint, $data);
+        return $this->request('POST', $endpoint, $data, $idempotent);
     }
 
     /**
@@ -36,7 +57,7 @@ class HttpClient
      */
     public function put(string $endpoint, array $data = []): array
     {
-        return $this->request('PUT', $endpoint, $data);
+        return $this->request('PUT', $endpoint, $data, true);
     }
 
     /**
@@ -44,7 +65,7 @@ class HttpClient
      */
     public function delete(string $endpoint): array
     {
-        return $this->request('DELETE', $endpoint);
+        return $this->request('DELETE', $endpoint, null, true);
     }
 
     /**
@@ -52,82 +73,89 @@ class HttpClient
      */
     public function patch(string $endpoint, array $data = []): array
     {
-        return $this->request('PATCH', $endpoint, $data);
+        return $this->request('PATCH', $endpoint, $data, true);
     }
 
     /**
-     * Make HTTP request
+     * Send the request, retrying transport failures, 5xx and 429 when the call is idempotent.
      */
-    private function request(string $method, string $endpoint, ?array $data = null): array
+    private function request(string $method, string $endpoint, ?array $data, bool $idempotent): array
     {
-        $curl = curl_init();
+        $request = $this->buildRequest($method, $endpoint, $data);
+        $policy = $this->config->retryPolicy;
+        $maxAttempts = $idempotent ? $policy->maxAttempts : 1;
+        $attempt = 0;
 
-        if ($curl === false) {
-            throw new ApiException('Failed to initialize cURL');
+        while (true) {
+            $attempt++;
+
+            try {
+                $response = $this->transport->send($request);
+            } catch (TransportException $e) {
+                if ($attempt >= $maxAttempts) {
+                    throw $e;
+                }
+
+                $this->sleeper->sleep($policy->delayBeforeRetry($attempt));
+                continue;
+            }
+
+            if ($attempt < $maxAttempts && $policy->isRetryableStatus($response->statusCode)) {
+                $this->sleeper->sleep($policy->delayBeforeRetry($attempt));
+                continue;
+            }
+
+            return $this->decode($response);
+        }
+    }
+
+    private function buildRequest(string $method, string $endpoint, ?array $data): HttpRequest
+    {
+        $headers = [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $this->config->authToken,
+            ...$this->extraHeaders,
+        ];
+
+        return new HttpRequest(
+            method: $method,
+            url: rtrim($this->config->baseUrl, '/') . '/' . ltrim($endpoint, '/'),
+            headers: $headers,
+            body: $data === null ? null : json_encode($data, JSON_THROW_ON_ERROR),
+            timeout: $this->config->timeout,
+            connectTimeout: $this->config->connectTimeout,
+            verifySSL: $this->config->verifySSL,
+        );
+    }
+
+    private function decode(HttpResponse $response): array
+    {
+        $statusCode = $response->statusCode;
+        $body = $response->body;
+
+        if ($statusCode < 200 || $statusCode >= 300) {
+            throw new ApiException(
+                "API request failed with status {$statusCode}",
+                $statusCode,
+                $body
+            );
+        }
+
+        // Handle empty responses (e.g., from DELETE requests)
+        if (empty($body)) {
+            return [];
         }
 
         try {
-            $url = rtrim($this->config->baseUrl, '/') . '/' . ltrim($endpoint, '/');
-
-            $options = [
-                CURLOPT_URL => $url,
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT => $this->config->timeout,
-                CURLOPT_CUSTOMREQUEST => $method,
-                CURLOPT_HTTPHEADER => [
-                    'Content-Type: application/json',
-                    'Authorization: Bearer ' . $this->config->authToken,
-                ],
-                CURLOPT_SSL_VERIFYPEER => $this->config->verifySSL,
-                CURLOPT_SSL_VERIFYHOST => $this->config->verifySSL ? 2 : 0,
-            ];
-
-            if ($data !== null) {
-                $json = json_encode($data, JSON_THROW_ON_ERROR);
-                $options[CURLOPT_POSTFIELDS] = $json;
-            }
-
-            curl_setopt_array($curl, $options);
-
-            $response = curl_exec($curl);
-
-            if ($response === false) {
-                $error = curl_error($curl);
-                throw new ApiException("cURL error: {$error}");
-            }
-
-            $statusCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-
-            if (!is_string($response)) {
-                throw new ApiException('Invalid response from server');
-            }
-
-            if ($statusCode < 200 || $statusCode >= 300) {
-                throw new ApiException(
-                    "API request failed with status {$statusCode}",
-                    $statusCode,
-                    $response
-                );
-            }
-
-            // Handle empty responses (e.g., from DELETE requests)
-            if (empty($response)) {
-                return [];
-            }
-
-            try {
-                $decoded = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
-            } catch (\JsonException $e) {
-                throw new ApiException("Failed to decode JSON response: {$e->getMessage()}", $statusCode, $response);
-            }
-
-            if (!is_array($decoded)) {
-                throw new ApiException('Expected JSON object in response', $statusCode, $response);
-            }
-
-            return $decoded;
-        } finally {
-            curl_close($curl);
+            $decoded = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
+            throw new ApiException("Failed to decode JSON response: {$e->getMessage()}", $statusCode, $body);
         }
+
+        if (!is_array($decoded)) {
+            throw new ApiException('Expected JSON object in response', $statusCode, $body);
+        }
+
+        return $decoded;
     }
 }

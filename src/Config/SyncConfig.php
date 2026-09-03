@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\Config;
 
+use BradSearch\SyncSdk\Client\RetryPolicy;
 use BradSearch\SyncSdk\Exceptions\InvalidFieldConfigException;
 
 readonly class SyncConfig
 {
+    /**
+     * @param int $timeout Total request timeout in seconds
+     * @param int $connectTimeout Connection-establishment timeout in seconds
+     * @param RetryPolicy $retryPolicy Retry budget applied to idempotent requests only
+     */
     public function __construct(
         public string $baseUrl,
         public string $authToken,
         public int $timeout = 30,
-        public bool $verifySSL = true
+        public bool $verifySSL = true,
+        public int $connectTimeout = 10,
+        public RetryPolicy $retryPolicy = new RetryPolicy(),
     ) {
         $this->validate();
     }
@@ -33,6 +41,10 @@ readonly class SyncConfig
 
         if ($this->timeout <= 0) {
             throw new InvalidFieldConfigException('Timeout must be greater than 0');
+        }
+
+        if ($this->connectTimeout <= 0) {
+            throw new InvalidFieldConfigException('Connect timeout must be greater than 0');
         }
     }
 }

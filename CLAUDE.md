@@ -11,7 +11,8 @@ Guidance for Claude Code in this repo. This file covers what rarely changes; dee
 ## V2 architecture
 
 - **Facade**: `src/SyncV2Sdk.php`.
-- **Config**: `src/Config/SyncConfigV2.php` — `appId` (must be a UUID), `apiUrl`, `token`, optional `targetIndex`.
+- **Config**: `src/Config/SyncConfigV2.php` — `appId` (must be a UUID), `apiUrl`, `token`, optional `targetIndex`, `timeout` (30s), `connectTimeout` (10s), `retryPolicy`.
+- **Transport**: `src/Client/HttpClient.php` builds an `HttpRequest`, hands it to a `Client\Transport\Transport` (default `CurlTransport`), and retries idempotent calls per `Client\RetryPolicy` (transport errors, 5xx, 429; equal-jitter exponential backoff). POST is non-idempotent unless the facade passes `idempotent: true` — only bulk-operations, V1 sync/delete-products and normalize do. Never flag a configuration POST idempotent. `TransportException extends ApiException` with status 0 for "no response at all". Tests inject a fake `Transport` and `Sleeper` (see `tests/Client/Support/`).
 - **Endpoints**: `/api/v2/applications/{appId}/...`.
 - **Payloads**: strict immutable readonly ValueObjects in `src/V2/ValueObjects/` (BulkOperations, Index, Normalize, Product, Response, Search, SearchSettings, Synonym, Common), each with constructor validation, a builder, and a `jsonSerialize()` verified against a fixture. See `src/V2/ValueObjects/CLAUDE.md` for the conventions.
 - **Adapters**: `PrestaShopAdapterV2`, `MagentoAdapterV2` (GraphQL-fed via `src/Magento/`), `ShopifyAdapter` — transform platform product data into V2 payloads.
@@ -87,7 +88,7 @@ vendor/bin/phpstan analyse       # level 4, src/ only (phpstan.neon); expect "[O
 vendor/bin/phpcs src tests       # PSR-12 (phpcs.xml); expect empty output / exit 0
 ```
 
-`laravel/pint` is in require-dev but NOT wired into CI — phpcs is the authority. No Makefile, no docker-compose, no `.env`; tests are fully offline (HTTP is mocked).
+`laravel/pint` is in require-dev but NOT wired into CI — phpcs is the authority. No Makefile, no docker-compose, no `.env`; tests are fully offline (HTTP is mocked at the facade level, or scripted through `tests/Client/Support/FakeTransport.php` at the transport level).
 
 ### Install
 ```bash

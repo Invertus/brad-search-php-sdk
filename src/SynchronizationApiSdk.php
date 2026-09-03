@@ -161,7 +161,7 @@ class SynchronizationApiSdk
             $data['endpoint'] = $this->endpoint;
         }
 
-        $this->httpClient->post('api/v1/sync/', $data);
+        $this->httpClient->post('api/v1/sync/', $data, idempotent: true);
     }
 
     /**
@@ -193,7 +193,7 @@ class SynchronizationApiSdk
             'product_ids' => $productsIds,
         ];
 
-        $this->httpClient->post('api/v1/sync/delete-products', $data);
+        $this->httpClient->post('api/v1/sync/delete-products', $data, idempotent: true);
     }
 
     /**
@@ -294,7 +294,7 @@ class SynchronizationApiSdk
             'operations' => array_map(fn(BulkOperation $op) => $op->toArray(), $operations)
         ];
 
-        $response = $this->httpClient->post("{$this->apiStartUrl}sync/bulk-operations", $data);
+        $response = $this->httpClient->post("{$this->apiStartUrl}sync/bulk-operations", $data, idempotent: true);
 
         return BulkOperationResult::fromApiResponse($response);
     }
