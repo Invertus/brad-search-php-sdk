@@ -213,7 +213,9 @@ try {
 
 Every request carries two timeouts from the config: `connectTimeout` (default 10s) bounds the TCP/TLS handshake, `timeout` (default 30s) bounds the whole request. Raise `timeout` for large bulk payloads; keep `connectTimeout` short so a stalled network fails fast.
 
-Idempotent requests are retried automatically on transport errors, HTTP 5xx and 429 with jittered exponential backoff (1s doubling to an 8s cap, 3 attempts by default). Idempotent means GET, PUT, DELETE, PATCH and the bulk-style POSTs (`bulk-operations`, V1 `sync/` and `delete-products`, `normalize`). Configuration POSTs (`configuration`, `configuration/refresh`, `synonyms`, `index`, `index/activate`, V1 `reindex`) are never retried by the SDK. After the last attempt the exception from the final response is thrown, with its status code and body intact.
+Idempotent requests are retried automatically on connection failures (refused, DNS, TLS, connect timeout), HTTP 5xx and 429 with jittered exponential backoff (1s doubling to an 8s cap, 3 attempts by default). Idempotent means GET, PUT, DELETE, PATCH and the bulk-style POSTs (`bulk-operations`, V1 `sync/` and `delete-products`, `normalize`). Configuration POSTs (`configuration`, `configuration/refresh`, `synonyms`, `index`, `index/activate`, V1 `reindex`) and the V1 create-index PUT (the server answers 409 on a repeat) are never retried by the SDK. After the last attempt the exception from the final response is thrown, with its status code and body intact.
+
+A read timeout is not retried either: the request reached the engine, which may still be processing it, so re-sending immediately only adds load. `TransportException::$connectionFailed` tells the two apart, and `$curlErrno` carries the raw cURL error code. Leave read-timeout retries to a slower layer (a queue job's backoff, for example).
 
 Tune or disable the budget per config:
 

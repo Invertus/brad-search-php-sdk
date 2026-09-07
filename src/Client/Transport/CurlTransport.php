@@ -37,7 +37,14 @@ final class CurlTransport implements Transport
         $response = curl_exec($curl);
 
         if ($response === false) {
-            throw new TransportException('cURL error: ' . curl_error($curl));
+            $errno = curl_errno($curl);
+            $connectTime = (float) curl_getinfo($curl, CURLINFO_CONNECT_TIME);
+
+            throw new TransportException(
+                'cURL error: ' . curl_error($curl),
+                $errno,
+                TransportException::isConnectionFailure($errno, $connectTime)
+            );
         }
 
         if (!is_string($response)) {

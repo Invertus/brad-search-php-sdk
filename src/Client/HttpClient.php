@@ -53,11 +53,14 @@ class HttpClient
     }
 
     /**
-     * Make a PUT request
+     * Make a PUT request.
+     *
+     * PUT is treated as idempotent by default. Pass idempotent: false for a create that the server
+     * rejects on repeat (the V1 create-index PUT answers 409 the second time).
      */
-    public function put(string $endpoint, array $data = []): array
+    public function put(string $endpoint, array $data = [], bool $idempotent = true): array
     {
-        return $this->request('PUT', $endpoint, $data, true);
+        return $this->request('PUT', $endpoint, $data, $idempotent);
     }
 
     /**
@@ -77,7 +80,10 @@ class HttpClient
     }
 
     /**
-     * Send the request, retrying transport failures, 5xx and 429 when the call is idempotent.
+     * Send the request, retrying connection failures, 5xx and 429 when the call is idempotent.
+     *
+     * A read timeout is not retried: the request reached the engine, which may still be working on
+     * it, so an immediate re-send only adds load. The caller's slower retry layer owns that case.
      */
     private function request(string $method, string $endpoint, ?array $data, bool $idempotent): array
     {
@@ -92,7 +98,7 @@ class HttpClient
             try {
                 $response = $this->transport->send($request);
             } catch (TransportException $e) {
-                if ($attempt >= $maxAttempts) {
+                if (! $e->connectionFailed || $attempt >= $maxAttempts) {
                     throw $e;
                 }
 

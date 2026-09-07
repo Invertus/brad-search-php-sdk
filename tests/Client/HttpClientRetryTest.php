@@ -67,16 +67,50 @@ class HttpClientRetryTest extends TestCase
         $this->assertCount(2, $transport->requests);
     }
 
-    public function testRetriesIdempotentCallOnTransportError(): void
+    public function testRetriesIdempotentCallOnConnectionFailure(): void
     {
         [$client, $transport] = $this->client([
-            new TransportException('cURL error: Connection timed out after 7001 milliseconds'),
+            new TransportException('cURL error: Connection timed out after 7001 milliseconds', CURLE_OPERATION_TIMEDOUT, connectionFailed: true),
             new HttpResponse(200, '{}'),
         ]);
 
         $client->delete('api/v2/thing');
 
         $this->assertCount(2, $transport->requests);
+    }
+
+    public function testDoesNotRetryReadTimeoutEvenWhenIdempotent(): void
+    {
+        [$client, $transport] = $this->client([
+            new TransportException('cURL error: Operation timed out after 120001 milliseconds with 0 bytes received', CURLE_OPERATION_TIMEDOUT, connectionFailed: false),
+        ]);
+
+        try {
+            $client->post('api/v2/index/x/bulk-operations', ['operations' => []], idempotent: true);
+            $this->fail('Expected TransportException');
+        } catch (TransportException $e) {
+            $this->assertSame(CURLE_OPERATION_TIMEDOUT, $e->curlErrno);
+            $this->assertFalse($e->connectionFailed);
+        }
+
+        $this->assertCount(1, $transport->requests);
+        $this->assertSame([], $this->sleeper->delays);
+    }
+
+    public function testPutFlaggedNonIdempotentIsNotRetried(): void
+    {
+        [$client, $transport] = $this->client([
+            new HttpResponse(503, 'unavailable'),
+        ]);
+
+        try {
+            $client->put('api/v1/sync/', ['index_name' => 'x'], idempotent: false);
+            $this->fail('Expected ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame(503, $e->statusCode);
+        }
+
+        $this->assertCount(1, $transport->requests);
     }
 
     public function testDoesNotRetryOn400(): void
@@ -118,7 +152,7 @@ class HttpClientRetryTest extends TestCase
     public function testDoesNotRetryNonIdempotentPostOnTransportError(): void
     {
         [$client, $transport] = $this->client([
-            new TransportException('cURL error: Connection refused'),
+            new TransportException('cURL error: Connection refused', CURLE_COULDNT_CONNECT, connectionFailed: true),
         ]);
 
         $this->expectException(TransportException::class);
@@ -167,9 +201,9 @@ class HttpClientRetryTest extends TestCase
     public function testThrowsLastTransportErrorWhenAttemptsExhausted(): void
     {
         [$client, $transport] = $this->client([
-            new TransportException('cURL error: first'),
-            new TransportException('cURL error: second'),
-            new TransportException('cURL error: third'),
+            new TransportException('cURL error: first', CURLE_COULDNT_CONNECT, connectionFailed: true),
+            new TransportException('cURL error: second', CURLE_COULDNT_CONNECT, connectionFailed: true),
+            new TransportException('cURL error: third', CURLE_COULDNT_CONNECT, connectionFailed: true),
         ]);
 
         try {
