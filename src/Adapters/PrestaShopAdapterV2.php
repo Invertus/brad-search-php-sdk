@@ -547,8 +547,6 @@ class PrestaShopAdapterV2
     }
 
     /**
-     * Add a categoriesFlat_{locale} field per collected categories_{locale} field.
-     *
      * @param array<string, mixed> $result
      */
     private function addFlatCategories(array &$result): void

@@ -186,7 +186,6 @@ class ShopifyAdapter
             if (!empty($localeCategories)) {
                 $fields["categories_{$locale}"] = $localeCategories;
             }
-            // Taxonomy only: tags are already flat single values with nothing to split.
             $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
             if (!empty($flatCategories)) {
                 $fields["categoriesFlat_{$locale}"] = $flatCategories;
@@ -224,10 +223,6 @@ class ShopifyAdapter
 
     /**
      * Build plain (non-localized) fields for backward compatibility.
-     *
-     * This branch also serves the V1 sync path, whose bulk payload is pushed
-     * without a field whitelist, so no new field may be added here:
-     * categoriesFlat is emitted only in locale mode (buildLocaleFields).
      *
      * @param array<int, array{default: string, translations: array<string, string>}> $productCollections
      * @return array<string, mixed>

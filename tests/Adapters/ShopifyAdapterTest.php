@@ -933,11 +933,6 @@ class ShopifyAdapterTest extends TestCase
         $this->assertNotContains('summer', $p['categoriesFlat_en']);
     }
 
-    /**
-     * The no-locale branch also serves the V1 sync path, whose bulk payload is
-     * pushed without a field whitelist. A V1 tenant must not start receiving a
-     * field its index never mapped.
-     */
     public function testCategoriesFlatIsNotEmittedWithoutLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
