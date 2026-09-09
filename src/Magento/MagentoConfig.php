@@ -17,6 +17,7 @@ readonly class MagentoConfig
      * @param int $timeout Request timeout in seconds
      * @param bool $verifySSL Whether to verify SSL certificates
      * @param int $defaultPageSize Default page size for paginated requests
+     * @param int $connectTimeout Connection-establishment timeout in seconds
      */
     public function __construct(
         public string $graphqlUrl,
@@ -24,6 +25,7 @@ readonly class MagentoConfig
         public int $timeout = 30,
         public bool $verifySSL = true,
         public int $defaultPageSize = 100,
+        public int $connectTimeout = 10,
     ) {
         $this->validate();
     }
@@ -40,6 +42,10 @@ readonly class MagentoConfig
 
         if ($this->timeout <= 0) {
             throw new InvalidFieldConfigException('Timeout must be greater than 0');
+        }
+
+        if ($this->connectTimeout <= 0) {
+            throw new InvalidFieldConfigException('Connect timeout must be greater than 0');
         }
 
         if ($this->defaultPageSize <= 0) {
