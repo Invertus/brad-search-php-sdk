@@ -27,8 +27,9 @@ class ApiException extends SyncSdkException
         parent::__construct($message, $statusCode, $previous);
 
         $this->responseBodyTruncated = $responseBody !== null && strlen($responseBody) > self::MAX_RESPONSE_BODY_BYTES;
+        // Cut on a character boundary so a body that lands in a log or a JSON context stays valid UTF-8.
         $this->responseBody = $this->responseBodyTruncated
-            ? substr($responseBody, 0, self::MAX_RESPONSE_BODY_BYTES)
+            ? mb_strcut($responseBody, 0, self::MAX_RESPONSE_BODY_BYTES, 'UTF-8')
             : $responseBody;
     }
 }

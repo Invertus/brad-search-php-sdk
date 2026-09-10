@@ -49,8 +49,25 @@ class ApiExceptionTest extends TestCase
         $this->assertTrue($e->responseBodyTruncated);
     }
 
-    public function testTheLimitLeavesRoomForTheConsumersOwnTwoKilobyteLogCut(): void
+    public function testTheCutNeverSplitsAMultibyteCharacter(): void
     {
-        $this->assertGreaterThanOrEqual(2048 * 4, ApiException::MAX_RESPONSE_BODY_BYTES);
+        $body = str_repeat('a', ApiException::MAX_RESPONSE_BODY_BYTES - 1) . 'ę' . str_repeat('b', 100);
+
+        $e = new ApiException('API request failed with status 500', 500, $body);
+
+        $this->assertTrue($e->responseBodyTruncated);
+        $this->assertSame(ApiException::MAX_RESPONSE_BODY_BYTES - 1, strlen($e->responseBody));
+        $this->assertTrue(mb_check_encoding($e->responseBody, 'UTF-8'));
+        $this->assertNotFalse(json_encode(['body' => $e->responseBody]));
+    }
+
+    public function testAnOversizedBodyEndingOnACharacterBoundaryIsCutToTheLimit(): void
+    {
+        $body = str_repeat('ęą', ApiException::MAX_RESPONSE_BODY_BYTES);
+
+        $e = new ApiException('API request failed with status 500', 500, $body);
+
+        $this->assertSame(ApiException::MAX_RESPONSE_BODY_BYTES, strlen($e->responseBody));
+        $this->assertTrue(mb_check_encoding($e->responseBody, 'UTF-8'));
     }
 }
