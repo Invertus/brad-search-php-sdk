@@ -52,6 +52,7 @@ class MagentoGraphQLClient
                 CURLOPT_URL => $this->config->graphqlUrl,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_TIMEOUT => $this->config->timeout,
+                CURLOPT_CONNECTTIMEOUT => $this->config->connectTimeout,
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => json_encode($payload, JSON_THROW_ON_ERROR),
                 CURLOPT_HTTPHEADER => $headers,

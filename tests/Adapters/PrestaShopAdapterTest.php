@@ -456,20 +456,79 @@ class PrestaShopAdapterTest extends TestCase
             'products' => [
                 [
                     'remoteId' => '1807',
-                    // Missing sku
+                    'price' => '99.99',
+                    'basePrice' => '99.99',
+                    'priceTaxExcluded' => '82.64',
+                    'basePriceTaxExcluded' => '82.64',
                     'localizedNames' => [
                         'en-US' => 'Test Product'
-                    ]
+                    ],
+                    'categories' => [],
+                    'variants' => []
                 ]
             ]
         ];
 
         $result = $this->adapter->transform($prestaShopData);
 
-        $this->assertCount(0, $result['products']);
-        $this->assertCount(1, $result['errors']);
-        $this->assertEquals('transformation_error', $result['errors'][0]['type']);
-        $this->assertEquals("Required field 'sku' is missing from PrestaShop data", $result['errors'][0]['message']);
+        $this->assertCount(0, $result['errors']);
+        $product = $this->getProductFromResult($result);
+        $this->assertEquals('1807', $product['id']);
+        $this->assertSame('', $product['sku']);
+    }
+
+    public function testTransformProductWithNullSku(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => null,
+                    'price' => '99.99',
+                    'basePrice' => '99.99',
+                    'priceTaxExcluded' => '82.64',
+                    'basePriceTaxExcluded' => '82.64',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(0, $result['errors']);
+        $product = $this->getProductFromResult($result);
+        $this->assertSame('', $product['sku']);
+    }
+
+    public function testTransformProductWithEmptySku(): void
+    {
+        $prestaShopData = [
+            'products' => [
+                [
+                    'remoteId' => '1807',
+                    'sku' => '',
+                    'price' => '99.99',
+                    'basePrice' => '99.99',
+                    'priceTaxExcluded' => '82.64',
+                    'basePriceTaxExcluded' => '82.64',
+                    'localizedNames' => [
+                        'en-US' => 'Test Product'
+                    ],
+                    'categories' => [],
+                    'variants' => []
+                ]
+            ]
+        ];
+
+        $result = $this->adapter->transform($prestaShopData);
+
+        $this->assertCount(0, $result['errors']);
+        $product = $this->getProductFromResult($result);
+        $this->assertSame('', $product['sku']);
     }
 
     public function testTransformVariantWithoutRemoteId(): void

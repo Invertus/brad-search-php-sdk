@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk;
 
 use BradSearch\SyncSdk\Client\AdminHttpClient;
+use BradSearch\SyncSdk\Client\Transport\Transport;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\AllIndicesResponse;
 
@@ -18,9 +19,12 @@ class AdminSdk
 {
     private readonly AdminHttpClient $httpClient;
 
-    public function __construct(SyncConfig $config)
+    /**
+     * @param Transport|null $transport Override the HTTP transport (tests, custom clients); null uses cURL
+     */
+    public function __construct(SyncConfig $config, ?Transport $transport = null)
     {
-        $this->httpClient = new AdminHttpClient($config);
+        $this->httpClient = new AdminHttpClient($config, $transport);
     }
 
     /**

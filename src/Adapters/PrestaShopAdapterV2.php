@@ -17,6 +17,20 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
  */
 class PrestaShopAdapterV2
 {
+    public const CUSTOM_FIELD_PREFIX = 'custom_';
+
+    private const CUSTOM_FIELD_TYPE_TEXT = 'text';
+
+    private const CUSTOM_FIELD_NAME_PATTERN = '/^[a-zA-Z0-9_]{1,64}$/D';
+
+    private const CUSTOM_FIELD_TYPE_DATE = 'date';
+
+    private const MYSQL_ZERO_DATE_PREFIX = '0000-00-00';
+
+    private const LITERAL_ANGLE_PATTERN = '/<(?![a-zA-Z\/!?][^<>]*>)/';
+
+    private const LITERAL_ANGLE_SENTINEL = "\x01";
+
     /**
      * @var array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
      */
@@ -81,7 +95,7 @@ class PrestaShopAdapterV2
     public function transformProduct(array $product): Product
     {
         $id = $this->getRequiredField($product, 'remoteId');
-        $sku = $this->getRequiredField($product, 'sku');
+        $sku = (string) ($product['sku'] ?? '');
 
         $pricing = new ProductPricing(
             $this->extractPrice($product, 'price'),
@@ -146,6 +160,8 @@ class PrestaShopAdapterV2
         // Handle features
         $this->transformFeatures($additionalFields, (array) ($product['features'] ?? []));
 
+        $this->transformCustomFields($additionalFields, (array) ($product['customFields'] ?? []));
+
         // Handle tags
         $this->transformTags($additionalFields, $product['tags'] ?? []);
 
@@ -181,9 +197,6 @@ class PrestaShopAdapterV2
         }
 
         $sku = (string) ($variant['sku'] ?? '');
-        if ($sku === '') {
-            throw new ValidationException("Variant 'sku' is required");
-        }
 
         $pricing = new ProductPricing(
             $this->extractPrice($variant, 'price'),
@@ -614,6 +627,72 @@ class PrestaShopAdapterV2
     }
 
     /**
+     * Entry shape: array{name: string, type: 'text'|'integer'|'double'|'boolean'|'date', value?: mixed, localizedValues?: array<string, mixed>}
+     *
+     * @param array<string, mixed> $result
+     * @param array<int, mixed> $customFields
+     */
+    private function transformCustomFields(array &$result, array $customFields): void
+    {
+        foreach ($customFields as $field) {
+            if (!is_array($field)) {
+                continue;
+            }
+
+            $name = isset($field['name']) && is_string($field['name']) ? $field['name'] : '';
+            if (preg_match(self::CUSTOM_FIELD_NAME_PATTERN, $name) !== 1) {
+                continue;
+            }
+
+            $type = isset($field['type']) && is_string($field['type']) ? $field['type'] : self::CUSTOM_FIELD_TYPE_TEXT;
+            $fieldName = self::CUSTOM_FIELD_PREFIX . $name;
+
+            if (isset($field['localizedValues']) && is_array($field['localizedValues'])) {
+                $this->addLocalizedField($result, $fieldName, $field['localizedValues'], $type);
+
+                continue;
+            }
+
+            if (!isset($field['value'])) {
+                continue;
+            }
+
+            $stringValue = $this->stringifyFieldValue($field['value']);
+
+            if ($stringValue === null) {
+                continue;
+            }
+
+            $cleanValue = $this->cleanCustomFieldValue($stringValue, $type);
+
+            if ($cleanValue === null) {
+                continue;
+            }
+
+            $result[$fieldName] = $cleanValue;
+        }
+    }
+
+    /**
+     * @return string|null
+     */
+    private function cleanCustomFieldValue(string $value, string $type): ?string
+    {
+        $cleanValue = $type === self::CUSTOM_FIELD_TYPE_TEXT ? $this->stripHtmlTags($value) : $value;
+        $cleanValue = trim($cleanValue);
+
+        if ($cleanValue === '') {
+            return null;
+        }
+
+        if ($type === self::CUSTOM_FIELD_TYPE_DATE && str_starts_with($cleanValue, self::MYSQL_ZERO_DATE_PREFIX)) {
+            return null;
+        }
+
+        return $cleanValue;
+    }
+
+    /**
      * Transform tags to create localized fields.
      *
      * @param array<string, mixed> $result
@@ -648,26 +727,65 @@ class PrestaShopAdapterV2
      *
      * @param array<string, mixed> $result
      * @param string $fieldName
-     * @param array<string, string> $localizedValues
+     * @param array<array-key, mixed> $localizedValues
+     * @param string|null $customFieldType
      */
-    private function addLocalizedField(array &$result, string $fieldName, array $localizedValues): void
-    {
+    private function addLocalizedField(
+        array &$result,
+        string $fieldName,
+        array $localizedValues,
+        ?string $customFieldType = null
+    ): void {
         if (empty($localizedValues)) {
             return;
         }
 
         foreach ($localizedValues as $locale => $value) {
-            if (
-                !is_string($locale) || $locale === '' ||
-                $value === null || $value === ''
-            ) {
+            if (!is_string($locale) || $locale === '' || $value === '') {
                 continue;
             }
 
-            $cleanValue = strip_tags((string) $value);
+            $stringValue = $this->stringifyFieldValue($value);
+
+            if ($stringValue === null) {
+                continue;
+            }
+
+            if ($customFieldType === null) {
+                $result["{$fieldName}_{$locale}"] = strip_tags($stringValue);
+
+                continue;
+            }
+
+            $cleanValue = $this->cleanCustomFieldValue($stringValue, $customFieldType);
+
+            if ($cleanValue === null) {
+                continue;
+            }
 
             $result["{$fieldName}_{$locale}"] = $cleanValue;
         }
+    }
+
+    private function stripHtmlTags(string $value): string
+    {
+        $guarded = str_replace(self::LITERAL_ANGLE_SENTINEL, '', $value);
+        $guarded = preg_replace(self::LITERAL_ANGLE_PATTERN, self::LITERAL_ANGLE_SENTINEL, $guarded) ?? $guarded;
+
+        return str_replace(self::LITERAL_ANGLE_SENTINEL, '<', strip_tags($guarded));
+    }
+
+    private function stringifyFieldValue(mixed $value): ?string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+
+        if (is_scalar($value) || $value instanceof \Stringable) {
+            return (string) $value;
+        }
+
+        return null;
     }
 
     /**

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk;
 
 use BradSearch\SyncSdk\Client\HttpClient;
+use BradSearch\SyncSdk\Client\Transport\Transport;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Config\SyncConfigV2;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
@@ -28,15 +29,22 @@ class SyncV2Sdk
 
     private readonly string $baseApiPath;
 
+    /**
+     * @param Transport|null $transport Override the HTTP transport (tests, custom clients); null uses cURL
+     */
     public function __construct(
-        private readonly SyncConfigV2 $config
+        private readonly SyncConfigV2 $config,
+        ?Transport $transport = null,
     ) {
         $syncConfig = new SyncConfig(
             baseUrl: $this->config->apiUrl,
-            authToken: $this->config->token
+            authToken: $this->config->token,
+            timeout: $this->config->timeout,
+            connectTimeout: $this->config->connectTimeout,
+            retryPolicy: $this->config->retryPolicy,
         );
 
-        $this->httpClient = new HttpClient($syncConfig);
+        $this->httpClient = new HttpClient($syncConfig, $transport);
         $this->baseApiPath = "api/v2/applications/{$this->config->appId}/";
     }
 
@@ -269,9 +277,11 @@ class SyncV2Sdk
         $indexName = $this->config->targetIndex ?? $this->config->appId;
         $path = $this->baseApiPath . 'index/' . urlencode($indexName) . '/bulk-operations';
 
+        // Idempotent: every operation is keyed by product id, so a retried batch is a harmless overwrite.
         $response = $this->getHttpClient()->post(
             $path,
-            $request->jsonSerialize()
+            $request->jsonSerialize(),
+            idempotent: true
         );
 
         return BulkOperationsResponse::fromArray($response);
@@ -341,9 +351,11 @@ class SyncV2Sdk
      */
     public function normalize(NormalizeRequest $request): NormalizeResponse
     {
+        // Idempotent: a pure computation over the request payload, safe to repeat.
         $response = $this->getHttpClient()->post(
             $this->baseApiPath . 'normalize',
-            $request->jsonSerialize()
+            $request->jsonSerialize(),
+            idempotent: true
         );
 
         return NormalizeResponse::fromArray($response);

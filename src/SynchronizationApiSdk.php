@@ -68,7 +68,9 @@ class SynchronizationApiSdk
 
         $url = $this->apiStartUrl . (!empty($this->endpoint) ? $this->endpoint . '/' : '') . 'sync/';
 
-        $this->httpClient->put($url, $data);
+        // Not idempotent: brad-search answers 409 "Index already exists" on a repeat, so a retry
+        // after a lost response would report a create that actually succeeded as a failure.
+        $this->httpClient->put($url, $data, idempotent: false);
     }
 
     /**
@@ -161,7 +163,7 @@ class SynchronizationApiSdk
             $data['endpoint'] = $this->endpoint;
         }
 
-        $this->httpClient->post('api/v1/sync/', $data);
+        $this->httpClient->post('api/v1/sync/', $data, idempotent: true);
     }
 
     /**
@@ -193,7 +195,7 @@ class SynchronizationApiSdk
             'product_ids' => $productsIds,
         ];
 
-        $this->httpClient->post('api/v1/sync/delete-products', $data);
+        $this->httpClient->post('api/v1/sync/delete-products', $data, idempotent: true);
     }
 
     /**
@@ -294,7 +296,7 @@ class SynchronizationApiSdk
             'operations' => array_map(fn(BulkOperation $op) => $op->toArray(), $operations)
         ];
 
-        $response = $this->httpClient->post("{$this->apiStartUrl}sync/bulk-operations", $data);
+        $response = $this->httpClient->post("{$this->apiStartUrl}sync/bulk-operations", $data, idempotent: true);
 
         return BulkOperationResult::fromApiResponse($response);
     }

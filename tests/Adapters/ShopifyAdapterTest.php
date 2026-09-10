@@ -691,11 +691,8 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('79.95', $variant['basePrice']);
     }
 
-    public function testVariantsDoNotCarryImageUrl(): void
+    public function testVariantWithOwnImageCarriesImageUrl(): void
     {
-        // Per merchant feedback: search rows must show the curated featuredImage,
-        // not whatever variant happens to match. Keeping imageUrl off the variant
-        // means variant enrichment can't swap the parent's hero image at search time.
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
         $product['node']['handle'] = 'snowboard';
         $product['node']['onlineStoreUrl'] = 'https://shop.example.com/products/snowboard';
@@ -709,9 +706,19 @@ class ShopifyAdapterTest extends TestCase
                 [
                     'node' => [
                         'id' => 'gid://shopify/ProductVariant/12345',
-                        'sku' => 'SNO-001',
+                        'sku' => 'SNO-S',
                         'price' => '79.95',
                         'selectedOptions' => [],
+                        'media' => ['nodes' => [['image' => ['url' => 'https://cdn.shopify.com/variant-s.jpg', 'width' => 800, 'height' => 800]]]],
+                    ],
+                ],
+                [
+                    'node' => [
+                        'id' => 'gid://shopify/ProductVariant/12346',
+                        'sku' => 'SNO-L',
+                        'price' => '79.95',
+                        'selectedOptions' => [],
+                        'media' => ['nodes' => []],
                     ],
                 ],
             ],
@@ -721,8 +728,12 @@ class ShopifyAdapterTest extends TestCase
 
         $result = $this->adapter->transform($data, []);
 
-        $variant = $result['products'][0]['variants'][0];
-        $this->assertArrayNotHasKey('imageUrl', $variant);
+        $variants = $result['products'][0]['variants'];
+        $this->assertEquals(
+            ['small' => 'https://cdn.shopify.com/variant-s.jpg', 'medium' => 'https://cdn.shopify.com/variant-s.jpg'],
+            $variants[0]['imageUrl']
+        );
+        $this->assertArrayNotHasKey('imageUrl', $variants[1]);
         $this->assertEquals('https://cdn.shopify.com/product-image.jpg', $result['products'][0]['imageUrl']['small']);
     }
 
