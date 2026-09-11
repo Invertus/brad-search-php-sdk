@@ -149,6 +149,7 @@ class PrestaShopAdapterV2
 
         // Handle categories
         $this->extractCategories($additionalFields, $product);
+        $this->addFlatCategories($additionalFields);
         $this->extractCategoryDefault($additionalFields, $product);
 
         // Handle product URLs
@@ -556,6 +557,30 @@ class PrestaShopAdapterV2
         }
 
         $this->extractCategory($product[$categoryFieldName], $categoryFieldName, $result);
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private function addFlatCategories(array &$result): void
+    {
+        $flatFields = [];
+
+        foreach ($result as $key => $paths) {
+            if (!str_starts_with($key, 'categories_') || !is_array($paths)) {
+                continue;
+            }
+
+            $locale = substr($key, strlen('categories_'));
+            $levels = AdapterUtils::splitCategoryLevels($paths);
+            if (!empty($levels)) {
+                $flatFields["categoriesFlat_{$locale}"] = $levels;
+            }
+        }
+
+        foreach ($flatFields as $key => $levels) {
+            $result[$key] = $levels;
+        }
     }
 
     /**
