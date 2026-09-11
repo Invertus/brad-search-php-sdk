@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\V2\ValueObjects\Product;
 
-use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\Exceptions\InvalidProductException;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -112,12 +112,12 @@ final readonly class ImageUrl extends ValueObject
     /**
      * Validates that a URL is a valid image URL format.
      *
-     * @throws InvalidArgumentException If URL is invalid
+     * @throws InvalidProductException If URL is invalid
      */
     private function validateUrl(string $url, string $fieldName): void
     {
         if (trim($url) === '') {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 sprintf('The %s URL cannot be empty.', $fieldName),
                 $fieldName,
                 $url
@@ -125,7 +125,7 @@ final readonly class ImageUrl extends ValueObject
         }
 
         if (!preg_match('/^https?:\/\/.+/', $url)) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 sprintf('The %s URL must be a valid HTTP or HTTPS URL.', $fieldName),
                 $fieldName,
                 $url
@@ -136,7 +136,7 @@ final readonly class ImageUrl extends ValueObject
         if ($path !== null && $path !== '') {
             $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
             if ($extension !== '' && !in_array($extension, self::VALID_EXTENSIONS, true)) {
-                throw new InvalidArgumentException(
+                throw new InvalidProductException(
                     sprintf(
                         'The %s URL must have a valid image extension (%s), got "%s".',
                         $fieldName,

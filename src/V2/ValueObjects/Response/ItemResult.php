@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\V2\ValueObjects\Response;
 
+use BradSearch\SyncSdk\Exceptions\ErrorCode;
+use BradSearch\SyncSdk\Exceptions\FailureClass;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationType;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
@@ -16,6 +18,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * - operation: The type of operation performed (index_products, delete_products, etc.)
  * - status: The result status (created, updated, deleted, error)
  * - error: Error message if status is "error" (optional)
+ * - code: Machine-readable failure code if status is "error" (optional)
  */
 final readonly class ItemResult extends ValueObject
 {
@@ -24,12 +27,15 @@ final readonly class ItemResult extends ValueObject
      * @param BulkOperationType $operation The type of operation performed
      * @param string $status The result status (created, updated, deleted, error)
      * @param string|null $error Error message if status is "error"
+     * @param string|null $code Machine-readable failure code if status is "error".
+     *                          Absent on an older engine, so callers must tolerate null.
      */
     public function __construct(
         public string $id,
         public BulkOperationType $operation,
         public string $status,
-        public ?string $error = null
+        public ?string $error = null,
+        public ?string $code = null
     ) {
         $this->validateNotEmpty($id, 'id');
         $this->validateNotEmpty($status, 'status');
@@ -56,7 +62,8 @@ final readonly class ItemResult extends ValueObject
             id: (string) $data['id'],
             operation: BulkOperationType::from($data['operation']),
             status: (string) $data['status'],
-            error: isset($data['error']) ? (string) $data['error'] : null
+            error: isset($data['error']) ? (string) $data['error'] : null,
+            code: isset($data['code']) && $data['code'] !== '' ? (string) $data['code'] : null
         );
     }
 
@@ -77,6 +84,29 @@ final readonly class ItemResult extends ValueObject
     }
 
     /**
+     * The engine's failure code as an enum, or null when absent or unrecognised.
+     */
+    public function errorCode(): ?ErrorCode
+    {
+        return ErrorCode::tryFromNullable($this->code);
+    }
+
+    /**
+     * Whether retrying this item can help, or null for an item that succeeded.
+     *
+     * A failed item with no recognised code is TRANSIENT, so the caller retries
+     * rather than dropping a product an older engine could not classify.
+     */
+    public function failureClass(): ?FailureClass
+    {
+        if (! $this->hasError()) {
+            return null;
+        }
+
+        return $this->errorCode()?->failureClass() ?? FailureClass::Transient;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function jsonSerialize(): array
@@ -89,6 +119,10 @@ final readonly class ItemResult extends ValueObject
 
         if ($this->error !== null) {
             $result['error'] = $this->error;
+        }
+
+        if ($this->code !== null) {
+            $result['code'] = $this->code;
         }
 
         return $result;

@@ -161,4 +161,28 @@ final class AdapterUtils
             'exception' => $exception,
         ];
     }
+
+    /**
+     * @param array<mixed> $paths
+     * @return array<string>
+     */
+    public static function splitCategoryLevels(array $paths): array
+    {
+        $levels = [];
+
+        foreach ($paths as $path) {
+            if (!is_string($path) || $path === '') {
+                continue;
+            }
+
+            foreach (explode(' > ', $path) as $level) {
+                $level = trim($level);
+                if ($level !== '' && !in_array($level, $levels, true)) {
+                    $levels[] = $level;
+                }
+            }
+        }
+
+        return $levels;
+    }
 }

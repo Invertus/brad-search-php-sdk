@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\V2\ValueObjects\Product;
 
-use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\Exceptions\InvalidProductException;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
 
 /**
@@ -97,12 +97,12 @@ final readonly class ProductPricing extends ValueObject
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws InvalidProductException
      */
     private function validatePrice(float $price, string $fieldName): void
     {
         if ($price < 0) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 sprintf('The %s cannot be negative.', $fieldName),
                 $fieldName,
                 $price
