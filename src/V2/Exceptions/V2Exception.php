@@ -14,12 +14,15 @@ use BradSearch\SyncSdk\Exceptions\SyncSdkException;
 class V2Exception extends SyncSdkException implements ClassifiedFailure
 {
     /**
-     * Every V2 exception is raised while building a value object from client data
-     * (an unsupported image extension, a bad locale, a wrong field type). The
-     * offending item is invalid, so a retry cannot help.
+     * Defaults to TRANSIENT, like ApiException does. Every value object under
+     * ValueObjects/Response/ throws through this base while reading what the
+     * engine sent back, so an engine that renames a response field must not
+     * look like a catalog of invalid products.
+     *
+     * Subclasses narrow this: InvalidProductException is PERMANENT_ITEM.
      */
     public function failureClass(): FailureClass
     {
-        return FailureClass::PermanentItem;
+        return FailureClass::Transient;
     }
 }

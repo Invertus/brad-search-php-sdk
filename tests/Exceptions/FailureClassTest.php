@@ -11,7 +11,10 @@ use BradSearch\SyncSdk\Exceptions\FailureClass;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
 use BradSearch\SyncSdk\V2\Exceptions\InvalidLocaleException;
+use BradSearch\SyncSdk\V2\Exceptions\InvalidProductException;
+use BradSearch\SyncSdk\V2\Exceptions\V2Exception;
 use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\Product;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use PHPUnit\Framework\TestCase;
 
@@ -65,11 +68,59 @@ class FailureClassTest extends TestCase
         $this->assertSame(FailureClass::PermanentItem, $e->failureClass());
     }
 
-    public function testV2ValueObjectExceptionsArePermanentItem(): void
+    public function testInvalidProductIsPermanentItem(): void
     {
-        foreach ([new InvalidArgumentException('bad'), new InvalidLocaleException('bad')] as $e) {
+        $e = new InvalidProductException('bad');
+
+        $this->assertInstanceOf(ClassifiedFailure::class, $e);
+        $this->assertSame(FailureClass::PermanentItem, $e->failureClass());
+    }
+
+    /**
+     * A locale comes from the integration's language configuration, not from one
+     * product row.
+     */
+    public function testInvalidLocaleIsPermanentConfig(): void
+    {
+        $e = new InvalidLocaleException('bad');
+
+        $this->assertInstanceOf(ClassifiedFailure::class, $e);
+        $this->assertSame(FailureClass::PermanentConfig, $e->failureClass());
+    }
+
+    /**
+     * The V2 base defaults to TRANSIENT, like ApiException. Response value
+     * objects throw through it, so an unclassified V2 failure is retried rather
+     * than dropping a product.
+     */
+    public function testBareV2ExceptionIsTransient(): void
+    {
+        foreach ([new V2Exception('bad'), new InvalidArgumentException('bad')] as $e) {
             $this->assertInstanceOf(ClassifiedFailure::class, $e);
-            $this->assertSame(FailureClass::PermanentItem, $e->failureClass());
+            $this->assertSame(FailureClass::Transient, $e->failureClass());
+        }
+    }
+
+    /**
+     * The regression this guards: an engine deploy that renames a response field
+     * must not classify as a catalog of invalid products. With brad-app#580 a
+     * PERMANENT_ITEM here would fail the chunk on attempt one and drop it.
+     */
+    public function testMalformedEngineResponseIsTransient(): void
+    {
+        try {
+            BulkOperationsResponse::fromArray([
+                'status' => 'success',
+                'total_operations' => 1,
+                'successful_operations' => 1,
+                'failed_operations' => 0,
+                // 'results' renamed by a newer engine
+                'items' => [],
+            ]);
+            $this->fail('expected the malformed response to be rejected');
+        } catch (\Throwable $e) {
+            $this->assertInstanceOf(ClassifiedFailure::class, $e);
+            $this->assertSame(FailureClass::Transient, $e->failureClass());
         }
     }
 

@@ -15,8 +15,13 @@ final class ApiExceptionFactory
 {
     public static function fromResponse(int $statusCode, ?string $body): ApiException
     {
-        $errorCode = self::extractCode($body);
+        $errorCode = self::extractString($body, 'code');
         $message = "API request failed with status {$statusCode}";
+
+        $error = self::extractString($body, 'error');
+        if ($error !== null) {
+            $message .= ": {$error}";
+        }
 
         $class = self::classFor($statusCode, ErrorCode::tryFromNullable($errorCode));
 
@@ -53,10 +58,10 @@ final class ApiExceptionFactory
     }
 
     /**
-     * Reads `code` out of an engine error envelope. Returns null for a body that
-     * is absent, not JSON, or not a JSON object.
+     * Reads a string field out of an engine error envelope. Returns null for a
+     * body that is absent, not JSON, or not a JSON object.
      */
-    private static function extractCode(?string $body): ?string
+    private static function extractString(?string $body, string $key): ?string
     {
         if ($body === null || $body === '') {
             return null;
@@ -67,8 +72,8 @@ final class ApiExceptionFactory
             return null;
         }
 
-        $code = $decoded['code'] ?? null;
+        $value = $decoded[$key] ?? null;
 
-        return is_string($code) && $code !== '' ? $code : null;
+        return is_string($value) && $value !== '' ? $value : null;
     }
 }

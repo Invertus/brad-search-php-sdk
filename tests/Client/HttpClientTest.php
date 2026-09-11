@@ -108,7 +108,7 @@ class HttpClientTest extends TestCase
      * The engine `code` wins over the status, so a new code lands on the right
      * exception even when the status is ambiguous.
      */
-    public function testCodeWinsOverStatus(): void
+    public function testConfigMalformedOnA422IsPermanentConfig(): void
     {
         $client = $this->client([
             new HttpResponse(422, '{"status":"error","error":"Configuration is malformed","code":"config_malformed"}'),
@@ -122,6 +122,46 @@ class HttpClientTest extends TestCase
             // config_malformed is a broken tenant config, not one bad product.
             $this->assertSame(FailureClass::PermanentConfig, $e->failureClass());
             $this->assertSame('config_malformed', $e->errorCode);
+        }
+    }
+
+    /**
+     * The precedence rule itself: the code and the status must disagree about the
+     * class, or the assertion passes with the factory's code branch removed.
+     * Status 500 alone selects TransientApiException.
+     */
+    public function testCodeWinsOverStatusWhenTheyDisagree(): void
+    {
+        $client = $this->client([
+            new HttpResponse(500, '{"status":"error","error":"Invalid product","code":"validation_error"}'),
+        ]);
+
+        try {
+            $client->get('api/v2/thing');
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertInstanceOf(ValidationFailedException::class, $e);
+            $this->assertSame(FailureClass::PermanentItem, $e->failureClass());
+            $this->assertSame('validation_error', $e->errorCode);
+        }
+    }
+
+    /**
+     * The other half of the rule: a code never downgrades a 401 into something a
+     * caller would retry. backend_unavailable alone is TRANSIENT.
+     */
+    public function testCodeNeverDowngradesA401(): void
+    {
+        $client = $this->client([
+            new HttpResponse(401, '{"status":"error","error":"nope","code":"backend_unavailable"}'),
+        ]);
+
+        try {
+            $client->get('api/v2/thing');
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertInstanceOf(UnauthorizedException::class, $e);
+            $this->assertSame(FailureClass::PermanentConfig, $e->failureClass());
         }
     }
 
@@ -231,6 +271,44 @@ class HttpClientTest extends TestCase
     /**
      * AC-6: a cURL connect failure or timeout is TRANSIENT.
      */
+    /**
+     * The engine's own error text belongs in the message, so a log line reads on
+     * its own without unpacking responseBody.
+     */
+    public function testEngineErrorTextIsFoldedIntoTheMessage(): void
+    {
+        $client = $this->client([
+            new HttpResponse(422, '{"status":"error","error":"field name_en-US is required","code":"validation_error"}'),
+        ]);
+
+        try {
+            $client->get('api/v2/thing');
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame(
+                'API request failed with status 422: field name_en-US is required',
+                $e->getMessage()
+            );
+        }
+    }
+
+    /**
+     * A body with no usable error text keeps the bare message.
+     */
+    public function testMessageStaysBareWithoutEngineErrorText(): void
+    {
+        $client = $this->client([
+            new HttpResponse(503, '<html><body>Service Unavailable</body></html>'),
+        ]);
+
+        try {
+            $client->get('api/v2/thing');
+            $this->fail('expected an ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame('API request failed with status 503', $e->getMessage());
+        }
+    }
+
     public function testTransportExceptionIsTransient(): void
     {
         $client = $this->client([
