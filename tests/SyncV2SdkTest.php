@@ -380,6 +380,33 @@ class SyncV2SdkTest extends TestCase
         $sdk->listIndexVersions();
     }
 
+    public function testForceActivateIndexVersionSendsTheForceFlag(): void
+    {
+        $apiResponse = [
+            'status' => 'success',
+            'old_index' => 'app_550e8400-v1',
+            'new_index' => 'app_550e8400-v2',
+            'alias_name' => 'app_550e8400',
+            'message' => 'Alias swapped successfully',
+        ];
+
+        $httpClientMock = $this->createMock(HttpClient::class);
+        $httpClientMock
+            ->expects($this->once())
+            ->method('post')
+            ->with(
+                'api/v2/applications/' . self::APP_ID . '/index/activate',
+                ['version' => 'v2', 'force' => true]
+            )
+            ->willReturn($apiResponse);
+
+        $sdk = $this->createSdkWithMockedHttpClient($httpClientMock);
+        $result = $sdk->forceActivateIndexVersion(2);
+
+        $this->assertEquals(2, $result->newVersion);
+        $this->assertEquals('app_550e8400', $result->aliasName);
+    }
+
     public function testActivateIndexVersionSuccess(): void
     {
         $version = 2;
