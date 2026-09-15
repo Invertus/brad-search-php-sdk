@@ -140,6 +140,59 @@ class PrestaShopAdapterV2Test extends TestCase
         $this->assertEquals('Springa', $product->additionalFields['brand_en-US']);
         $this->assertEquals('http://prestashop/sneakers/1807-sneakers.html', $product->additionalFields['productUrl_en-US']);
         $this->assertEquals(['Men', 'Men > Shoes'], $product->additionalFields['categories_en-US']);
+        $this->assertEquals(['Men', 'Shoes'], $product->additionalFields['categoriesFlat_en-US']);
+    }
+
+    public function testTransformAddsFlatCategoryLevelsPerLocale(): void
+    {
+        $product = $this->getMinimalProductData('1807', 'SKU-123');
+        $product['categories'] = [
+            'lvl2' => [
+                [
+                    'remoteId' => '148',
+                    'localizedValues' => [
+                        'path' => [
+                            'en-US' => 'Store > Summer > Men > T-Shirts',
+                            'lt-LT' => 'Parduotuvė > Vasara > Vyrai > Marškinėliai',
+                        ],
+                    ],
+                ],
+            ],
+            'lvl3' => [
+                [
+                    'remoteId' => '163',
+                    'localizedValues' => [
+                        'path' => [
+                            'en-US' => 'Store > Spring > Men > Shirtlings',
+                        ],
+                    ],
+                ],
+            ],
+        ];
+
+        $result = $this->adapter->transform(['products' => [$product]]);
+        $fields = $result['products'][0]->additionalFields;
+
+        $this->assertSame(
+            ['Store > Summer > Men > T-Shirts', 'Store > Spring > Men > Shirtlings'],
+            $fields['categories_en-US']
+        );
+        $this->assertSame(
+            ['Store', 'Summer', 'Men', 'T-Shirts', 'Spring', 'Shirtlings'],
+            $fields['categoriesFlat_en-US']
+        );
+        $this->assertSame(
+            ['Parduotuvė', 'Vasara', 'Vyrai', 'Marškinėliai'],
+            $fields['categoriesFlat_lt-LT']
+        );
+    }
+
+    public function testNoFlatCategoriesWithoutCategories(): void
+    {
+        $result = $this->adapter->transform($this->getMinimalValidProduct());
+        $fields = $result['products'][0]->additionalFields;
+
+        $this->assertArrayNotHasKey('categoriesFlat_en-US', $fields);
     }
 
     public function testTransformProductWithMultipleLocales(): void

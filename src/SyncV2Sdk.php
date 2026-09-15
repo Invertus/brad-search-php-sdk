@@ -126,6 +126,26 @@ class SyncV2Sdk
     }
 
     /**
+     * Activate a version even when it holds no documents while the live one does.
+     *
+     * The engine refuses that swap with 422 on a plain activation, because an empty index over a
+     * populated one is a failed sync, not a release. This is the operator's way to say they mean it.
+     *
+     * @param  int  $version  The version number to activate
+     * @return VersionActivateResponse Typed response containing previous_version,
+     *                                 new_version, alias_name
+     */
+    public function forceActivateIndexVersion(int $version): VersionActivateResponse
+    {
+        $response = $this->getHttpClient()->post(
+            $this->baseApiPath . 'index/activate',
+            ['version' => 'v' . $version, 'force' => true]
+        );
+
+        return VersionActivateResponse::fromArray($response);
+    }
+
+    /**
      * Delete a specific index version.
      *
      * @param  int  $version  The version number to delete

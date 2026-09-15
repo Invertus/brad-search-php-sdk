@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 
-use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\Exceptions\InvalidProductException;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 
@@ -137,12 +137,12 @@ final class ProductBuilder
     /**
      * Builds the Product ValueObject.
      *
-     * @throws InvalidArgumentException If required fields are missing
+     * @throws InvalidProductException If required fields are missing
      */
     public function build(): Product
     {
         if ($this->id === null) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'Product ID is required.',
                 'id',
                 null
@@ -150,7 +150,7 @@ final class ProductBuilder
         }
 
         if ($this->pricing === null) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'Product pricing is required.',
                 'pricing',
                 null
@@ -158,7 +158,7 @@ final class ProductBuilder
         }
 
         if ($this->imageUrl === null) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'Product image URL is required.',
                 'imageUrl',
                 null

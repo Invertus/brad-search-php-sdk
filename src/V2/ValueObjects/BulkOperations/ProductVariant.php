@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace BradSearch\SyncSdk\V2\ValueObjects\BulkOperations;
 
-use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\Exceptions\InvalidProductException;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
@@ -159,12 +159,12 @@ final readonly class ProductVariant extends ValueObject
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws InvalidProductException
      */
     private function validateId(string $id): void
     {
         if (trim($id) === '') {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'The variant ID cannot be empty.',
                 'id',
                 $id
@@ -173,12 +173,12 @@ final readonly class ProductVariant extends ValueObject
     }
 
     /**
-     * @throws InvalidArgumentException
+     * @throws InvalidProductException
      */
     private function validateProductUrl(string $productUrl): void
     {
         if (trim($productUrl) === '') {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'The product URL cannot be empty.',
                 'productUrl',
                 $productUrl
@@ -186,7 +186,7 @@ final readonly class ProductVariant extends ValueObject
         }
 
         if (!preg_match('/^https?:\/\/.+/', $productUrl)) {
-            throw new InvalidArgumentException(
+            throw new InvalidProductException(
                 'The product URL must be a valid HTTP or HTTPS URL.',
                 'productUrl',
                 $productUrl

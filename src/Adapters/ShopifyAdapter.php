@@ -186,6 +186,10 @@ class ShopifyAdapter
             if (!empty($localeCategories)) {
                 $fields["categories_{$locale}"] = $localeCategories;
             }
+            $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
+            if (!empty($flatCategories)) {
+                $fields["categoriesFlat_{$locale}"] = $flatCategories;
+            }
 
             $localeProductType = $this->translated($localeTranslations, 'product_type')
                 ?? ($locale === $primaryLocale ? $nativeProductType : '');

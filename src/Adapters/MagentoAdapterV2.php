@@ -148,6 +148,11 @@ class MagentoAdapterV2
         $categories = $this->buildHierarchicalCategories($product);
         if (!empty($categories)) {
             $additionalFields["categories_{$locale}"] = $categories;
+
+            $flatCategories = AdapterUtils::splitCategoryLevels($categories);
+            if (!empty($flatCategories)) {
+                $additionalFields["categoriesFlat_{$locale}"] = $flatCategories;
+            }
         }
 
         $categoryDefault = $this->extractDefaultCategory($product);

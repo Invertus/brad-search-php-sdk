@@ -12,6 +12,7 @@ use BradSearch\SyncSdk\Client\Transport\Sleeper;
 use BradSearch\SyncSdk\Client\Transport\Transport;
 use BradSearch\SyncSdk\Config\SyncConfig;
 use BradSearch\SyncSdk\Exceptions\ApiException;
+use BradSearch\SyncSdk\Exceptions\ApiExceptionFactory;
 use BradSearch\SyncSdk\Exceptions\TransportException;
 
 class HttpClient
@@ -140,11 +141,7 @@ class HttpClient
         $body = $response->body;
 
         if ($statusCode < 200 || $statusCode >= 300) {
-            throw new ApiException(
-                "API request failed with status {$statusCode}",
-                $statusCode,
-                $body
-            );
+            throw ApiExceptionFactory::fromResponse($statusCode, $body);
         }
 
         // Handle empty responses (e.g., from DELETE requests)

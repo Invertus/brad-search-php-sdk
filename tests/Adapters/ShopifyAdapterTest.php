@@ -904,6 +904,67 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('productType', $c);
     }
 
+    public function testCategoriesFlatContainsTaxonomyLevelsOnly(): void
+    {
+        $taxProduct = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $taxProduct['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $taxProduct['node']['tags'] = ['summer', 'cotton'];
+
+        $noTaxProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
+        $noTaxProduct['node']['category'] = null;
+        $noTaxProduct['node']['tags'] = ['cold'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$taxProduct, $noTaxProduct], 'en'), ['en']);
+        [$a, $b] = $result['products'];
+
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $a['categoriesFlat_en']);
+        $this->assertNotContains('summer', $a['categoriesFlat_en']);
+        $this->assertArrayNotHasKey('categoriesFlat_en', $b);
+    }
+
+    public function testCategoriesFlatIsLocaleSuffixedInLocaleMode(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['tags'] = ['summer'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt']);
+        $p = $result['products'][0];
+
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_en']);
+        $this->assertSame(['Apparel & Accessories', 'Clothing', 'Shirts'], $p['categoriesFlat_lt']);
+        $this->assertNotContains('summer', $p['categoriesFlat_en']);
+    }
+
+    public function testCategoriesFlatIsNotEmittedWithoutLocales(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['tags'] = ['summer'];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $p = $result['products'][0];
+
+        foreach (array_keys($p) as $key) {
+            $this->assertStringStartsNotWith('categoriesFlat', (string) $key);
+        }
+
+        $this->assertSame('Apparel & Accessories > Clothing > Shirts', $p['categoryDefault']);
+        $this->assertContains('Apparel & Accessories > Clothing > Shirts', $p['categories']);
+    }
+
     public function testMalformedCategoryFieldEmitsProductTypeAsOwnField(): void
     {
         $cases = [

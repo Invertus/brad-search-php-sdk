@@ -198,4 +198,48 @@ class AdapterUtilsTest extends TestCase
         $this->assertSame('invalid_structure', $result['type']);
         $this->assertNull($result['exception']);
     }
+
+    public function testSplitCategoryLevelsDedupesAcrossPaths(): void
+    {
+        $result = AdapterUtils::splitCategoryLevels([
+            'Store > Summer > Men > T-Shirts',
+            'Store > Spring > Men > Shirtlings',
+        ]);
+
+        $this->assertSame(
+            ['Store', 'Summer', 'Men', 'T-Shirts', 'Spring', 'Shirtlings'],
+            $result
+        );
+    }
+
+    public function testSplitCategoryLevelsSingleLevelPath(): void
+    {
+        $this->assertSame(['Women'], AdapterUtils::splitCategoryLevels(['Women']));
+    }
+
+    public function testSplitCategoryLevelsEmptyInput(): void
+    {
+        $this->assertSame([], AdapterUtils::splitCategoryLevels([]));
+    }
+
+    public function testSplitCategoryLevelsRequiresSpacedDelimiter(): void
+    {
+        $result = AdapterUtils::splitCategoryLevels(['A>B > C']);
+
+        $this->assertSame(['A>B', 'C'], $result);
+    }
+
+    public function testSplitCategoryLevelsTrimsAndDropsEmptySegments(): void
+    {
+        $result = AdapterUtils::splitCategoryLevels(['Men >  > Shoes ', '']);
+
+        $this->assertSame(['Men', 'Shoes'], $result);
+    }
+
+    public function testSplitCategoryLevelsSkipsNonStringValues(): void
+    {
+        $result = AdapterUtils::splitCategoryLevels([null, 42, 'Men > Shoes']);
+
+        $this->assertSame(['Men', 'Shoes'], $result);
+    }
 }
