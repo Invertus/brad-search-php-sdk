@@ -218,28 +218,28 @@
             "id": 20074,
             "sku": "20074",
             "name": "Эксцентриковая шлифмашина Bosch GEX 125-1 AE",
-            "full_url": "https://magento.example.com/ekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html",
+            "full_url": "https://magento.example.com/jekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html",
             "is_in_stock": true,
             "stock_status": "IN_STOCK",
             "short_description": {
-              "html": "<p>Продлите гарантию на инструмент Bosch до 3 лет! <a href=\"https://magento.example.com/ru/3-goda-garantii.html\" target=\"_blank\">Подробнее здесь!</a></p>"
+              "html": ""
             },
             "description": {
               "html": ""
             },
-            "image_optimized": "https://magento.example.com/media/catalog/product/2/0/20074_p1.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover",
+            "image_optimized": "https://magento.example.com/ru/media/catalog/product/2/0/20074_p1.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover",
             "calculated_price": {
               "minimum_price": {
                 "regular_price": {
-                  "value": 149.99,
+                  "value": 129.99,
                   "currency": "EUR"
                 },
                 "final_price": {
-                  "value": 119.99,
+                  "value": 129.99,
                   "currency": "EUR"
                 },
                 "final_price_excl_tax": {
-                  "value": 99.17,
+                  "value": 107.43,
                   "currency": "EUR"
                 }
               }
@@ -247,15 +247,15 @@
             "categories": [
               {
                 "id": 19,
-                "name": "Шлифмашины и полировальные машины",
-                "url_path": "shlifmashiny-i-polirovalnye-mashiny",
+                "name": "Шлифовальные и полировальные машины",
+                "url_path": "shlifoval-nye-i-poliroval-nye-mashiny",
                 "level": 2,
                 "path": "1/2/19"
               },
               {
                 "id": 448,
                 "name": "Эксцентриковые шлифмашины",
-                "url_path": "shlifmashiny-i-polirovalnye-mashiny/ekscentrikovye-shlifmashiny",
+                "url_path": null,
                 "level": 3,
                 "path": "1/2/19/448"
               }
@@ -277,7 +277,7 @@
               },
               {
                 "code": "barcode",
-                "label": "Штрихкод",
+                "label": "Barcode",
                 "value": "3165140438278",
                 "is_searchable": true,
                 "is_filterable": false
@@ -313,13 +313,13 @@
               {
                 "code": "b6f2c76b997fff72c8a41e1531e5ab",
                 "label": "Категория",
-                "value": "Шлифмашины и полировальные машины",
+                "value": "Шлифовальные и полировальные машины",
                 "is_searchable": false,
                 "is_filterable": true
               },
               {
                 "code": "f71a39ed758a2aba322bd3a9212e01",
-                "label": "Подкатегория",
+                "label": "Субкатегория",
                 "value": "Эксцентриковые шлифмашины",
                 "is_searchable": true,
                 "is_filterable": true
@@ -347,63 +347,63 @@
               },
               {
                 "code": "rated_power_input_slider",
-                "label": "Номинальная мощность",
+                "label": "Потребительская мощность",
                 "value": "250.000000",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "max_rpm_slider",
-                "label": "Максимальное число оборотов",
+                "label": "Максимальное количество оборотов",
                 "value": "12000.000000",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "adjustable_rotation_speed",
-                "label": "Регулируемая скорость вращения",
+                "label": "Регулируемая скорость оборотов для работы с различным",
                 "value": "Да",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "attr_9d8856a44b8c2873999555aedf7bf8",
-                "label": "Диаметр шлифдиска",
-                "value": "125 мм",
+                "label": "Диаметр шлифовального диска",
+                "value": "125 mm",
                 "is_searchable": false,
                 "is_filterable": true
               },
               {
                 "code": "grinding_pad_amplitude",
-                "label": "Амплитуда колебаний",
-                "value": "2,5 мм",
+                "label": "Амплитуда вибрации шлифовальной подушки",
+                "value": "2,5 mm",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "set_includes_grinders",
-                "label": "В комплекте",
-                "value": "Фильтр",
+                "label": "B наборe",
+                "value": "фильтр",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "case_type",
-                "label": "Кейс в комплекте",
-                "value": "Товар в картонной упаковке",
+                "label": "Входит ли чехол в комплект",
+                "value": "Товар в картонной коробке",
                 "is_searchable": false,
                 "is_filterable": false
               },
               {
                 "code": "tensions_frequency",
-                "label": "Напряжение",
+                "label": "Напряжение / частота",
                 "value": "210 - 240 В / 50 - 60 Гц / AC",
                 "is_searchable": false,
                 "is_filterable": false
               }
             ],
-            "sort_popularity": "I999I000",
-            "sort_popularity_sales": 999
+            "sort_popularity": "I997I000",
+            "sort_popularity_sales": 997
           }
         ]
       }

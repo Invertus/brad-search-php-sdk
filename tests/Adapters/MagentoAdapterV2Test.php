@@ -1184,7 +1184,7 @@ class MagentoAdapterV2Test extends TestCase
         new MagentoAdapterV2(['lv_store' => '']);
     }
 
-    // --- Real store response shape (Verkter LV stage, domain and prices changed; RU view is a translated twin) ---
+    // --- Real store response shape: two store views of one product from a live store (domain and prices changed) ---
 
     public function testRealStoreShapeSingleViewProducesLatvianDocument(): void
     {
@@ -1258,17 +1258,24 @@ class MagentoAdapterV2Test extends TestCase
         }
 
         $this->assertSame('Эксцентриковая шлифмашина Bosch GEX 125-1 AE', $doc['name_ru-RU']);
-        $this->assertStringStartsWith('Продлите гарантию', $doc['descriptionShort_ru-RU']);
-        $this->assertSame('https://magento.example.com/ekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html', $doc['productUrl_ru-RU']);
+        // The RU view has an empty short_description, so no descriptionShort_ru-RU and the LV one stays.
+        $this->assertArrayNotHasKey('descriptionShort_ru-RU', $doc);
+        $this->assertArrayHasKey('descriptionShort_lv-LV', $doc);
+        $this->assertSame('https://magento.example.com/jekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html', $doc['productUrl_ru-RU']);
         $this->assertSame(
-            ['Шлифмашины и полировальные машины', 'Шлифмашины и полировальные машины > Эксцентриковые шлифмашины'],
+            ['Шлифовальные и полировальные машины', 'Шлифовальные и полировальные машины > Эксцентриковые шлифмашины'],
             $doc['categories_ru-RU']
         );
         $this->assertSame('Эксцентриковые шлифмашины', $doc['categoryDefault_ru-RU']);
         $this->assertSame('Bosch', $doc['brand_ru-RU']);
-        $this->assertSame('125 мм', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_ru-RU']);
+        $this->assertSame('125 mm', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_ru-RU']);
         $this->assertSame('Электрический', $doc['feature_engine_type_ru-RU']);
-        $this->assertSame('1.600000', $doc['feature_weight_slider_ru-RU']);
+        $this->assertSame('фильтр', $doc['feature_set_includes_grinders_ru-RU']);
+        // Price, image and popularity differ between the two views; the primary view's values win.
+        $this->assertSame(119.99, $doc['price']);
+        $this->assertSame(149.99, $doc['basePrice']);
+        $this->assertStringNotContainsString('/ru/', $doc['imageUrl']['small']);
+        $this->assertSame(1, $doc['sort_popularity_sales']);
 
         // Same count of feature_* fields per locale: every attribute got both suffixes.
         $lvFeatures = array_filter(array_keys($doc), fn(string $k) => str_starts_with($k, 'feature_') && str_ends_with($k, '_lv-LV'));
