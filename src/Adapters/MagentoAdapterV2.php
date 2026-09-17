@@ -14,8 +14,11 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 /**
  * Transforms Magento GraphQL product data into V2 ValueObjects for bulk operations.
  *
- * Magento syncs one store view at a time, so a locale must be provided to suffix
- * locale-aware fields (e.g., name → name_lt-LT, feature_diameter → feature_diameter_lt-LT).
+ * A Magento store view is one language. The adapter runs in one of two modes:
+ * - single view: constructed with one locale, `transform()` takes one GraphQL response and
+ *   suffixes every locale-aware field with that locale (e.g. name → name_lt-LT);
+ * - multiple views: constructed with a `storeCode => locale` map, `transform()` takes the per-view
+ *   responses under `store_views` and emits one Product per SKU carrying every locale suffix.
  *
  * Produces the unified cross-platform data format:
  * - Locale-suffixed text fields: `name_{locale}`, `brand_{locale}`, `description_{locale}`, etc.
@@ -29,36 +32,65 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
 class MagentoAdapterV2
 {
     /**
+     * Top-level key of a multi-view payload: `['store_views' => ['lv_store' => <GraphQL response>, ...]]`.
+     */
+    public const STORE_VIEWS_KEY = 'store_views';
+
+    private readonly string $locale;
+
+    /**
+     * @var array<string, string> Store view code => locale. Empty in single-view mode.
+     */
+    private readonly array $storeViewLocales;
+
+    /**
      * @var array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
      */
     private array $errors = [];
 
     /**
-     * @param string $locale Store view locale (e.g., "lt_LT", "lt-LT", "lt"). Normalized to BCP 47 format.
+     * @param string|array<string, string> $locale Store view locale (e.g., "lt_LT", "lt-LT", "lt"),
+     *        or a `storeCode => locale` map whose first entry is the primary view.
      */
-    public function __construct(private readonly string $locale)
+    public function __construct(string|array $locale)
     {
+        if (is_string($locale)) {
+            $this->locale = $locale;
+            $this->storeViewLocales = [];
+
+            return;
+        }
+
+        if ($locale === []) {
+            throw new ValidationException('Magento store view map cannot be empty');
+        }
+
+        foreach ($locale as $storeCode => $viewLocale) {
+            if (!is_string($storeCode) || $storeCode === '' || !is_string($viewLocale) || $viewLocale === '') {
+                throw new ValidationException('Magento store view map must be non-empty storeCode => locale strings');
+            }
+        }
+
+        $this->storeViewLocales = $locale;
+        $this->locale = (string) reset($locale);
     }
 
     /**
      * Transform Magento GraphQL product data to BulkOperationsRequest.
      *
-     * @param array<string, mixed> $magentoData The Magento GraphQL API response
+     * @param array<string, mixed> $magentoData The Magento GraphQL API response, or a multi-view payload
+     *        (`store_views` => storeCode => response) when constructed with a store view map.
      * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
      */
     public function transform(array $magentoData): array
     {
-        if (!isset($magentoData['data'])) {
-            throw new ValidationException('Invalid Magento data: missing data field');
+        if ($this->storeViewLocales !== [] && array_key_exists(self::STORE_VIEWS_KEY, $magentoData)) {
+            return $this->transformStoreViews($magentoData[self::STORE_VIEWS_KEY]);
         }
 
-        $responseKey = $this->resolveResponseKey($magentoData['data']);
+        $items = $this->extractItems($magentoData);
 
-        if ($responseKey === null) {
-            throw new ValidationException('Invalid Magento data: missing products field');
-        }
-
-        if (!isset($magentoData['data'][$responseKey]['items'])) {
+        if ($items === null) {
             return [
                 'request' => null,
                 'products' => [],
@@ -66,14 +98,10 @@ class MagentoAdapterV2
             ];
         }
 
-        if (!is_array($magentoData['data'][$responseKey]['items'])) {
-            throw new ValidationException('Invalid Magento data: products items must be an array');
-        }
-
         $this->errors = [];
         $products = [];
 
-        foreach ($magentoData['data'][$responseKey]['items'] as $index => $item) {
+        foreach ($items as $index => $item) {
             if (!is_array($item)) {
                 continue;
             }
@@ -90,6 +118,121 @@ class MagentoAdapterV2
             }
         }
 
+        return $this->buildResult($products);
+    }
+
+    /**
+     * Transform a single Magento product to V2 Product ValueObject.
+     *
+     * @param array<string, mixed> $product The Magento product data
+     * @param string|null $locale Locale suffix to use; defaults to the primary locale
+     * @return Product
+     */
+    public function transformProduct(array $product, ?string $locale = null): Product
+    {
+        return $this->buildProduct($product, $locale ?? $this->locale, []);
+    }
+
+    /**
+     * Get transformation errors from the last transform() call.
+     *
+     * @return array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
+     */
+    public function getErrors(): array
+    {
+        return $this->errors;
+    }
+
+    /**
+     * Merge per-store-view responses by SKU into one Product per SKU.
+     *
+     * The first view a SKU appears in (map order) supplies the locale-agnostic fields;
+     * every other view contributes only its `*_{locale}` fields.
+     *
+     * @param mixed $storeViews storeCode => Magento GraphQL response
+     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
+     */
+    private function transformStoreViews(mixed $storeViews): array
+    {
+        if (!is_array($storeViews)) {
+            throw new ValidationException('Invalid Magento data: store_views must be an array');
+        }
+
+        foreach (array_keys($storeViews) as $storeCode) {
+            if (!isset($this->storeViewLocales[$storeCode])) {
+                throw new ValidationException("Invalid Magento data: unknown store view '{$storeCode}'");
+            }
+        }
+
+        $this->errors = [];
+
+        /** @var array<string, array<int, array{locale: string, item: array<string, mixed>, index: int}>> $bySku */
+        $bySku = [];
+
+        foreach ($this->storeViewLocales as $storeCode => $locale) {
+            if (!isset($storeViews[$storeCode])) {
+                continue;
+            }
+
+            if (!is_array($storeViews[$storeCode])) {
+                throw new ValidationException("Invalid Magento data: store view '{$storeCode}' must be an array");
+            }
+
+            $items = $this->extractItems($storeViews[$storeCode]) ?? [];
+
+            foreach ($items as $index => $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $sku = $item['sku'] ?? null;
+                if ($sku === null || (string) $sku === '') {
+                    $this->errors[] = [
+                        'type' => 'transformation_error',
+                        'product_index' => $index,
+                        'product_id' => (string) ($item['id'] ?? ''),
+                        'message' => "Required field 'sku' is missing from Magento data",
+                        'exception' => ValidationException::class,
+                    ];
+                    continue;
+                }
+
+                $bySku[(string) $sku][] = ['locale' => $locale, 'item' => $item, 'index' => $index];
+            }
+        }
+
+        $products = [];
+
+        foreach ($bySku as $views) {
+            $base = $views[0];
+
+            try {
+                $extraFields = [];
+                foreach (array_slice($views, 1) as $view) {
+                    $extraFields += $this->localeFields($view['item'], $view['locale']);
+                }
+
+                $products[] = $this->buildProduct($base['item'], $base['locale'], $extraFields);
+            } catch (\Exception $e) {
+                $this->errors[] = [
+                    'type' => 'transformation_error',
+                    'product_index' => $base['index'],
+                    'product_id' => (string) ($base['item']['id'] ?? ''),
+                    'message' => $e->getMessage(),
+                    'exception' => get_class($e),
+                ];
+            }
+        }
+
+        return $this->buildResult($products);
+    }
+
+    /**
+     * @param array<int, Product> $products
+     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
+     */
+    private function buildResult(array $products): array
+    {
         $request = null;
         if (count($products) > 0) {
             $request = new BulkOperationsRequest([
@@ -105,12 +248,39 @@ class MagentoAdapterV2
     }
 
     /**
-     * Transform a single Magento product to V2 Product ValueObject.
+     * Validate a GraphQL response and return its product items, or null when the items key is absent.
      *
-     * @param array<string, mixed> $product The Magento product data
-     * @return Product
+     * @param array<string, mixed> $magentoData
+     * @return array<int|string, mixed>|null
      */
-    public function transformProduct(array $product): Product
+    private function extractItems(array $magentoData): ?array
+    {
+        if (!isset($magentoData['data'])) {
+            throw new ValidationException('Invalid Magento data: missing data field');
+        }
+
+        $responseKey = $this->resolveResponseKey($magentoData['data']);
+
+        if ($responseKey === null) {
+            throw new ValidationException('Invalid Magento data: missing products field');
+        }
+
+        if (!isset($magentoData['data'][$responseKey]['items'])) {
+            return null;
+        }
+
+        if (!is_array($magentoData['data'][$responseKey]['items'])) {
+            throw new ValidationException('Invalid Magento data: products items must be an array');
+        }
+
+        return $magentoData['data'][$responseKey]['items'];
+    }
+
+    /**
+     * @param array<string, mixed> $product
+     * @param array<string, mixed> $extraLocaleFields Locale-suffixed fields from other store views
+     */
+    private function buildProduct(array $product, string $locale, array $extraLocaleFields): Product
     {
         $id = $this->getRequiredField($product, 'id');
         $sku = $this->getRequiredField($product, 'sku');
@@ -120,45 +290,8 @@ class MagentoAdapterV2
         $inStock = $this->extractInStock($product);
 
         $additionalFields = [];
-        $locale = $this->locale;
 
-        // Name (locale-aware)
-        if (isset($product['name']) && is_string($product['name']) && $product['name'] !== '') {
-            $additionalFields["name_{$locale}"] = strip_tags($product['name']);
-        }
-
-        // Description (locale-aware)
-        $description = $this->extractHtmlField($product, 'description');
-        if ($description !== null) {
-            $additionalFields["description_{$locale}"] = $description;
-        }
-
-        // Short description (locale-aware)
-        $shortDescription = $this->extractHtmlField($product, 'short_description');
-        if ($shortDescription !== null) {
-            $additionalFields["descriptionShort_{$locale}"] = $shortDescription;
-        }
-
-        // Product URL (locale-aware)
-        if (isset($product['full_url']) && is_string($product['full_url']) && $product['full_url'] !== '') {
-            $additionalFields["productUrl_{$locale}"] = $product['full_url'];
-        }
-
-        // Categories (locale-aware)
-        $categories = $this->buildHierarchicalCategories($product);
-        if (!empty($categories)) {
-            $additionalFields["categories_{$locale}"] = $categories;
-
-            $flatCategories = AdapterUtils::splitCategoryLevels($categories);
-            if (!empty($flatCategories)) {
-                $additionalFields["categoriesFlat_{$locale}"] = $flatCategories;
-            }
-        }
-
-        $categoryDefault = $this->extractDefaultCategory($product);
-        if ($categoryDefault !== null) {
-            $additionalFields["categoryDefault_{$locale}"] = $categoryDefault;
-        }
+        $this->addLocaleTextFields($additionalFields, $product, $locale);
 
         // Popularity/sorting metrics (locale-agnostic)
         // Magento's sort_popularity_sales: 1 = most popular, 999 = least popular.
@@ -193,7 +326,7 @@ class MagentoAdapterV2
         }
 
         // Process attributes: flat feature_ fields + nested features array + brand
-        $this->processAttributes($additionalFields, $product);
+        $this->processAttributes($additionalFields, $product, $locale);
 
         return new Product(
             id: $id,
@@ -201,18 +334,74 @@ class MagentoAdapterV2
             pricing: $pricing,
             imageUrl: $imageUrl,
             inStock: $inStock,
-            additionalFields: $additionalFields
+            additionalFields: $additionalFields + $extraLocaleFields
         );
     }
 
     /**
-     * Get transformation errors from the last transform() call.
+     * Only the `*_{locale}` fields of a product as seen from one store view.
      *
-     * @return array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
+     * @param array<string, mixed> $product
+     * @return array<string, mixed>
      */
-    public function getErrors(): array
+    private function localeFields(array $product, string $locale): array
     {
-        return $this->errors;
+        $fields = [];
+        $this->addLocaleTextFields($fields, $product, $locale);
+        $this->processAttributes($fields, $product, $locale);
+
+        return array_filter(
+            $fields,
+            fn(string $key): bool => str_ends_with($key, "_{$locale}"),
+            ARRAY_FILTER_USE_KEY
+        );
+    }
+
+    /**
+     * Name, descriptions, URL and categories, suffixed with the locale.
+     *
+     * @param array<string, mixed> $result
+     * @param array<string, mixed> $product
+     */
+    private function addLocaleTextFields(array &$result, array $product, string $locale): void
+    {
+        // Name (locale-aware)
+        if (isset($product['name']) && is_string($product['name']) && $product['name'] !== '') {
+            $result["name_{$locale}"] = strip_tags($product['name']);
+        }
+
+        // Description (locale-aware)
+        $description = $this->extractHtmlField($product, 'description');
+        if ($description !== null) {
+            $result["description_{$locale}"] = $description;
+        }
+
+        // Short description (locale-aware)
+        $shortDescription = $this->extractHtmlField($product, 'short_description');
+        if ($shortDescription !== null) {
+            $result["descriptionShort_{$locale}"] = $shortDescription;
+        }
+
+        // Product URL (locale-aware)
+        if (isset($product['full_url']) && is_string($product['full_url']) && $product['full_url'] !== '') {
+            $result["productUrl_{$locale}"] = $product['full_url'];
+        }
+
+        // Categories (locale-aware)
+        $categories = $this->buildHierarchicalCategories($product);
+        if (!empty($categories)) {
+            $result["categories_{$locale}"] = $categories;
+
+            $flatCategories = AdapterUtils::splitCategoryLevels($categories);
+            if (!empty($flatCategories)) {
+                $result["categoriesFlat_{$locale}"] = $flatCategories;
+            }
+        }
+
+        $categoryDefault = $this->extractDefaultCategory($product);
+        if ($categoryDefault !== null) {
+            $result["categoryDefault_{$locale}"] = $categoryDefault;
+        }
     }
 
     /**
@@ -244,13 +433,12 @@ class MagentoAdapterV2
      * @param array<string, mixed> $result
      * @param array<string, mixed> $product
      */
-    private function processAttributes(array &$result, array $product): void
+    private function processAttributes(array &$result, array $product, string $locale): void
     {
         if (!isset($product['attributes']) || !is_array($product['attributes'])) {
             return;
         }
 
-        $locale = $this->locale;
         $features = [];
 
         foreach ($product['attributes'] as $attr) {
