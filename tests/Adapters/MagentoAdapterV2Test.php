@@ -1184,9 +1184,9 @@ class MagentoAdapterV2Test extends TestCase
         new MagentoAdapterV2(['lv_store' => '']);
     }
 
-    // --- Real store response shape: two store views of one product from a live store (domain and prices changed) ---
+    // --- Full bradProducts page shape: two store views of one product ---
 
-    public function testRealStoreShapeSingleViewProducesLatvianDocument(): void
+    public function testFullPageShapeSingleViewProducesLatvianDocument(): void
     {
         $fixture = $this->loadStoreViewsFixture();
 
@@ -1229,7 +1229,7 @@ class MagentoAdapterV2Test extends TestCase
         );
     }
 
-    public function testRealStoreShapeTwoViewsMergeIntoOneDocumentWithBothLocales(): void
+    public function testFullPageShapeTwoViewsMergeIntoOneDocumentWithBothLocales(): void
     {
         $fixture = $this->loadStoreViewsFixture();
         $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
