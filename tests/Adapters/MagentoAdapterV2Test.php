@@ -1184,6 +1184,110 @@ class MagentoAdapterV2Test extends TestCase
         new MagentoAdapterV2(['lv_store' => '']);
     }
 
+    // --- Real store response shape (Verkter LV stage, domain and prices changed; RU view is a translated twin) ---
+
+    public function testRealStoreShapeSingleViewProducesLatvianDocument(): void
+    {
+        $fixture = $this->loadStoreViewsFixture();
+
+        $result = (new MagentoAdapterV2('lv-LV'))->transform($fixture['lv_store']);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+
+        $doc = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame('20074', $doc['id']);
+        $this->assertSame('20074', $doc['sku']);
+        $this->assertSame(119.99, $doc['price']);
+        $this->assertSame(149.99, $doc['basePrice']);
+        $this->assertSame(99.17, $doc['priceTaxExcluded']);
+        $this->assertTrue($doc['inStock']);
+        $this->assertTrue($doc['hasImage']);
+        $this->assertSame(999, $doc['delivery_speed']);
+        $this->assertSame(1, $doc['sort_popularity_sales']);
+        $this->assertSame('Ekscentra slīpmašīna Bosch GEX 125-1 AE', $doc['name_lv-LV']);
+        $this->assertArrayNotHasKey('description_lv-LV', $doc);
+        $this->assertStringStartsWith('Pagariniet Bosch instrumenta garantiju', $doc['descriptionShort_lv-LV']);
+        $this->assertStringNotContainsString('<a', $doc['descriptionShort_lv-LV']);
+        $this->assertSame(
+            ['Slīpmašīnas un pulētāji', 'Slīpmašīnas un pulētāji > Ekscentra slīpmašīnas'],
+            $doc['categories_lv-LV']
+        );
+        $this->assertSame('Ekscentra slīpmašīnas', $doc['categoryDefault_lv-LV']);
+        $this->assertSame('Bosch', $doc['brand_lv-LV']);
+        $this->assertSame('0601387500', $doc['mpn']);
+        $this->assertSame('3165140438278', $doc['barcode']);
+        $this->assertSame('Ekscentra slīpmašīna', $doc['nameShort']);
+        $this->assertSame('125 mm', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_lv-LV']);
+        $this->assertSame('Slīpmašīnas un pulētāji', $doc['feature_b6f2c76b997fff72c8a41e1531e5ab_lv-LV']);
+        $this->assertSame('1.600000', $doc['feature_weight_slider_lv-LV']);
+        $this->assertArrayNotHasKey('feature_mpn_lv-LV', $doc);
+        $this->assertSame(
+            ['manufacturer', 'b6f2c76b997fff72c8a41e1531e5ab', 'f71a39ed758a2aba322bd3a9212e01', 'attr_9d8856a44b8c2873999555aedf7bf8'],
+            array_column($doc['features'], 'name')
+        );
+    }
+
+    public function testRealStoreShapeTwoViewsMergeIntoOneDocumentWithBothLocales(): void
+    {
+        $fixture = $this->loadStoreViewsFixture();
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            'data' => $fixture['lv_store']['data'],
+            MagentoAdapterV2::STORE_VIEWS_KEY => $fixture,
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+
+        $doc = $result['products'][0]->jsonSerialize();
+        $single = (new MagentoAdapterV2('lv-LV'))->transform($fixture['lv_store'])['products'][0]->jsonSerialize();
+
+        // Everything the single-view sync produced is still there, unchanged.
+        foreach ($single as $key => $value) {
+            $this->assertSame($value, $doc[$key], "field {$key} changed by the merge");
+        }
+
+        // The RU view added only its own suffixed fields.
+        $added = array_diff_key($doc, $single);
+        $this->assertNotEmpty($added);
+        foreach (array_keys($added) as $key) {
+            $this->assertStringEndsWith('_ru-RU', $key, "unexpected unsuffixed field {$key} from the secondary view");
+        }
+
+        $this->assertSame('Эксцентриковая шлифмашина Bosch GEX 125-1 AE', $doc['name_ru-RU']);
+        $this->assertStringStartsWith('Продлите гарантию', $doc['descriptionShort_ru-RU']);
+        $this->assertSame('https://magento.example.com/ekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html', $doc['productUrl_ru-RU']);
+        $this->assertSame(
+            ['Шлифмашины и полировальные машины', 'Шлифмашины и полировальные машины > Эксцентриковые шлифмашины'],
+            $doc['categories_ru-RU']
+        );
+        $this->assertSame('Эксцентриковые шлифмашины', $doc['categoryDefault_ru-RU']);
+        $this->assertSame('Bosch', $doc['brand_ru-RU']);
+        $this->assertSame('125 мм', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_ru-RU']);
+        $this->assertSame('Электрический', $doc['feature_engine_type_ru-RU']);
+        $this->assertSame('1.600000', $doc['feature_weight_slider_ru-RU']);
+
+        // Same count of feature_* fields per locale: every attribute got both suffixes.
+        $lvFeatures = array_filter(array_keys($doc), fn(string $k) => str_starts_with($k, 'feature_') && str_ends_with($k, '_lv-LV'));
+        $ruFeatures = array_filter(array_keys($doc), fn(string $k) => str_starts_with($k, 'feature_') && str_ends_with($k, '_ru-RU'));
+        $this->assertCount(17, $lvFeatures);
+        $this->assertCount(count($lvFeatures), $ruFeatures);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function loadStoreViewsFixture(): array
+    {
+        $json = file_get_contents(__DIR__ . '/../fixtures/magento/store-views-two-locales.json');
+        $this->assertNotFalse($json);
+
+        return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    }
+
     /**
      * @param array<string, mixed> $overrides
      * @return array<string, mixed>
