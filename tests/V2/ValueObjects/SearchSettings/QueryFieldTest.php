@@ -361,4 +361,141 @@ class QueryFieldTest extends TestCase
 
         $this->assertEquals($originalData, $serialized);
     }
+
+    public function testConstructorDefaultsPositionAndPriorityToNull(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name');
+
+        $this->assertNull($field->position);
+        $this->assertNull($field->priority);
+    }
+
+    public function testJsonSerializeEmitsPositionAndPriorityWhenSet(): void
+    {
+        // Mirrors the BRD-1305 preset: main_word shares position 1 with name and is
+        // ordered above it by priority 3 (×3.0 on the bucket boost).
+        $field = new QueryField(
+            type: QueryFieldType::TEXT,
+            name: 'main_word',
+            localeSuffix: true,
+            searchTypes: [SearchType::EXACT, SearchType::MATCH],
+            position: 1,
+            priority: 3
+        );
+
+        $expected = [
+            'type' => 'text',
+            'name' => 'main_word',
+            'locale_suffix' => true,
+            'search_types' => ['exact', 'match'],
+            'position' => 1,
+            'priority' => 3,
+        ];
+
+        $this->assertEquals($expected, $field->jsonSerialize());
+    }
+
+    public function testJsonSerializeOmitsPositionAndPriorityWhenNull(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name');
+        $serialized = $field->jsonSerialize();
+
+        $this->assertArrayNotHasKey('position', $serialized);
+        $this->assertArrayNotHasKey('priority', $serialized);
+    }
+
+    public function testJsonSerializeKeepsPriorityZeroAndPositionZero(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'sku', position: 0, priority: 0);
+        $serialized = $field->jsonSerialize();
+
+        $this->assertSame(0, $serialized['position']);
+        $this->assertSame(0, $serialized['priority']);
+    }
+
+    public function testFromArrayReadsPositionAndPriority(): void
+    {
+        $field = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'main_word_base',
+            'position' => 1,
+            'priority' => 2,
+        ]);
+
+        $this->assertSame(1, $field->position);
+        $this->assertSame(2, $field->priority);
+    }
+
+    public function testFromArrayLeavesPositionAndPriorityNullWhenAbsent(): void
+    {
+        $field = QueryField::fromArray(['type' => 'text', 'name' => 'name']);
+
+        $this->assertNull($field->position);
+        $this->assertNull($field->priority);
+    }
+
+    public function testPositionAndPriorityRoundTripThroughFromArray(): void
+    {
+        $original = new QueryField(QueryFieldType::TEXT, 'also_known_as', position: 1, priority: 1);
+        $roundTripped = QueryField::fromArray($original->jsonSerialize());
+
+        $this->assertEquals($original->jsonSerialize(), $roundTripped->jsonSerialize());
+    }
+
+    public function testThrowsExceptionForPriorityAboveLadder(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Priority must be between 0 and 4, got 5.');
+
+        new QueryField(QueryFieldType::TEXT, 'name', priority: 5);
+    }
+
+    public function testThrowsExceptionForNegativePriority(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Priority must be between 0 and 4, got -1.');
+
+        new QueryField(QueryFieldType::TEXT, 'name', priority: -1);
+    }
+
+    public function testThrowsExceptionForPositionOutsideBuckets(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Position must be between 0 and 3, got 4.');
+
+        new QueryField(QueryFieldType::TEXT, 'name', position: 4);
+    }
+
+    public function testWithPriorityReturnsNewInstance(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name', position: 1);
+        $newField = $field->withPriority(3);
+
+        $this->assertNotSame($field, $newField);
+        $this->assertNull($field->priority);
+        $this->assertSame(3, $newField->priority);
+        $this->assertSame(1, $newField->position);
+    }
+
+    public function testWithPositionReturnsNewInstance(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name', priority: 2);
+        $newField = $field->withPosition(0);
+
+        $this->assertNotSame($field, $newField);
+        $this->assertNull($field->position);
+        $this->assertSame(0, $newField->position);
+        $this->assertSame(2, $newField->priority);
+    }
+
+    public function testExistingWithMethodsPreservePositionAndPriority(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name', position: 1, priority: 3);
+
+        $this->assertSame(1, $field->withName('other')->position);
+        $this->assertSame(3, $field->withName('other')->priority);
+        $this->assertSame(3, $field->withSearchTypes([SearchType::MATCH])->priority);
+        $this->assertSame(3, $field->withAddedSearchType(SearchType::MATCH)->priority);
+        $this->assertSame(3, $field->withLocaleSuffix(true)->priority);
+    }
 }

@@ -15,6 +15,11 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class QueryField extends ValueObject
 {
+    private const MIN_POSITION = 0;
+    private const MAX_POSITION = 3;
+    private const MIN_PRIORITY = 0;
+    private const MAX_PRIORITY = 4;
+
     /**
      * @param QueryFieldType $type The type of field (text or nested)
      * @param string $name The field name
@@ -25,6 +30,8 @@ final readonly class QueryField extends ValueObject
      * @param ScoreMode|null $scoreMode Score mode for nested fields
      * @param array<QueryField> $nestedFields Child fields for nested type
      * @param bool|null $localeAware Whether the field is locale-aware
+     * @param int|null $position Boost bucket (0-3); null means no bucket boost
+     * @param int|null $priority Order inside the bucket (0-4); null means the default ×1.0
      */
     public function __construct(
         public QueryFieldType $type,
@@ -35,12 +42,16 @@ final readonly class QueryField extends ValueObject
         public ?string $nestedPath = null,
         public ?ScoreMode $scoreMode = null,
         public array $nestedFields = [],
-        public ?bool $localeAware = null
+        public ?bool $localeAware = null,
+        public ?int $position = null,
+        public ?int $priority = null
     ) {
         $this->validateName($name);
         $this->validateSearchTypes($searchTypes);
         $this->validateNestedFields($nestedFields);
         $this->validateNestedConfiguration();
+        $this->validatePosition($position);
+        $this->validatePriority($priority);
     }
 
     /**
@@ -86,7 +97,9 @@ final readonly class QueryField extends ValueObject
             nestedPath: isset($data['nested_path']) ? (string) $data['nested_path'] : null,
             scoreMode: $scoreMode,
             nestedFields: $nestedFields,
-            localeAware: isset($data['locale_aware']) ? (bool) $data['locale_aware'] : null
+            localeAware: isset($data['locale_aware']) ? (bool) $data['locale_aware'] : null,
+            position: isset($data['position']) ? (int) $data['position'] : null,
+            priority: isset($data['priority']) ? (int) $data['priority'] : null
         );
     }
 
@@ -104,7 +117,9 @@ final readonly class QueryField extends ValueObject
             $this->nestedPath,
             $this->scoreMode,
             $this->nestedFields,
-            $this->localeAware
+            $this->localeAware,
+            $this->position,
+            $this->priority
         );
     }
 
@@ -122,7 +137,9 @@ final readonly class QueryField extends ValueObject
             $this->nestedPath,
             $this->scoreMode,
             $this->nestedFields,
-            $this->localeAware
+            $this->localeAware,
+            $this->position,
+            $this->priority
         );
     }
 
@@ -142,7 +159,9 @@ final readonly class QueryField extends ValueObject
             $this->nestedPath,
             $this->scoreMode,
             $this->nestedFields,
-            $this->localeAware
+            $this->localeAware,
+            $this->position,
+            $this->priority
         );
     }
 
@@ -160,7 +179,9 @@ final readonly class QueryField extends ValueObject
             $this->nestedPath,
             $this->scoreMode,
             $this->nestedFields,
-            $this->localeAware
+            $this->localeAware,
+            $this->position,
+            $this->priority
         );
     }
 
@@ -180,7 +201,49 @@ final readonly class QueryField extends ValueObject
             $this->nestedPath,
             $this->scoreMode,
             $nestedFields,
-            $this->localeAware
+            $this->localeAware,
+            $this->position,
+            $this->priority
+        );
+    }
+
+    /**
+     * Returns a new instance with a different boost bucket.
+     */
+    public function withPosition(?int $position): self
+    {
+        return new self(
+            $this->type,
+            $this->name,
+            $this->localeSuffix,
+            $this->searchTypes,
+            $this->lastWordSearch,
+            $this->nestedPath,
+            $this->scoreMode,
+            $this->nestedFields,
+            $this->localeAware,
+            $position,
+            $this->priority
+        );
+    }
+
+    /**
+     * Returns a new instance with a different priority inside the bucket.
+     */
+    public function withPriority(?int $priority): self
+    {
+        return new self(
+            $this->type,
+            $this->name,
+            $this->localeSuffix,
+            $this->searchTypes,
+            $this->lastWordSearch,
+            $this->nestedPath,
+            $this->scoreMode,
+            $this->nestedFields,
+            $this->localeAware,
+            $this->position,
+            $priority
         );
     }
 
@@ -226,6 +289,14 @@ final readonly class QueryField extends ValueObject
 
         if ($this->localeAware !== null) {
             $result['locale_aware'] = $this->localeAware;
+        }
+
+        if ($this->position !== null) {
+            $result['position'] = $this->position;
+        }
+
+        if ($this->priority !== null) {
+            $result['priority'] = $this->priority;
         }
 
         return $result;
@@ -318,6 +389,38 @@ final readonly class QueryField extends ValueObject
                 'Nested fields require a nested_path to be specified.',
                 'nested_path',
                 null
+            );
+        }
+    }
+
+    /**
+     * Validates the boost bucket. brad-search knows buckets 0-3 (BucketBoostsV3).
+     *
+     * @throws InvalidArgumentException If position is outside 0-3
+     */
+    private function validatePosition(?int $position): void
+    {
+        if ($position !== null && ($position < self::MIN_POSITION || $position > self::MAX_POSITION)) {
+            throw new InvalidArgumentException(
+                sprintf('Position must be between %d and %d, got %d.', self::MIN_POSITION, self::MAX_POSITION, $position),
+                'position',
+                $position
+            );
+        }
+    }
+
+    /**
+     * Validates the priority step. brad-search's ladder has steps 0-4 (PriorityMultipliers).
+     *
+     * @throws InvalidArgumentException If priority is outside 0-4
+     */
+    private function validatePriority(?int $priority): void
+    {
+        if ($priority !== null && ($priority < self::MIN_PRIORITY || $priority > self::MAX_PRIORITY)) {
+            throw new InvalidArgumentException(
+                sprintf('Priority must be between %d and %d, got %d.', self::MIN_PRIORITY, self::MAX_PRIORITY, $priority),
+                'priority',
+                $priority
             );
         }
     }
