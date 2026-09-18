@@ -15,6 +15,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  */
 final readonly class SearchSettingsRequest extends ValueObject
 {
+    private const LANGUAGE_PATTERN = '/^[a-z]{2}$/';
+
     /** @var array<string>|null */
     public ?array $supportedLocales;
 
@@ -27,6 +29,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      * @param array<string, mixed>|null $rawQueryConfig Optional raw query config (Go-native format, bypasses SearchConfig VOs)
      * @param array<string, mixed>|null $filterConfig Optional filter configuration for facets/aggregations
      * @param string|null $similarity Optional similarity algorithm applied to text fields in the index mapping (e.g. "boolean")
+     * @param array<string, array<SynonymRule>>|null $synonymRules Optional query-time synonym rules keyed by ISO 639-1 language code
      */
     public function __construct(
         public string $appId,
@@ -39,8 +42,10 @@ final readonly class SearchSettingsRequest extends ValueObject
         public ?array $featuresKeyValueMap = null,
         public ?array $attributeKeyValueMap = null,
         public ?string $similarity = null,
+        public ?array $synonymRules = null,
     ) {
         $this->validateAppId($appId);
+        $this->validateSynonymRules($synonymRules);
         $this->supportedLocales = $supportedLocales;
     }
 
@@ -63,7 +68,40 @@ final readonly class SearchSettingsRequest extends ValueObject
             featuresKeyValueMap: $config['features_key_value_map'] ?? null,
             attributeKeyValueMap: $config['attribute_key_value_map'] ?? null,
             similarity: $config['similarity'] ?? null,
+            synonymRules: isset($config['synonym_rules']) && is_array($config['synonym_rules'])
+                ? self::synonymRulesFromArray($config['synonym_rules'])
+                : null,
         );
+    }
+
+    /**
+     * Parses the `synonym_rules` payload shape (language => list of rule arrays).
+     *
+     * @param array<string, mixed> $data
+     * @return array<string, array<SynonymRule>>
+     *
+     * @throws InvalidArgumentException If a language entry is not a list or a rule is malformed
+     */
+    public static function synonymRulesFromArray(array $data): array
+    {
+        $rules = [];
+        foreach ($data as $language => $ruleList) {
+            if (!is_array($ruleList)) {
+                throw new InvalidArgumentException(
+                    sprintf('Synonym rules for language "%s" must be a list.', (string) $language),
+                    'synonym_rules',
+                    $ruleList
+                );
+            }
+            $rules[(string) $language] = array_map(
+                static fn(mixed $rule): SynonymRule => $rule instanceof SynonymRule
+                    ? $rule
+                    : SynonymRule::fromArray(is_array($rule) ? $rule : []),
+                array_values($ruleList)
+            );
+        }
+
+        return $rules;
     }
 
     /**
@@ -71,7 +109,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withAppId(string $appId): self
     {
-        return new self($appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
+        return $this->copyWith(appId: $appId);
     }
 
     /**
@@ -79,7 +117,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withSearchConfig(?SearchConfig $searchConfig): self
     {
-        return new self($this->appId, $searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
+        return $this->copyWith(searchConfig: $searchConfig, clearSearchConfig: $searchConfig === null);
     }
 
     /**
@@ -87,7 +125,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withScoringConfig(?ScoringConfig $scoringConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
+        return $this->copyWith(scoringConfig: $scoringConfig, clearScoringConfig: $scoringConfig === null);
     }
 
     /**
@@ -95,7 +133,7 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withResponseConfig(?ResponseConfig $responseConfig): self
     {
-        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $this->similarity);
+        return $this->copyWith(responseConfig: $responseConfig, clearResponseConfig: $responseConfig === null);
     }
 
     /**
@@ -103,7 +141,28 @@ final readonly class SearchSettingsRequest extends ValueObject
      */
     public function withSimilarity(?string $similarity): self
     {
-        return new self($this->appId, $this->searchConfig, $this->scoringConfig, $this->responseConfig, $this->supportedLocales, $this->rawQueryConfig, $this->filterConfig, $this->featuresKeyValueMap, $this->attributeKeyValueMap, $similarity);
+        return $this->copyWith(similarity: $similarity, clearSimilarity: $similarity === null);
+    }
+
+    /**
+     * Returns a new instance with different synonym rules.
+     *
+     * @param array<string, array<SynonymRule>>|null $synonymRules Rules keyed by ISO 639-1 language code
+     */
+    public function withSynonymRules(?array $synonymRules): self
+    {
+        return $this->copyWith(synonymRules: $synonymRules, clearSynonymRules: $synonymRules === null);
+    }
+
+    /**
+     * Returns a new instance with one more synonym rule for a language.
+     */
+    public function withAddedSynonymRule(string $language, SynonymRule $rule): self
+    {
+        $rules = $this->synonymRules ?? [];
+        $rules[$language] = [...($rules[$language] ?? []), $rule];
+
+        return $this->copyWith(synonymRules: $rules);
     }
 
     /**
@@ -158,7 +217,51 @@ final readonly class SearchSettingsRequest extends ValueObject
             $result['similarity'] = $this->similarity;
         }
 
+        if ($this->synonymRules !== null && count($this->synonymRules) > 0) {
+            $result['synonym_rules'] = array_map(
+                static fn(array $rules): array => array_map(
+                    static fn(SynonymRule $rule): array => $rule->jsonSerialize(),
+                    $rules
+                ),
+                $this->synonymRules
+            );
+        }
+
         return $result;
+    }
+
+    /**
+     * Copies this request with selected parts replaced. Nullable parts need an
+     * explicit clear flag because null also means "keep".
+     *
+     * @param array<string, array<SynonymRule>>|null $synonymRules
+     */
+    private function copyWith(
+        ?string $appId = null,
+        ?SearchConfig $searchConfig = null,
+        bool $clearSearchConfig = false,
+        ?ScoringConfig $scoringConfig = null,
+        bool $clearScoringConfig = false,
+        ?ResponseConfig $responseConfig = null,
+        bool $clearResponseConfig = false,
+        ?string $similarity = null,
+        bool $clearSimilarity = false,
+        ?array $synonymRules = null,
+        bool $clearSynonymRules = false,
+    ): self {
+        return new self(
+            $appId ?? $this->appId,
+            $clearSearchConfig ? null : ($searchConfig ?? $this->searchConfig),
+            $clearScoringConfig ? null : ($scoringConfig ?? $this->scoringConfig),
+            $clearResponseConfig ? null : ($responseConfig ?? $this->responseConfig),
+            $this->supportedLocales,
+            $this->rawQueryConfig,
+            $this->filterConfig,
+            $this->featuresKeyValueMap,
+            $this->attributeKeyValueMap,
+            $clearSimilarity ? null : ($similarity ?? $this->similarity),
+            $clearSynonymRules ? null : ($synonymRules ?? $this->synonymRules),
+        );
     }
 
     /**
@@ -175,5 +278,93 @@ final readonly class SearchSettingsRequest extends ValueObject
                 $appId
             );
         }
+    }
+
+    /**
+     * Validates the synonym rules: language keys are ISO 639-1 codes, every
+     * entry is a SynonymRule, and each rule's field exists in this request's
+     * query configuration when one is present. Typo settings and search types
+     * are not checked here; the engine owns them.
+     *
+     * @param array<string, mixed>|null $synonymRules
+     *
+     * @throws InvalidArgumentException
+     */
+    private function validateSynonymRules(?array $synonymRules): void
+    {
+        if ($synonymRules === null) {
+            return;
+        }
+
+        $knownFields = $this->configuredFieldNames();
+
+        foreach ($synonymRules as $language => $rules) {
+            if (!is_string($language) || preg_match(self::LANGUAGE_PATTERN, $language) !== 1) {
+                throw new InvalidArgumentException(
+                    sprintf('Synonym rules language "%s" must be an ISO 639-1 code (e.g. "lt").', (string) $language),
+                    'synonym_rules',
+                    $language
+                );
+            }
+            if (!is_array($rules)) {
+                throw new InvalidArgumentException(
+                    sprintf('Synonym rules for language "%s" must be a list.', $language),
+                    'synonym_rules',
+                    $rules
+                );
+            }
+            foreach ($rules as $rule) {
+                if (!$rule instanceof SynonymRule) {
+                    throw new InvalidArgumentException(
+                        sprintf('Synonym rules for language "%s" must contain SynonymRule instances.', $language),
+                        'synonym_rules',
+                        $rule
+                    );
+                }
+                if ($knownFields !== null && !in_array($rule->field, $knownFields, true)) {
+                    throw new InvalidArgumentException(
+                        sprintf(
+                            'Synonym rule "%s" targets field "%s", which is not in the query configuration.',
+                            $rule->when,
+                            $rule->field
+                        ),
+                        'synonym_rules',
+                        $rule->field
+                    );
+                }
+            }
+        }
+    }
+
+    /**
+     * Field names the query configuration declares, or null when the request
+     * carries no query configuration to check against.
+     *
+     * @return array<string>|null
+     */
+    private function configuredFieldNames(): ?array
+    {
+        if ($this->rawQueryConfig !== null) {
+            $names = [];
+            $fields = $this->rawQueryConfig['fields'] ?? null;
+            if (is_array($fields)) {
+                foreach ($fields as $field) {
+                    if (is_array($field) && isset($field['name']) && is_string($field['name'])) {
+                        $names[] = $field['name'];
+                    }
+                }
+            }
+
+            return $names;
+        }
+
+        if ($this->searchConfig !== null) {
+            return array_map(
+                static fn(FieldConfig $field): string => $field->fieldName,
+                $this->searchConfig->fields
+            );
+        }
+
+        return null;
     }
 }

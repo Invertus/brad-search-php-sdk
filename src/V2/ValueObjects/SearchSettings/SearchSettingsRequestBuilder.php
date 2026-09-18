@@ -52,6 +52,9 @@ final class SearchSettingsRequestBuilder
 
     private ?string $similarity = null;
 
+    /** @var array<string, array<SynonymRule>>|null */
+    private ?array $synonymRules = null;
+
     /**
      * Sets the application ID.
      */
@@ -211,6 +214,27 @@ final class SearchSettingsRequestBuilder
     }
 
     /**
+     * Sets all synonym rules at once, keyed by ISO 639-1 language code.
+     *
+     * @param array<string, array<SynonymRule>> $synonymRules
+     */
+    public function synonymRules(array $synonymRules): self
+    {
+        $this->synonymRules = $synonymRules;
+        return $this;
+    }
+
+    /**
+     * Adds one synonym rule for a language.
+     */
+    public function addSynonymRule(string $language, SynonymRule $rule): self
+    {
+        $this->synonymRules ??= [];
+        $this->synonymRules[$language][] = $rule;
+        return $this;
+    }
+
+    /**
      * Sets the complete search config.
      */
     public function searchConfig(SearchConfig $searchConfig): self
@@ -305,6 +329,7 @@ final class SearchSettingsRequestBuilder
             $this->featuresKeyValueMap,
             $this->attributeKeyValueMap,
             $this->similarity,
+            $this->synonymRules,
         );
     }
 
@@ -327,6 +352,7 @@ final class SearchSettingsRequestBuilder
         $this->featuresKeyValueMap = null;
         $this->attributeKeyValueMap = null;
         $this->similarity = null;
+        $this->synonymRules = null;
         return $this;
     }
 }
