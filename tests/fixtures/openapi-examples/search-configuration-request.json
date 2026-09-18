@@ -6,19 +6,19 @@
                 "type": "text",
                 "name": "name",
                 "locale_suffix": "lt-LT",
-                "search_types": ["match", "match-fuzzy", "autocomplete"],
-                "last_word_search": true
+                "searchTypes": ["match", "match-fuzzy", "autocomplete"],
+                "lastWordSearch": true
             },
             {
                 "type": "text",
                 "name": "brand",
                 "locale_suffix": "lt-LT",
-                "search_types": ["match"]
+                "searchTypes": ["match"]
             },
             {
                 "type": "text",
                 "name": "sku",
-                "search_types": ["exact", "substring"]
+                "searchTypes": ["exact", "substring"]
             },
             {
                 "type": "nested",
@@ -29,13 +29,13 @@
                     {
                         "type": "text",
                         "name": "sku",
-                        "search_types": ["exact"]
+                        "searchTypes": ["exact"]
                     },
                     {
                         "type": "text",
                         "name": "attrs",
                         "locale_aware": true,
-                        "search_types": ["match"]
+                        "searchTypes": ["match"]
                     }
                 ]
             }

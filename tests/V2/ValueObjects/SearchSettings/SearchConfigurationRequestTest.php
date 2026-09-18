@@ -100,7 +100,7 @@ class SearchConfigurationRequestTest extends TestCase
                     [
                         'type' => 'text',
                         'name' => 'product_name',
-                        'search_types' => ['match'],
+                        'searchTypes' => ['match'],
                     ],
                 ],
                 'cross_fields_matching' => ['product_name', 'brand'],
@@ -183,7 +183,7 @@ class SearchConfigurationRequestTest extends TestCase
                         'type' => 'text',
                         'name' => 'product_name',
                         'locale_suffix' => 'lt-LT',
-                        'search_types' => ['match', 'autocomplete'],
+                        'searchTypes' => ['match', 'autocomplete'],
                     ],
                     [
                         'type' => 'nested',
@@ -194,7 +194,7 @@ class SearchConfigurationRequestTest extends TestCase
                             [
                                 'type' => 'text',
                                 'name' => 'sku',
-                                'search_types' => ['exact'],
+                                'searchTypes' => ['exact'],
                             ],
                         ],
                     ],
@@ -328,7 +328,7 @@ class SearchConfigurationRequestTest extends TestCase
                         'type' => 'text',
                         'name' => 'product_name',
                         'locale_suffix' => 'lt-LT',
-                        'search_types' => ['match', 'autocomplete'],
+                        'searchTypes' => ['match', 'autocomplete'],
                     ],
                 ],
                 'cross_fields_matching' => ['product_name', 'brand'],
@@ -369,19 +369,19 @@ class SearchConfigurationRequestTest extends TestCase
                 "type": "text",
                 "name": "name",
                 "locale_suffix": "lt-LT",
-                "search_types": ["match", "match-fuzzy", "autocomplete"],
-                "last_word_search": true
+                "searchTypes": ["match", "match-fuzzy", "autocomplete"],
+                "lastWordSearch": true
             },
             {
                 "type": "text",
                 "name": "brand",
                 "locale_suffix": "lt-LT",
-                "search_types": ["match"]
+                "searchTypes": ["match"]
             },
             {
                 "type": "text",
                 "name": "sku",
-                "search_types": ["exact", "substring"]
+                "searchTypes": ["exact", "substring"]
             },
             {
                 "type": "nested",
@@ -392,13 +392,13 @@ class SearchConfigurationRequestTest extends TestCase
                     {
                         "type": "text",
                         "name": "sku",
-                        "search_types": ["exact"]
+                        "searchTypes": ["exact"]
                     },
                     {
                         "type": "text",
                         "name": "attrs",
                         "locale_aware": true,
-                        "search_types": ["match"]
+                        "searchTypes": ["match"]
                     }
                 ]
             }

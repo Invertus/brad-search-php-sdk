@@ -107,8 +107,8 @@ class QueryFieldTest extends TestCase
             'type' => 'nested',
             'name' => 'variants',
             'locale_suffix' => 'lt-LT',
-            'search_types' => ['match', 'autocomplete'],
-            'last_word_search' => true,
+            'searchTypes' => ['match', 'autocomplete'],
+            'lastWordSearch' => true,
             'nested_path' => 'variants',
             'score_mode' => 'max',
             'nested_fields' => [
@@ -121,6 +121,28 @@ class QueryFieldTest extends TestCase
         ];
 
         $this->assertEquals($expected, $field->jsonSerialize());
+    }
+
+    /**
+     * The engine (models/query_config.go) reads `searchTypes` and `lastWordSearch` in
+     * camelCase - unlike every other QueryField key, which is snake_case. Serialising
+     * these two as snake_case is silently dropped by the engine's JSON decoder.
+     */
+    public function testJsonSerializeUsesCamelCaseForSearchTypesAndLastWordSearch(): void
+    {
+        $field = new QueryField(
+            type: QueryFieldType::TEXT,
+            name: 'name',
+            searchTypes: [SearchType::MATCH],
+            lastWordSearch: true
+        );
+
+        $result = $field->jsonSerialize();
+
+        $this->assertArrayHasKey('searchTypes', $result);
+        $this->assertArrayHasKey('lastWordSearch', $result);
+        $this->assertArrayNotHasKey('search_types', $result);
+        $this->assertArrayNotHasKey('last_word_search', $result);
     }
 
     public function testFromArrayWithMinimalData(): void
@@ -144,15 +166,15 @@ class QueryFieldTest extends TestCase
             'type' => 'nested',
             'name' => 'variants',
             'locale_suffix' => 'en-US',
-            'search_types' => ['match', 'match-fuzzy', 'autocomplete'],
-            'last_word_search' => true,
+            'searchTypes' => ['match', 'match-fuzzy', 'autocomplete'],
+            'lastWordSearch' => true,
             'nested_path' => 'variants',
             'score_mode' => 'max',
             'nested_fields' => [
                 [
                     'type' => 'text',
                     'name' => 'sku',
-                    'search_types' => ['exact'],
+                    'searchTypes' => ['exact'],
                 ],
             ],
             'locale_aware' => true,
@@ -342,15 +364,15 @@ class QueryFieldTest extends TestCase
             'type' => 'nested',
             'name' => 'variants',
             'locale_suffix' => 'lt-LT',
-            'search_types' => ['match', 'autocomplete'],
-            'last_word_search' => true,
+            'searchTypes' => ['match', 'autocomplete'],
+            'lastWordSearch' => true,
             'nested_path' => 'variants',
             'score_mode' => 'max',
             'nested_fields' => [
                 [
                     'type' => 'text',
                     'name' => 'sku',
-                    'search_types' => ['exact'],
+                    'searchTypes' => ['exact'],
                 ],
             ],
             'locale_aware' => true,

@@ -70,8 +70,8 @@ final readonly class QueryField extends ValueObject
         $type = QueryFieldType::from($data['type']);
 
         $searchTypes = [];
-        if (isset($data['search_types']) && is_array($data['search_types'])) {
-            foreach ($data['search_types'] as $searchType) {
+        if (isset($data['searchTypes']) && is_array($data['searchTypes'])) {
+            foreach ($data['searchTypes'] as $searchType) {
                 $searchTypes[] = SearchType::from($searchType);
             }
         }
@@ -93,7 +93,7 @@ final readonly class QueryField extends ValueObject
             name: (string) $data['name'],
             localeSuffix: isset($data['locale_suffix']) ? $data['locale_suffix'] : null,
             searchTypes: $searchTypes,
-            lastWordSearch: isset($data['last_word_search']) ? (bool) $data['last_word_search'] : null,
+            lastWordSearch: isset($data['lastWordSearch']) ? (bool) $data['lastWordSearch'] : null,
             nestedPath: isset($data['nested_path']) ? (string) $data['nested_path'] : null,
             scoreMode: $scoreMode,
             nestedFields: $nestedFields,
@@ -262,14 +262,14 @@ final readonly class QueryField extends ValueObject
         }
 
         if (count($this->searchTypes) > 0) {
-            $result['search_types'] = array_map(
+            $result['searchTypes'] = array_map(
                 fn(SearchType $type) => $type->value,
                 $this->searchTypes
             );
         }
 
         if ($this->lastWordSearch !== null) {
-            $result['last_word_search'] = $this->lastWordSearch;
+            $result['lastWordSearch'] = $this->lastWordSearch;
         }
 
         if ($this->nestedPath !== null) {

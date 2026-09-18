@@ -69,7 +69,7 @@ class QueryConfigTest extends TestCase
                 [
                     'type' => 'text',
                     'name' => 'product_name',
-                    'search_types' => ['match'],
+                    'searchTypes' => ['match'],
                 ],
             ],
         ];
@@ -121,7 +121,7 @@ class QueryConfigTest extends TestCase
                 [
                     'type' => 'text',
                     'name' => 'product_name',
-                    'search_types' => ['match', 'autocomplete'],
+                    'searchTypes' => ['match', 'autocomplete'],
                 ],
                 [
                     'type' => 'text',
@@ -157,7 +157,7 @@ class QueryConfigTest extends TestCase
                     'type' => 'text',
                     'name' => 'name',
                     'locale_suffix' => 'lt-LT',
-                    'search_types' => ['match', 'autocomplete'],
+                    'searchTypes' => ['match', 'autocomplete'],
                 ],
             ],
             'cross_fields_matching' => ['name', 'brand'],
@@ -247,7 +247,7 @@ class QueryConfigTest extends TestCase
                     'type' => 'text',
                     'name' => 'product_name',
                     'locale_suffix' => 'en-US',
-                    'search_types' => ['match', 'autocomplete'],
+                    'searchTypes' => ['match', 'autocomplete'],
                 ],
                 [
                     'type' => 'text',
