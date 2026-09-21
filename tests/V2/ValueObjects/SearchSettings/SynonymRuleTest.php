@@ -128,4 +128,21 @@ class SynonymRuleTest extends TestCase
 
         SynonymRule::fromArray(['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => 'no']);
     }
+
+    public function testANullEnabledFlagMeansEnabled(): void
+    {
+        $rule = SynonymRule::fromArray(['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => null]);
+
+        $this->assertTrue($rule->enabled);
+        $this->assertArrayNotHasKey('enabled', $rule->jsonSerialize());
+    }
+
+    public function testADisabledRuleSurvivesARoundTrip(): void
+    {
+        $rule = SynonymRule::fromArray(SynonymRule::fromArray(
+            ['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => false]
+        )->jsonSerialize());
+
+        $this->assertFalse($rule->enabled);
+    }
 }
