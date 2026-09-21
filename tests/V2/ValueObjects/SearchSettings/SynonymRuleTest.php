@@ -91,4 +91,41 @@ class SynonymRuleTest extends TestCase
 
         SynonymRule::fromArray(['when' => ['samet'], 'match' => 't-550', 'field' => 'sku']);
     }
+
+    public function testEnabledDefaultsToTrueAndIsOmittedFromJson(): void
+    {
+        $rule = new SynonymRule('samet', 't-550', 'sku');
+
+        $this->assertTrue($rule->enabled);
+        $this->assertSame(['when' => 'samet', 'match' => 't-550', 'field' => 'sku'], $rule->jsonSerialize());
+    }
+
+    public function testDisabledRuleSerializesTheFlag(): void
+    {
+        $rule = new SynonymRule('samet', 't-550', 'sku', false);
+
+        $this->assertFalse($rule->enabled);
+        $this->assertSame(
+            ['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => false],
+            $rule->jsonSerialize()
+        );
+    }
+
+    public function testFromArrayReadsTheEnabledFlag(): void
+    {
+        $this->assertFalse(
+            SynonymRule::fromArray(['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => false])->enabled
+        );
+        $this->assertTrue(
+            SynonymRule::fromArray(['when' => 'samet', 'match' => 't-550', 'field' => 'sku'])->enabled
+        );
+    }
+
+    public function testFromArrayRejectsNonBooleanEnabled(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('Synonym rule "enabled" must be a boolean.');
+
+        SynonymRule::fromArray(['when' => 'samet', 'match' => 't-550', 'field' => 'sku', 'enabled' => 'no']);
+    }
 }

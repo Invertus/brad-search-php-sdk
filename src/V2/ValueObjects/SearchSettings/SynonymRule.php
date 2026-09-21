@@ -26,18 +26,22 @@ final readonly class SynonymRule extends ValueObject
 
     public string $field;
 
+    public bool $enabled;
+
     /**
      * @param string $when Trigger text, one or more words the query must contain
      * @param string $match Text matched on the field when the rule fires
      * @param string $field Configured query_config field name the rule targets
+     * @param bool $enabled A rule switched off stays configured but never fires
      *
      * @throws InvalidArgumentException If any part is empty after trimming
      */
-    public function __construct(string $when, string $match, string $field)
+    public function __construct(string $when, string $match, string $field, bool $enabled = true)
     {
         $this->when = self::requireText($when, 'when');
         $this->match = self::requireText($match, 'match');
         $this->field = self::requireText($field, 'field');
+        $this->enabled = $enabled;
     }
 
     /**
@@ -59,19 +63,35 @@ final readonly class SynonymRule extends ValueObject
             }
         }
 
-        return new self($data['when'], $data['match'], $data['field']);
+        if (isset($data['enabled']) && !is_bool($data['enabled'])) {
+            throw new InvalidArgumentException(
+                'Synonym rule "enabled" must be a boolean.',
+                'enabled',
+                $data['enabled']
+            );
+        }
+
+        return new self($data['when'], $data['match'], $data['field'], $data['enabled'] ?? true);
     }
 
     /**
-     * @return array{when: string, match: string, field: string}
+     * `enabled` is only written when false — the engine treats an absent flag as enabled.
+     *
+     * @return array{when: string, match: string, field: string, enabled?: bool}
      */
     public function jsonSerialize(): array
     {
-        return [
+        $rule = [
             'when' => $this->when,
             'match' => $this->match,
             'field' => $this->field,
         ];
+
+        if (!$this->enabled) {
+            $rule['enabled'] = false;
+        }
+
+        return $rule;
     }
 
     private static function requireText(string $value, string $name): string
