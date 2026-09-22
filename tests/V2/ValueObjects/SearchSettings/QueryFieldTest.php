@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace BradSearch\SyncSdk\Tests\V2\ValueObjects\SearchSettings;
 
 use BradSearch\SyncSdk\V2\Exceptions\InvalidArgumentException;
+use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\LastWordSearch;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\QueryField;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\QueryFieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\ScoreMode;
@@ -43,7 +44,7 @@ class QueryFieldTest extends TestCase
         $field = new QueryField(
             type: QueryFieldType::NESTED,
             name: 'variants',
-            localeSuffix: 'lt-LT',
+            localeSuffix: true,
             searchTypes: [SearchType::MATCH, SearchType::MATCH_FUZZY],
             lastWordSearch: true,
             nestedPath: 'variants',
@@ -54,7 +55,7 @@ class QueryFieldTest extends TestCase
 
         $this->assertEquals(QueryFieldType::NESTED, $field->type);
         $this->assertEquals('variants', $field->name);
-        $this->assertEquals('lt-LT', $field->localeSuffix);
+        $this->assertTrue($field->localeSuffix);
         $this->assertEquals([SearchType::MATCH, SearchType::MATCH_FUZZY], $field->searchTypes);
         $this->assertTrue($field->lastWordSearch);
         $this->assertEquals('variants', $field->nestedPath);
@@ -94,7 +95,7 @@ class QueryFieldTest extends TestCase
         $field = new QueryField(
             type: QueryFieldType::NESTED,
             name: 'variants',
-            localeSuffix: 'lt-LT',
+            localeSuffix: true,
             searchTypes: [SearchType::MATCH, SearchType::AUTOCOMPLETE],
             lastWordSearch: true,
             nestedPath: 'variants',
@@ -106,7 +107,7 @@ class QueryFieldTest extends TestCase
         $expected = [
             'type' => 'nested',
             'name' => 'variants',
-            'locale_suffix' => 'lt-LT',
+            'locale_suffix' => true,
             'searchTypes' => ['match', 'autocomplete'],
             'lastWordSearch' => true,
             'nested_path' => 'variants',
@@ -165,7 +166,7 @@ class QueryFieldTest extends TestCase
         $data = [
             'type' => 'nested',
             'name' => 'variants',
-            'locale_suffix' => 'en-US',
+            'locale_suffix' => true,
             'searchTypes' => ['match', 'match-fuzzy', 'autocomplete'],
             'lastWordSearch' => true,
             'nested_path' => 'variants',
@@ -184,7 +185,7 @@ class QueryFieldTest extends TestCase
 
         $this->assertEquals(QueryFieldType::NESTED, $field->type);
         $this->assertEquals('variants', $field->name);
-        $this->assertEquals('en-US', $field->localeSuffix);
+        $this->assertTrue($field->localeSuffix);
         $this->assertEquals([SearchType::MATCH, SearchType::MATCH_FUZZY, SearchType::AUTOCOMPLETE], $field->searchTypes);
         $this->assertTrue($field->lastWordSearch);
         $this->assertEquals('variants', $field->nestedPath);
@@ -229,12 +230,12 @@ class QueryFieldTest extends TestCase
     public function testThrowsExceptionForInvalidSearchType(): void
     {
         $this->expectException(InvalidArgumentException::class);
-        $this->expectExceptionMessage('Search type at index 0 must be an instance of SearchType.');
+        $this->expectExceptionMessage('Search type at index 0 must be a SearchType instance or a non-empty string.');
 
         new QueryField(
             type: QueryFieldType::TEXT,
             name: 'test',
-            searchTypes: ['invalid']
+            searchTypes: [123]
         );
     }
 
@@ -264,11 +265,11 @@ class QueryFieldTest extends TestCase
     public function testWithLocaleSuffixReturnsNewInstance(): void
     {
         $field = new QueryField(QueryFieldType::TEXT, 'name');
-        $newField = $field->withLocaleSuffix('en-US');
+        $newField = $field->withLocaleSuffix(true);
 
         $this->assertNotSame($field, $newField);
         $this->assertNull($field->localeSuffix);
-        $this->assertEquals('en-US', $newField->localeSuffix);
+        $this->assertTrue($newField->localeSuffix);
     }
 
     public function testWithSearchTypesReturnsNewInstance(): void
@@ -363,7 +364,7 @@ class QueryFieldTest extends TestCase
         $originalData = [
             'type' => 'nested',
             'name' => 'variants',
-            'locale_suffix' => 'lt-LT',
+            'locale_suffix' => true,
             'searchTypes' => ['match', 'autocomplete'],
             'lastWordSearch' => true,
             'nested_path' => 'variants',
@@ -409,7 +410,7 @@ class QueryFieldTest extends TestCase
             'type' => 'text',
             'name' => 'main_word',
             'locale_suffix' => true,
-            'search_types' => ['exact', 'match'],
+            'searchTypes' => ['exact', 'match'],
             'position' => 1,
             'priority' => 3,
         ];
@@ -519,5 +520,198 @@ class QueryFieldTest extends TestCase
         $this->assertSame(3, $field->withSearchTypes([SearchType::MATCH])->priority);
         $this->assertSame(3, $field->withAddedSearchType(SearchType::MATCH)->priority);
         $this->assertSame(3, $field->withLocaleSuffix(true)->priority);
+    }
+
+    /**
+     * Payloads written by an older SDK use snake_case. Reading only the new key would
+     * turn the silent drop this PR fixes into a silent drop on the read path.
+     */
+    public function testFromArrayReadsLegacySnakeCaseKeys(): void
+    {
+        $field = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'name',
+            'search_types' => ['match', 'autocomplete'],
+            'last_word_search' => true,
+        ]);
+
+        $this->assertEquals([SearchType::MATCH, SearchType::AUTOCOMPLETE], $field->searchTypes);
+        $this->assertTrue($field->lastWordSearch);
+    }
+
+    public function testFromArrayEmitsCamelCaseForLegacyInput(): void
+    {
+        $serialized = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'name',
+            'search_types' => ['match'],
+            'last_word_search' => true,
+        ])->jsonSerialize();
+
+        $this->assertSame(['match'], $serialized['searchTypes']);
+        $this->assertTrue($serialized['lastWordSearch']);
+        $this->assertArrayNotHasKey('search_types', $serialized);
+        $this->assertArrayNotHasKey('last_word_search', $serialized);
+    }
+
+    public function testCamelCaseKeyWinsOverLegacyKey(): void
+    {
+        $field = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'name',
+            'searchTypes' => ['exact'],
+            'search_types' => ['match'],
+        ]);
+
+        $this->assertEquals([SearchType::EXACT], $field->searchTypes);
+    }
+
+    /**
+     * The engine marshals lastWordSearch as an object. Casting that array to bool would
+     * read a disabled, hand-tuned field back as `true`, which the engine then expands
+     * into enabled with hardcoded autocomplete types.
+     */
+    public function testLastWordSearchObjectRoundTripsLosslessly(): void
+    {
+        $data = [
+            'type' => 'text',
+            'name' => 'name',
+            'searchTypes' => ['match'],
+            'lastWordSearch' => [
+                'enabled' => false,
+                'searchTypes' => [
+                    'first' => ['match', 'match-fuzzy'],
+                    'last' => ['stemmed', 'stemmed-fuzzy'],
+                    'full' => ['phrase-prefix'],
+                ],
+                'fuzzy_config' => [
+                    'last' => [
+                        'stemmed-fuzzy' => ['fuzziness' => '2', 'prefix_length' => 2],
+                    ],
+                ],
+            ],
+        ];
+
+        $field = QueryField::fromArray($data);
+
+        $this->assertInstanceOf(LastWordSearch::class, $field->lastWordSearch);
+        $this->assertFalse($field->lastWordSearch->enabled);
+        $this->assertEquals($data, $field->jsonSerialize());
+    }
+
+    public function testLastWordSearchBoolStaysBool(): void
+    {
+        // The engine expands a bare `true` into its hardcoded set; re-emitting an object
+        // with no searchTypes instead would skip that expansion.
+        $field = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'name',
+            'lastWordSearch' => true,
+        ]);
+
+        $this->assertTrue($field->lastWordSearch);
+        $this->assertTrue($field->jsonSerialize()['lastWordSearch']);
+    }
+
+    /**
+     * The engine declares locale_suffix as bool; a string 400s the whole save, so the
+     * SDK refuses it rather than coercing "lt-LT" to true.
+     */
+    public function testFromArrayRejectsNonBooleanLocaleSuffix(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('locale_suffix must be a boolean, string given.');
+
+        QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'name',
+            'locale_suffix' => 'lt-LT',
+        ]);
+    }
+
+    /**
+     * The engine accepts boost-modifier search types the enum cannot represent. Throwing
+     * would make the SDK unable to read a valid tenant configuration, so the raw string
+     * is kept and re-emitted unchanged.
+     */
+    public function testUnknownSearchTypeIsKeptAsString(): void
+    {
+        $field = QueryField::fromArray([
+            'type' => 'text',
+            'name' => 'sku',
+            'searchTypes' => ['exact_300', 'match'],
+        ]);
+
+        $this->assertSame('exact_300', $field->searchTypes[0]);
+        $this->assertEquals(SearchType::MATCH, $field->searchTypes[1]);
+        $this->assertSame(['exact_300', 'match'], $field->jsonSerialize()['searchTypes']);
+    }
+
+    /**
+     * A real engine field (brad-search tests/bdd/testdata/clients) must survive
+     * fromArray -> jsonSerialize untouched, including the keys the value object used to
+     * have no property for.
+     */
+    public function testRoundTripsRealisticEngineField(): void
+    {
+        $data = [
+            'type' => 'text',
+            'name' => 'main_word',
+            'locale_suffix' => true,
+            'position' => 1,
+            'priority' => 3,
+            'searchTypes' => ['exact', 'stemmed', 'match-fuzzy'],
+            'fuzzy_config' => [
+                'match-fuzzy' => ['fuzziness' => 'AUTO', 'prefix_length' => 2],
+            ],
+            'boosts' => ['match' => 1.0, 'exact' => 300],
+            'cross_field_only' => true,
+            'lastWordSearch' => [
+                'enabled' => true,
+                'searchTypes' => [
+                    'first' => ['match', 'match-fuzzy'],
+                    'last' => ['autocomplete', 'match-fuzzy'],
+                    'full' => ['autocomplete'],
+                ],
+            ],
+        ];
+
+        $this->assertEquals($data, QueryField::fromArray($data)->jsonSerialize());
+    }
+
+    public function testJsonSerializeOmitsPassthroughKeysWhenNull(): void
+    {
+        $serialized = (new QueryField(QueryFieldType::TEXT, 'name'))->jsonSerialize();
+
+        $this->assertArrayNotHasKey('fuzzy_config', $serialized);
+        $this->assertArrayNotHasKey('boosts', $serialized);
+        $this->assertArrayNotHasKey('cross_field_only', $serialized);
+    }
+
+    public function testExistingWithMethodsPreservePassthroughKeys(): void
+    {
+        $field = new QueryField(
+            QueryFieldType::TEXT,
+            'name',
+            fuzzyConfig: ['match-fuzzy' => ['fuzziness' => 'AUTO']],
+            boosts: ['exact' => 300],
+            crossFieldOnly: true
+        );
+
+        $renamed = $field->withName('other');
+
+        $this->assertSame($field->fuzzyConfig, $renamed->fuzzyConfig);
+        $this->assertSame($field->boosts, $renamed->boosts);
+        $this->assertTrue($renamed->crossFieldOnly);
+    }
+
+    public function testWithLastWordSearchReplacesTheObject(): void
+    {
+        $field = new QueryField(QueryFieldType::TEXT, 'name', lastWordSearch: true);
+        $newField = $field->withLastWordSearch(new LastWordSearch(enabled: false));
+
+        $this->assertTrue($field->lastWordSearch);
+        $this->assertInstanceOf(LastWordSearch::class, $newField->lastWordSearch);
+        $this->assertFalse($newField->lastWordSearch->enabled);
     }
 }

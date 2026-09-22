@@ -156,7 +156,7 @@ class QueryConfigTest extends TestCase
                 [
                     'type' => 'text',
                     'name' => 'name',
-                    'locale_suffix' => 'lt-LT',
+                    'locale_suffix' => true,
                     'searchTypes' => ['match', 'autocomplete'],
                 ],
             ],
@@ -167,7 +167,7 @@ class QueryConfigTest extends TestCase
 
         $this->assertCount(1, $config->fields);
         $this->assertEquals('name', $config->fields[0]->name);
-        $this->assertEquals('lt-LT', $config->fields[0]->localeSuffix);
+        $this->assertTrue($config->fields[0]->localeSuffix);
         $this->assertEquals(['name', 'brand'], $config->crossFieldsMatching);
     }
 
@@ -246,7 +246,7 @@ class QueryConfigTest extends TestCase
                 [
                     'type' => 'text',
                     'name' => 'product_name',
-                    'locale_suffix' => 'en-US',
+                    'locale_suffix' => true,
                     'searchTypes' => ['match', 'autocomplete'],
                 ],
                 [

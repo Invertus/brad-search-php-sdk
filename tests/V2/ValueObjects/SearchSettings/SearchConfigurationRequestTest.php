@@ -182,7 +182,7 @@ class SearchConfigurationRequestTest extends TestCase
                     [
                         'type' => 'text',
                         'name' => 'product_name',
-                        'locale_suffix' => 'lt-LT',
+                        'locale_suffix' => true,
                         'searchTypes' => ['match', 'autocomplete'],
                     ],
                     [
@@ -230,7 +230,7 @@ class SearchConfigurationRequestTest extends TestCase
         $this->assertCount(2, $request->queryConfig->fields);
         $this->assertEquals('product_name', $request->queryConfig->fields[0]->name);
         $this->assertEquals(QueryFieldType::TEXT, $request->queryConfig->fields[0]->type);
-        $this->assertEquals('lt-LT', $request->queryConfig->fields[0]->localeSuffix);
+        $this->assertTrue($request->queryConfig->fields[0]->localeSuffix);
         $this->assertEquals([SearchType::MATCH, SearchType::AUTOCOMPLETE], $request->queryConfig->fields[0]->searchTypes);
 
         // Verify nested field
@@ -327,7 +327,7 @@ class SearchConfigurationRequestTest extends TestCase
                     [
                         'type' => 'text',
                         'name' => 'product_name',
-                        'locale_suffix' => 'lt-LT',
+                        'locale_suffix' => true,
                         'searchTypes' => ['match', 'autocomplete'],
                     ],
                 ],
@@ -368,14 +368,14 @@ class SearchConfigurationRequestTest extends TestCase
             {
                 "type": "text",
                 "name": "name",
-                "locale_suffix": "lt-LT",
+                "locale_suffix": true,
                 "searchTypes": ["match", "match-fuzzy", "autocomplete"],
                 "lastWordSearch": true
             },
             {
                 "type": "text",
                 "name": "brand",
-                "locale_suffix": "lt-LT",
+                "locale_suffix": true,
                 "searchTypes": ["match"]
             },
             {
@@ -439,7 +439,7 @@ JSON;
         $nameField = $request->queryConfig->fields[0];
         $this->assertEquals('name', $nameField->name);
         $this->assertEquals(QueryFieldType::TEXT, $nameField->type);
-        $this->assertEquals('lt-LT', $nameField->localeSuffix);
+        $this->assertTrue($nameField->localeSuffix);
         $this->assertEquals([SearchType::MATCH, SearchType::MATCH_FUZZY, SearchType::AUTOCOMPLETE], $nameField->searchTypes);
         $this->assertTrue($nameField->lastWordSearch);
 
