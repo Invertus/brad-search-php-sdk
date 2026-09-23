@@ -1142,7 +1142,69 @@ class MagentoAdapterV2Test extends TestCase
         $this->assertCount(2, $result['errors']);
         $this->assertSame('2', $result['errors'][0]['product_id']);
         $this->assertSame('1', $result['errors'][1]['product_id']);
+        $this->assertSame('lv_store', $result['errors'][0]['store_view']);
+        $this->assertSame('lv_store', $result['errors'][1]['store_view']);
         $this->assertSame($result['errors'], $adapter->getErrors());
+    }
+
+    public function testStoreViewMapRecordsSkuLessProductOnceAcrossViews(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([['id' => 2, 'name' => 'no sku lv']]),
+                'lv_ru' => $this->wrapMagentoData([
+                    ['id' => 2, 'name' => 'no sku ru'],
+                    ['id' => 5, 'name' => 'no sku, ru only'],
+                ]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(2, $result['errors']);
+        $this->assertSame(['2', 'lv_store', 0], [$result['errors'][0]['product_id'], $result['errors'][0]['store_view'], $result['errors'][0]['product_index']]);
+        $this->assertSame(['5', 'lv_ru', 1], [$result['errors'][1]['product_id'], $result['errors'][1]['store_view'], $result['errors'][1]['product_index']]);
+    }
+
+    public function testStoreViewMapFallsBackToNextViewWhenPrimaryCopyCannotBeBuilt(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv', ['id' => null])]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru')]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertCount(1, $result['products']);
+
+        $serialized = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame('123', $serialized['id']);
+        $this->assertSame('Name ru', $serialized['name_ru-RU']);
+        $this->assertSame('Name lv', $serialized['name_lv-LV']);
+        $this->assertSame('Silver ru', $serialized['feature_color_ru-RU']);
+        $this->assertSame('Silver lv', $serialized['feature_color_lv-LV']);
+    }
+
+    public function testStoreViewMapRecordsOneErrorWhenNoViewCopyCanBeBuilt(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv', ['id' => null])]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru', ['id' => null])]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertSame('lv_store', $result['errors'][0]['store_view']);
+        $this->assertSame("Required field 'id' is missing from Magento data", $result['errors'][0]['message']);
     }
 
     public function testStoreViewMapThrowsOnUnknownStoreView(): void

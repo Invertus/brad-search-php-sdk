@@ -19,6 +19,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
  *   suffixes every locale-aware field with that locale (e.g. name → name_lt-LT);
  * - multiple views: constructed with a `storeCode => locale` map, `transform()` takes the per-view
  *   responses under `store_views` and emits one Product per SKU carrying every locale suffix.
+ *   A payload without `store_views` is read as the primary view alone.
  *
  * Produces the unified cross-platform data format:
  * - Locale-suffixed text fields: `name_{locale}`, `brand_{locale}`, `description_{locale}`, etc.
@@ -44,7 +45,7 @@ class MagentoAdapterV2
     private readonly array $storeViewLocales;
 
     /**
-     * @var array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
+     * @var array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string, store_view?: string}>
      */
     private array $errors = [];
 
@@ -80,7 +81,7 @@ class MagentoAdapterV2
      *
      * @param array<string, mixed> $magentoData The Magento GraphQL API response, or a multi-view payload
      *        (`store_views` => storeCode => response) when constructed with a store view map.
-     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
+     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string, store_view?: string}>}
      */
     public function transform(array $magentoData): array
     {
@@ -136,7 +137,7 @@ class MagentoAdapterV2
     /**
      * Get transformation errors from the last transform() call.
      *
-     * @return array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>
+     * @return array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string, store_view?: string}>
      */
     public function getErrors(): array
     {
@@ -147,10 +148,13 @@ class MagentoAdapterV2
      * Merge per-store-view responses by SKU into one Product per SKU.
      *
      * The first view a SKU appears in (map order) supplies the locale-agnostic fields;
-     * every other view contributes only its `*_{locale}` fields.
+     * every other view contributes only its `*_{locale}` fields. When that view's copy cannot be
+     * built, the next view's copy becomes the base, so one broken view does not drop the SKU.
+     * Errors are one per product, carry the store view they came from, and `product_index` is the
+     * index inside that view's page.
      *
      * @param mixed $storeViews storeCode => Magento GraphQL response
-     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
+     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string, store_view?: string}>}
      */
     private function transformStoreViews(mixed $storeViews): array
     {
@@ -166,8 +170,11 @@ class MagentoAdapterV2
 
         $this->errors = [];
 
-        /** @var array<string, array<int, array{locale: string, item: array<string, mixed>, index: int}>> $bySku */
+        /** @var array<string, array<int, array{storeCode: string, locale: string, item: array<string, mixed>, index: int}>> $bySku */
         $bySku = [];
+
+        /** @var array<string, true> $skuLessIds */
+        $skuLessIds = [];
 
         foreach ($this->storeViewLocales as $storeCode => $locale) {
             if (!isset($storeViews[$storeCode])) {
@@ -187,39 +194,59 @@ class MagentoAdapterV2
 
                 $sku = $item['sku'] ?? null;
                 if ($sku === null || (string) $sku === '') {
-                    $this->errors[] = [
-                        'type' => 'transformation_error',
-                        'product_index' => $index,
-                        'product_id' => (string) ($item['id'] ?? ''),
-                        'message' => "Required field 'sku' is missing from Magento data",
-                        'exception' => ValidationException::class,
-                    ];
+                    $productId = (string) ($item['id'] ?? '');
+
+                    if ($productId === '' || !isset($skuLessIds[$productId])) {
+                        $this->errors[] = [
+                            'type' => 'transformation_error',
+                            'product_index' => $index,
+                            'product_id' => $productId,
+                            'message' => "Required field 'sku' is missing from Magento data",
+                            'exception' => ValidationException::class,
+                            'store_view' => $storeCode,
+                        ];
+                    }
+
+                    if ($productId !== '') {
+                        $skuLessIds[$productId] = true;
+                    }
                     continue;
                 }
 
-                $bySku[(string) $sku][] = ['locale' => $locale, 'item' => $item, 'index' => $index];
+                $bySku[(string) $sku][] = ['storeCode' => $storeCode, 'locale' => $locale, 'item' => $item, 'index' => $index];
             }
         }
 
         $products = [];
 
         foreach ($bySku as $views) {
-            $base = $views[0];
+            $firstFailure = null;
 
-            try {
-                $extraFields = [];
-                foreach (array_slice($views, 1) as $view) {
-                    $extraFields += $this->localeFields($view['item'], $view['locale']);
+            foreach ($views as $baseIndex => $base) {
+                try {
+                    $extraFields = [];
+                    foreach ($views as $viewIndex => $view) {
+                        if ($viewIndex !== $baseIndex) {
+                            $extraFields += $this->localeFields($view['item'], $view['locale']);
+                        }
+                    }
+
+                    $products[] = $this->buildProduct($base['item'], $base['locale'], $extraFields);
+                    $firstFailure = null;
+                    break;
+                } catch (\Exception $e) {
+                    $firstFailure ??= ['view' => $base, 'exception' => $e];
                 }
+            }
 
-                $products[] = $this->buildProduct($base['item'], $base['locale'], $extraFields);
-            } catch (\Exception $e) {
+            if ($firstFailure !== null) {
                 $this->errors[] = [
                     'type' => 'transformation_error',
-                    'product_index' => $base['index'],
-                    'product_id' => (string) ($base['item']['id'] ?? ''),
-                    'message' => $e->getMessage(),
-                    'exception' => get_class($e),
+                    'product_index' => $firstFailure['view']['index'],
+                    'product_id' => (string) ($firstFailure['view']['item']['id'] ?? ''),
+                    'message' => $firstFailure['exception']->getMessage(),
+                    'exception' => get_class($firstFailure['exception']),
+                    'store_view' => $firstFailure['view']['storeCode'],
                 ];
             }
         }
@@ -229,7 +256,7 @@ class MagentoAdapterV2
 
     /**
      * @param array<int, Product> $products
-     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string}>}
+     * @return array{request: BulkOperationsRequest|null, products: array<int, Product>, errors: array<int, array{type: string, product_index: int, product_id: string, message: string, exception: string, store_view?: string}>}
      */
     private function buildResult(array $products): array
     {
