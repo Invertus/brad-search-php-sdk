@@ -281,7 +281,7 @@ final class SearchSettingsRequestBuilder
     /**
      * Builds and returns the immutable SearchSettingsRequest.
      *
-     * @throws InvalidArgumentException If required fields are missing
+     * @throws InvalidArgumentException If required fields are missing or a synonym rule targets an unusable field
      */
     public function build(): SearchSettingsRequest
     {
@@ -318,7 +318,7 @@ final class SearchSettingsRequestBuilder
             );
         }
 
-        return new SearchSettingsRequest(
+        $request = new SearchSettingsRequest(
             $this->appId,
             $searchConfig,
             $scoringConfig,
@@ -331,6 +331,9 @@ final class SearchSettingsRequestBuilder
             $this->similarity,
             $this->synonymRules,
         );
+        $request->validateSynonymRuleFields();
+
+        return $request;
     }
 
     /**

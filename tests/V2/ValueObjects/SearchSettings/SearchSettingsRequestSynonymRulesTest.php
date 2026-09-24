@@ -127,11 +127,11 @@ class SearchSettingsRequestSynonymRulesTest extends TestCase
     public function testRuleTargetingUnknownFieldIsRejected(): void
     {
         try {
-            new SearchSettingsRequest(
+            (new SearchSettingsRequest(
                 'app_123',
                 rawQueryConfig: self::QUERY_CONFIG,
                 synonymRules: ['lt' => [new SynonymRule('samet', 't-550', 'ean')]],
-            );
+            ))->validateSynonymRuleFields();
             $this->fail('Expected InvalidArgumentException');
         } catch (InvalidArgumentException $e) {
             $this->assertSame('synonym_rules', $e->argumentName);
@@ -149,14 +149,15 @@ class SearchSettingsRequestSynonymRulesTest extends TestCase
             $searchConfig,
             synonymRules: ['lt' => [new SynonymRule('bulgarke', 'kampinis šlifuoklis', 'name')]],
         );
+        $ok->validateSynonymRuleFields();
         $this->assertCount(1, $ok->synonymRules['lt']);
 
         $this->expectException(InvalidArgumentException::class);
-        new SearchSettingsRequest(
+        (new SearchSettingsRequest(
             'app_123',
             $searchConfig,
             synonymRules: ['lt' => [new SynonymRule('samet', 't-550', 'sku')]],
-        );
+        ))->validateSynonymRuleFields();
     }
 
     public function testFieldCheckIsSkippedWithoutQueryConfiguration(): void
@@ -165,8 +166,111 @@ class SearchSettingsRequestSynonymRulesTest extends TestCase
             'app_123',
             synonymRules: ['lt' => [new SynonymRule('samet', 't-550', 'sku')]],
         );
+        $request->validateSynonymRuleFields();
 
         $this->assertSame('sku', $request->synonymRules['lt'][0]->field);
+    }
+
+    public function testFieldCheckIsSkippedWhenRawQueryConfigHasNoFieldList(): void
+    {
+        $request = new SearchSettingsRequest(
+            'app_123',
+            rawQueryConfig: ['multi_match' => []],
+            synonymRules: ['lt' => [new SynonymRule('samet', 't-550', 'sku')]],
+        );
+        $request->validateSynonymRuleFields();
+
+        $this->assertSame('sku', $request->synonymRules['lt'][0]->field);
+    }
+
+    public function testRuleTargetingNestedFieldIsRejected(): void
+    {
+        $queryConfig = [
+            'fields' => [
+                ...self::QUERY_CONFIG['fields'],
+                ['type' => 'nested', 'name' => 'variants', 'fields' => [['type' => 'text', 'name' => 'color']]],
+            ],
+        ];
+
+        try {
+            (new SearchSettingsRequestBuilder())
+                ->appId('app_123')
+                ->rawQueryConfig($queryConfig)
+                ->addSynonymRule('lt', new SynonymRule('raudona', 'red', 'variants'))
+                ->build();
+            $this->fail('Expected InvalidArgumentException');
+        } catch (InvalidArgumentException $e) {
+            $this->assertSame('variants', $e->invalidValue);
+            $this->assertStringContainsString('nested field', $e->getMessage());
+        }
+    }
+
+    public function testParsePathKeepsRuleOnRemovedField(): void
+    {
+        $config = [
+            'query_config' => self::QUERY_CONFIG,
+            'synonym_rules' => [
+                'lt' => [
+                    ['when' => 'samet', 'match' => 't-550', 'field' => 'sku'],
+                    ['when' => 'juoda', 'match' => 'black', 'field' => 'color'],
+                ],
+            ],
+        ];
+
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', $config);
+
+        $this->assertSame($config['synonym_rules'], $request->jsonSerialize()['synonym_rules']);
+        $this->assertSame('color', $request->withAppId('app_456')->synonymRules['lt'][1]->field);
+        $this->assertSame('color', $request->withSimilarity('boolean')->synonymRules['lt'][1]->field);
+        $this->assertCount(
+            2,
+            $request->withSynonymRules([
+                'lt' => [...$request->synonymRules['lt']],
+            ])->synonymRules['lt']
+        );
+    }
+
+    public function testWithAddedSynonymRuleChecksOnlyTheNewRule(): void
+    {
+        $request = SearchSettingsRequest::fromSearchConfiguration('app_123', [
+            'query_config' => self::QUERY_CONFIG,
+            'synonym_rules' => ['lt' => [['when' => 'juoda', 'match' => 'black', 'field' => 'color']]],
+        ]);
+
+        $this->assertCount(2, $request->withAddedSynonymRule('lt', new SynonymRule('samet', 't-550', 'sku'))->synonymRules['lt']);
+
+        $this->expectException(InvalidArgumentException::class);
+        $request->withAddedSynonymRule('lt', new SynonymRule('balta', 'white', 'ean'));
+    }
+
+    public function testBuilderRejectsRuleOnUnknownField(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('not in the query configuration');
+
+        (new SearchSettingsRequestBuilder())
+            ->appId('app_123')
+            ->rawQueryConfig(self::QUERY_CONFIG)
+            ->addSynonymRule('lt', new SynonymRule('samet', 't-550', 'ean'))
+            ->build();
+    }
+
+    public function testGappedRuleListSerializesAsJsonList(): void
+    {
+        $rules = [
+            new SynonymRule('samet', 't-550', 'sku'),
+            new SynonymRule('james brown', 'jb', 'name'),
+            new SynonymRule('grinder', 'angle grinder', 'name'),
+        ];
+        unset($rules[1]);
+
+        $request = new SearchSettingsRequest('app_123', rawQueryConfig: self::QUERY_CONFIG, synonymRules: ['lt' => $rules]);
+
+        $this->assertSame(
+            '{"lt":[{"when":"samet","match":"t-550","field":"sku"},'
+            . '{"when":"grinder","match":"angle grinder","field":"name"}]}',
+            json_encode($request->jsonSerialize()['synonym_rules'])
+        );
     }
 
     public function testLanguageKeyMustBeIsoCode(): void

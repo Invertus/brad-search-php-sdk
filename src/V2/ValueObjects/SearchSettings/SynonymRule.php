@@ -16,7 +16,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * rule is two SynonymRule instances.
  *
  * Mirrors the `SynonymRule` schema of the search configuration
- * (`synonym_rules[lang][]`).
+ * (`synonym_rules[lang][]`). Models the engine contract, not brad-app storage;
+ * the optional `id` / `pair_id` are carried through so a round trip keeps pairs.
  */
 final readonly class SynonymRule extends ValueObject
 {
@@ -28,20 +29,34 @@ final readonly class SynonymRule extends ValueObject
 
     public bool $enabled;
 
+    public ?string $id;
+
+    public ?string $pairId;
+
     /**
      * @param string $when Trigger text, one or more words the query must contain
      * @param string $match Text matched on the field when the rule fires
      * @param string $field Configured query_config field name the rule targets
      * @param bool $enabled A rule switched off stays configured but never fires
+     * @param string|null $id Optional rule identifier, only written when set
+     * @param string|null $pairId Optional identifier shared by the two halves of a two-way pair
      *
      * @throws InvalidArgumentException If any part is empty after trimming
      */
-    public function __construct(string $when, string $match, string $field, bool $enabled = true)
-    {
+    public function __construct(
+        string $when,
+        string $match,
+        string $field,
+        bool $enabled = true,
+        ?string $id = null,
+        ?string $pairId = null,
+    ) {
         $this->when = self::requireText($when, 'when');
         $this->match = self::requireText($match, 'match');
         $this->field = self::requireText($field, 'field');
         $this->enabled = $enabled;
+        $this->id = self::optionalText($id);
+        $this->pairId = self::optionalText($pairId);
     }
 
     /**
@@ -71,13 +86,31 @@ final readonly class SynonymRule extends ValueObject
             );
         }
 
-        return new self($data['when'], $data['match'], $data['field'], $data['enabled'] ?? true);
+        foreach (['id', 'pair_id'] as $key) {
+            if (isset($data[$key]) && !is_string($data[$key])) {
+                throw new InvalidArgumentException(
+                    sprintf('Synonym rule "%s" must be a string.', $key),
+                    $key,
+                    $data[$key]
+                );
+            }
+        }
+
+        return new self(
+            $data['when'],
+            $data['match'],
+            $data['field'],
+            $data['enabled'] ?? true,
+            $data['id'] ?? null,
+            $data['pair_id'] ?? null,
+        );
     }
 
     /**
      * `enabled` is only written when false — the engine treats an absent flag as enabled.
+     * `id` and `pair_id` are only written when set.
      *
-     * @return array{when: string, match: string, field: string, enabled?: bool}
+     * @return array{when: string, match: string, field: string, enabled?: bool, id?: string, pair_id?: string}
      */
     public function jsonSerialize(): array
     {
@@ -90,13 +123,19 @@ final readonly class SynonymRule extends ValueObject
         if (!$this->enabled) {
             $rule['enabled'] = false;
         }
+        if ($this->id !== null) {
+            $rule['id'] = $this->id;
+        }
+        if ($this->pairId !== null) {
+            $rule['pair_id'] = $this->pairId;
+        }
 
         return $rule;
     }
 
     private static function requireText(string $value, string $name): string
     {
-        $trimmed = trim($value);
+        $trimmed = self::trimUnicode($value);
         if ($trimmed === '') {
             throw new InvalidArgumentException(
                 sprintf('Synonym rule "%s" cannot be empty.', $name),
@@ -106,5 +145,20 @@ final readonly class SynonymRule extends ValueObject
         }
 
         return $trimmed;
+    }
+
+    private static function optionalText(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $trimmed = self::trimUnicode($value);
+
+        return $trimmed === '' ? null : $trimmed;
+    }
+
+    private static function trimUnicode(string $value): string
+    {
+        return preg_replace('/^[\s\p{Z}\x{200B}\x{FEFF}]+|[\s\p{Z}\x{200B}\x{FEFF}]+$/u', '', $value) ?? trim($value);
     }
 }

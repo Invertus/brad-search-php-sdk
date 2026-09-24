@@ -15,9 +15,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * This immutable ValueObject contains the required data for creating a new index:
  * - locales: Array of locale codes in 'xx-XX' format
  * - fields: Array of FieldDefinition objects
- * - synonyms: Optional per-language synonym configurations, applied at index
- *   creation so they take effect on activation without a separate post-activation
- *   update (which would briefly close the active index).
+ * - synonyms: Deprecated, ignored by the engine; synonyms are query-time
+ *   `synonym_rules` in the search configuration now.
  */
 final readonly class IndexCreateRequest extends ValueObject
 {
@@ -34,6 +33,7 @@ final readonly class IndexCreateRequest extends ValueObject
     public function __construct(
         array $locales,
         public array $fields,
+        /** @deprecated The engine ignores index-time synonyms; use SearchSettingsRequest::$synonymRules. */
         public array $synonyms = []
     ) {
         $this->validateLocales($locales);
@@ -66,6 +66,8 @@ final readonly class IndexCreateRequest extends ValueObject
      * Returns a new instance with different synonym configurations.
      *
      * @param array<SynonymConfiguration> $synonyms
+     *
+     * @deprecated The engine ignores index-time synonyms; use SearchSettingsRequest::$synonymRules.
      */
     public function withSynonyms(array $synonyms): self
     {

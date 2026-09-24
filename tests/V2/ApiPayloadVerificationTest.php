@@ -394,6 +394,19 @@ class ApiPayloadVerificationTest extends TestCase
             $fromConfig->jsonSerialize(),
             'fromSearchConfiguration() does not round-trip the synonym-rules example'
         );
+
+        $gapped = [
+            new SynonymRule('samet', 't-550', 'sku'),
+            new SynonymRule('dropped', 'dropped', 'name'),
+            new SynonymRule('james brown', 'jb', 'name'),
+        ];
+        unset($gapped[1]);
+
+        $this->assertSame(
+            json_encode($expected['synonym_rules']),
+            json_encode($built->withSynonymRules(['lt' => $gapped])->jsonSerialize()['synonym_rules']),
+            'A rule list with gaps must still serialise as a JSON list'
+        );
     }
 
     /**

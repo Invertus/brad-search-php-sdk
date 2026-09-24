@@ -156,9 +156,13 @@ final readonly class SearchSettingsRequest extends ValueObject
 
     /**
      * Returns a new instance with one more synonym rule for a language.
+     *
+     * @throws InvalidArgumentException If the new rule targets a field the query configuration lacks or nests
      */
     public function withAddedSynonymRule(string $language, SynonymRule $rule): self
     {
+        $this->assertRuleTargetsSearchableField($rule);
+
         $rules = $this->synonymRules ?? [];
         $rules[$language] = [...($rules[$language] ?? []), $rule];
 
@@ -219,10 +223,10 @@ final readonly class SearchSettingsRequest extends ValueObject
 
         if ($this->synonymRules !== null && count($this->synonymRules) > 0) {
             $result['synonym_rules'] = array_map(
-                static fn(array $rules): array => array_map(
+                static fn(array $rules): array => array_values(array_map(
                     static fn(SynonymRule $rule): array => $rule->jsonSerialize(),
                     $rules
-                ),
+                )),
                 $this->synonymRules
             );
         }
@@ -281,10 +285,24 @@ final readonly class SearchSettingsRequest extends ValueObject
     }
 
     /**
-     * Validates the synonym rules: language keys are ISO 639-1 codes, every
-     * entry is a SynonymRule, and each rule's field exists in this request's
-     * query configuration when one is present. Typo settings and search types
-     * are not checked here; the engine owns them.
+     * Checks each rule targets a top-level, non-nested query configuration field.
+     * Not run on construction, so a stored config with a stale rule still loads.
+     *
+     * @throws InvalidArgumentException
+     */
+    public function validateSynonymRuleFields(): void
+    {
+        foreach ($this->synonymRules ?? [] as $rules) {
+            foreach ($rules as $rule) {
+                $this->assertRuleTargetsSearchableField($rule);
+            }
+        }
+    }
+
+    /**
+     * Validates the synonym rules shape: language keys are ISO 639-1 codes and
+     * every entry is a SynonymRule. Target fields are checked by
+     * validateSynonymRuleFields().
      *
      * @param array<string, mixed>|null $synonymRules
      *
@@ -295,8 +313,6 @@ final readonly class SearchSettingsRequest extends ValueObject
         if ($synonymRules === null) {
             return;
         }
-
-        $knownFields = $this->configuredFieldNames();
 
         foreach ($synonymRules as $language => $rules) {
             if (!is_string($language) || preg_match(self::LANGUAGE_PATTERN, $language) !== 1) {
@@ -321,48 +337,76 @@ final readonly class SearchSettingsRequest extends ValueObject
                         $rule
                     );
                 }
-                if ($knownFields !== null && !in_array($rule->field, $knownFields, true)) {
-                    throw new InvalidArgumentException(
-                        sprintf(
-                            'Synonym rule "%s" targets field "%s", which is not in the query configuration.',
-                            $rule->when,
-                            $rule->field
-                        ),
-                        'synonym_rules',
-                        $rule->field
-                    );
-                }
             }
         }
     }
 
     /**
-     * Field names the query configuration declares, or null when the request
-     * carries no query configuration to check against.
-     *
-     * @return array<string>|null
+     * @throws InvalidArgumentException If the rule's field is missing from, or nested in, the query configuration
      */
-    private function configuredFieldNames(): ?array
+    private function assertRuleTargetsSearchableField(SynonymRule $rule): void
+    {
+        $fieldTypes = $this->configuredFieldTypes();
+        if ($fieldTypes === null) {
+            return;
+        }
+
+        if (!array_key_exists($rule->field, $fieldTypes)) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym rule "%s" targets field "%s", which is not in the query configuration.',
+                    $rule->when,
+                    $rule->field
+                ),
+                'synonym_rules',
+                $rule->field
+            );
+        }
+
+        if ($fieldTypes[$rule->field] === QueryFieldType::NESTED->value) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Synonym rule "%s" targets field "%s", which is a nested field.',
+                    $rule->when,
+                    $rule->field
+                ),
+                'synonym_rules',
+                $rule->field
+            );
+        }
+    }
+
+    /**
+     * Top-level field names of the query configuration mapped to their type,
+     * or null when the request carries no field list to check against.
+     *
+     * @return array<string, string|null>|null
+     */
+    private function configuredFieldTypes(): ?array
     {
         if ($this->rawQueryConfig !== null) {
-            $names = [];
             $fields = $this->rawQueryConfig['fields'] ?? null;
-            if (is_array($fields)) {
-                foreach ($fields as $field) {
-                    if (is_array($field) && isset($field['name']) && is_string($field['name'])) {
-                        $names[] = $field['name'];
-                    }
+            if (!is_array($fields)) {
+                return null;
+            }
+
+            $types = [];
+            foreach ($fields as $field) {
+                if (is_array($field) && isset($field['name']) && is_string($field['name'])) {
+                    $types[$field['name']] = isset($field['type']) && is_string($field['type']) ? $field['type'] : null;
                 }
             }
 
-            return $names;
+            return $types;
         }
 
         if ($this->searchConfig !== null) {
-            return array_map(
-                static fn(FieldConfig $field): string => $field->fieldName,
-                $this->searchConfig->fields
-            );
+            $types = [];
+            foreach ($this->searchConfig->fields as $field) {
+                $types[$field->fieldName] = null;
+            }
+
+            return $types;
         }
 
         return null;
