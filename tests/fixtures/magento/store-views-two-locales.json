@@ -1,0 +1,412 @@
+{
+  "lv_store": {
+    "data": {
+      "bradProducts": {
+        "total_count": 172942,
+        "page_info": {
+          "current_page": 1,
+          "page_size": 1,
+          "total_pages": 172942
+        },
+        "items": [
+          {
+            "id": 20074,
+            "sku": "20074",
+            "name": "Ekscentra slīpmašīna Bosch GEX 125-1 AE",
+            "full_url": "https://magento.example.com/ekscentra-slipmasina-bosch-gex-125-1-ae.html",
+            "is_in_stock": true,
+            "stock_status": "IN_STOCK",
+            "short_description": {
+              "html": "<p>Pagariniet Bosch instrumenta garantiju līdz 3 gadiem! <a href=\"https://magento.example.com/3-gadu-garantija.html\" target=\"_blank\">Vairāk informācijas atradīsiet &scaron;eit!</a></p>"
+            },
+            "description": {
+              "html": ""
+            },
+            "image_optimized": "https://magento.example.com/media/catalog/product/2/0/20074_p1.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover",
+            "calculated_price": {
+              "minimum_price": {
+                "regular_price": {
+                  "value": 149.99,
+                  "currency": "EUR"
+                },
+                "final_price": {
+                  "value": 119.99,
+                  "currency": "EUR"
+                },
+                "final_price_excl_tax": {
+                  "value": 99.17,
+                  "currency": "EUR"
+                }
+              }
+            },
+            "categories": [
+              {
+                "id": 19,
+                "name": "Slīpmašīnas un pulētāji",
+                "url_path": "slipmasinas-un-puletaji",
+                "level": 2,
+                "path": "1/2/19"
+              },
+              {
+                "id": 448,
+                "name": "Ekscentra slīpmašīnas",
+                "url_path": "slipmasinas-un-puletaji/ekscentra-slipmasinas",
+                "level": 3,
+                "path": "1/2/19/448"
+              }
+            ],
+            "attributes": [
+              {
+                "code": "manufacturer",
+                "label": "Ražotājs",
+                "value": "Bosch",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "mpn",
+                "label": "Ražotāja kods",
+                "value": "0601387500",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "barcode",
+                "label": "Svītrkods",
+                "value": "3165140438278",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "amazon_asin",
+                "label": "_amazon_asin",
+                "value": "B00SPB9TXK",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "middle_of_product_name",
+                "label": "Middle of product name",
+                "value": "Bosch GEX 125-1 AE",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "beginning_of_product_nam",
+                "label": "Beginning of product name",
+                "value": "Ekscentra slīpmašīna",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "model",
+                "label": "Model",
+                "value": "GEX1251",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "b6f2c76b997fff72c8a41e1531e5ab",
+                "label": "Kategorija",
+                "value": "Slīpmašīnas un pulētāji",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "f71a39ed758a2aba322bd3a9212e01",
+                "label": "Apakškategorija",
+                "value": "Ekscentra slīpmašīnas",
+                "is_searchable": true,
+                "is_filterable": true
+              },
+              {
+                "code": "weight_slider",
+                "label": "Svars",
+                "value": "1.600000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "professional_amateur",
+                "label": "Profesionāls / Amatieru",
+                "value": "Profesionāls",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "engine_type",
+                "label": "Dzinēja tips",
+                "value": "Elektriskais",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "rated_power_input_slider",
+                "label": "Nominālā ieejas jauda",
+                "value": "250.000000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "max_rpm_slider",
+                "label": "Maksimālais apgriezienu skaits",
+                "value": "12000.000000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "adjustable_rotation_speed",
+                "label": "Regulējams apgriezienu ātrums strādājot ar dažādiem materiāliem",
+                "value": "Jā",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "attr_9d8856a44b8c2873999555aedf7bf8",
+                "label": "Slīpdiska diametrs",
+                "value": "125 mm",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "grinding_pad_amplitude",
+                "label": "Slīpēšanas pamatnes kustības amplitūda",
+                "value": "2,5 mm",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "set_includes_grinders",
+                "label": "Komplektā ietilpst",
+                "value": "Filtrs",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "case_type",
+                "label": "Vai komplektā ir iekļauts koferis",
+                "value": "Prece iepakota kartona iepakojumā",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "tensions_frequency",
+                "label": "Spriegums",
+                "value": "210 - 240 V / 50 - 60 Hz / AC",
+                "is_searchable": false,
+                "is_filterable": false
+              }
+            ],
+            "sort_popularity": "I999I000",
+            "sort_popularity_sales": 999
+          }
+        ]
+      }
+    }
+  },
+  "lv_ru": {
+    "data": {
+      "bradProducts": {
+        "total_count": 172942,
+        "page_info": {
+          "current_page": 1,
+          "page_size": 1,
+          "total_pages": 172942
+        },
+        "items": [
+          {
+            "id": 20074,
+            "sku": "20074",
+            "name": "Эксцентриковая шлифмашина Bosch GEX 125-1 AE",
+            "full_url": "https://magento.example.com/jekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html",
+            "is_in_stock": true,
+            "stock_status": "IN_STOCK",
+            "short_description": {
+              "html": ""
+            },
+            "description": {
+              "html": ""
+            },
+            "image_optimized": "https://magento.example.com/ru/media/catalog/product/2/0/20074_p1.jpg?auto=webp&format=pjpg&width=840&height=375&fit=cover",
+            "calculated_price": {
+              "minimum_price": {
+                "regular_price": {
+                  "value": 129.99,
+                  "currency": "EUR"
+                },
+                "final_price": {
+                  "value": 129.99,
+                  "currency": "EUR"
+                },
+                "final_price_excl_tax": {
+                  "value": 107.43,
+                  "currency": "EUR"
+                }
+              }
+            },
+            "categories": [
+              {
+                "id": 19,
+                "name": "Шлифовальные и полировальные машины",
+                "url_path": "shlifoval-nye-i-poliroval-nye-mashiny",
+                "level": 2,
+                "path": "1/2/19"
+              },
+              {
+                "id": 448,
+                "name": "Эксцентриковые шлифмашины",
+                "url_path": null,
+                "level": 3,
+                "path": "1/2/19/448"
+              }
+            ],
+            "attributes": [
+              {
+                "code": "manufacturer",
+                "label": "Производитель",
+                "value": "Bosch",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "mpn",
+                "label": "Код производителя",
+                "value": "0601387500",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "barcode",
+                "label": "Barcode",
+                "value": "3165140438278",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "amazon_asin",
+                "label": "_amazon_asin",
+                "value": "B00SPB9TXK",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "middle_of_product_name",
+                "label": "Middle of product name",
+                "value": "Bosch GEX 125-1 AE",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "beginning_of_product_nam",
+                "label": "Beginning of product name",
+                "value": "Эксцентриковая шлифмашина",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "model",
+                "label": "Model",
+                "value": "GEX1251",
+                "is_searchable": true,
+                "is_filterable": false
+              },
+              {
+                "code": "b6f2c76b997fff72c8a41e1531e5ab",
+                "label": "Категория",
+                "value": "Шлифовальные и полировальные машины",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "f71a39ed758a2aba322bd3a9212e01",
+                "label": "Субкатегория",
+                "value": "Эксцентриковые шлифмашины",
+                "is_searchable": true,
+                "is_filterable": true
+              },
+              {
+                "code": "weight_slider",
+                "label": "Вес",
+                "value": "1.600000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "professional_amateur",
+                "label": "Профессиональный / Любительский",
+                "value": "Профессиональный",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "engine_type",
+                "label": "Тип двигателя",
+                "value": "Электрический",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "rated_power_input_slider",
+                "label": "Потребительская мощность",
+                "value": "250.000000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "max_rpm_slider",
+                "label": "Максимальное количество оборотов",
+                "value": "12000.000000",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "adjustable_rotation_speed",
+                "label": "Регулируемая скорость оборотов для работы с различным",
+                "value": "Да",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "attr_9d8856a44b8c2873999555aedf7bf8",
+                "label": "Диаметр шлифовального диска",
+                "value": "125 mm",
+                "is_searchable": false,
+                "is_filterable": true
+              },
+              {
+                "code": "grinding_pad_amplitude",
+                "label": "Амплитуда вибрации шлифовальной подушки",
+                "value": "2,5 mm",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "set_includes_grinders",
+                "label": "B наборe",
+                "value": "фильтр",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "case_type",
+                "label": "Входит ли чехол в комплект",
+                "value": "Товар в картонной коробке",
+                "is_searchable": false,
+                "is_filterable": false
+              },
+              {
+                "code": "tensions_frequency",
+                "label": "Напряжение / частота",
+                "value": "210 - 240 В / 50 - 60 Гц / AC",
+                "is_searchable": false,
+                "is_filterable": false
+              }
+            ],
+            "sort_popularity": "I997I000",
+            "sort_popularity_sales": 997
+          }
+        ]
+      }
+    }
+  }
+}

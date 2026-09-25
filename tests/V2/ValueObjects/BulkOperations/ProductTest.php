@@ -462,4 +462,24 @@ class ProductTest extends TestCase
         $this->assertEquals('WorkWear Pro', $serialized['brand_lt-LT']);
         $this->assertArrayHasKey('imageUrl', $serialized);
     }
+
+    public function testJsonSerializeRoundTripsMainWordEnrichmentFields(): void
+    {
+        // BRD-1307 AC2: the three enrichment fields are ordinary additional fields and
+        // must reach the bulk payload unchanged, including the multi-valued alias list.
+        $fields = [
+            'name_lt-LT' => 'Magnetukas su plokštele 2kg rudas',
+            'main_word_lt-LT' => 'magnetukas',
+            'main_word_base_lt-LT' => 'magnetas',
+            'also_known_as_lt-LT' => ['magnetinis laikiklis', 'magnetukas su plokštele'],
+        ];
+
+        $product = $this->createProduct()->withAdditionalFields($fields);
+        $serialized = $product->jsonSerialize();
+
+        $this->assertSame('magnetukas', $serialized['main_word_lt-LT']);
+        $this->assertSame('magnetas', $serialized['main_word_base_lt-LT']);
+        $this->assertSame(['magnetinis laikiklis', 'magnetukas su plokštele'], $serialized['also_known_as_lt-LT']);
+        $this->assertEquals($fields, Product::fromArray($serialized)->additionalFields);
+    }
 }
