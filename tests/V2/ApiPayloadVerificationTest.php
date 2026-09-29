@@ -34,6 +34,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchBehavior;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchBehaviorType;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchConfig;
 use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchSettingsRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SearchSettingsRequestBuilder;
+use BradSearch\SyncSdk\V2\ValueObjects\SearchSettings\SynonymRule;
 use BradSearch\SyncSdk\V2\ValueObjects\Synonym\SynonymConfiguration;
 use PHPUnit\Framework\TestCase;
 
@@ -361,6 +363,53 @@ class ApiPayloadVerificationTest extends TestCase
     }
 
     /**
+     * Test: SearchSettingsRequest with synonym_rules matches the OpenAPI example exactly.
+     *
+     * The synonym_rules block mirrors the SearchSettings.synonym_rules example in
+     * the server's openapi-v2.yaml. Both the builder path and the Go-native
+     * fromSearchConfiguration() path must produce the same payload.
+     */
+    public function testSearchSettingsRequestMatchesSynonymRulesExample(): void
+    {
+        $expected = $this->loadFixture('search-settings-synonym-rules.json');
+
+        $built = (new SearchSettingsRequestBuilder())
+            ->appId($expected['app_id'])
+            ->supportedLocales($expected['supported_locales'])
+            ->rawQueryConfig($expected['query_config'])
+            ->addSynonymRule('lt', new SynonymRule('samet', 't-550', 'sku'))
+            ->addSynonymRule('lt', new SynonymRule('james brown', 'jb', 'name'))
+            ->build();
+
+        $this->assertEquals(
+            $expected,
+            $built->jsonSerialize(),
+            'SearchSettingsRequest JSON does not match synonym-rules example'
+        );
+
+        $fromConfig = SearchSettingsRequest::fromSearchConfiguration($expected['app_id'], $expected);
+
+        $this->assertEquals(
+            $expected,
+            $fromConfig->jsonSerialize(),
+            'fromSearchConfiguration() does not round-trip the synonym-rules example'
+        );
+
+        $gapped = [
+            new SynonymRule('samet', 't-550', 'sku'),
+            new SynonymRule('dropped', 'dropped', 'name'),
+            new SynonymRule('james brown', 'jb', 'name'),
+        ];
+        unset($gapped[1]);
+
+        $this->assertSame(
+            json_encode($expected['synonym_rules']),
+            json_encode($built->withSynonymRules(['lt' => $gapped])->jsonSerialize()['synonym_rules']),
+            'A rule list with gaps must still serialise as a JSON list'
+        );
+    }
+
+    /**
      * Test that all fixture files exist and are valid JSON.
      *
      * This test ensures fixture files are maintained and accessible.
@@ -373,6 +422,7 @@ class ApiPayloadVerificationTest extends TestCase
             'synonyms-ecommerce-en.json',
             'bulk-operations-darbo-drabuziai.json',
             'search-settings-full.json',
+            'search-settings-synonym-rules.json',
         ];
 
         foreach ($expectedFixtures as $fixture) {

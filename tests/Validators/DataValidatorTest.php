@@ -144,4 +144,51 @@ class DataValidatorTest extends TestCase
         $validator->validateProduct($product);
         $this->assertTrue(true);
     }
+
+    public function testValidateImageUrlFieldWithAvifExtension(): void
+    {
+        $fieldConfig = [
+            'id' => FieldConfigBuilder::keyword(),
+            'imageUrl' => FieldConfigBuilder::imageUrl(),
+        ];
+
+        $validator = new DataValidator($fieldConfig);
+
+        $product = [
+            'id' => '123',
+            'imageUrl' => [
+                'small' => 'https://cdn.shopify.com/products/123_small.avif',
+                'medium' => 'https://cdn.shopify.com/products/123_medium.AVIF',
+            ],
+        ];
+
+        // Should not throw exception
+        $validator->validateProduct($product);
+        $this->assertTrue(true);
+    }
+
+    public function testValidateImageUrlFieldRejectsInvalidExtension(): void
+    {
+        $fieldConfig = [
+            'id' => FieldConfigBuilder::keyword(),
+            'imageUrl' => FieldConfigBuilder::imageUrl(),
+        ];
+
+        $validator = new DataValidator($fieldConfig);
+
+        $product = [
+            'id' => '123',
+            'imageUrl' => [
+                'small' => 'https://cdn.shopify.com/products/123_small.avi',
+                'medium' => 'https://cdn.shopify.com/products/123_medium.avif',
+            ],
+        ];
+
+        try {
+            $validator->validateProduct($product);
+            $this->fail('Expected ValidationException was not thrown');
+        } catch (ValidationException $e) {
+            $this->assertContains("Field 'imageUrl[small]' must be a valid image URL", $e->errors);
+        }
+    }
 }

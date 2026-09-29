@@ -406,8 +406,11 @@ class ImageUrlTest extends TestCase
             'gif' => ['gif'],
             'webp' => ['webp'],
             'svg' => ['svg'],
+            'heic' => ['heic'],
+            'avif' => ['avif'],
             'JPG uppercase' => ['JPG'],
             'PNG uppercase' => ['PNG'],
+            'AVIF uppercase' => ['AVIF'],
         ];
     }
 
@@ -433,6 +436,8 @@ class ImageUrlTest extends TestCase
             'doc' => ['doc'],
             'html' => ['html'],
             'exe' => ['exe'],
+            'avi' => ['avi'],
+            'avifx' => ['avifx'],
         ];
     }
 

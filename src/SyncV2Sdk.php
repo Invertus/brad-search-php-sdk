@@ -219,6 +219,10 @@ class SyncV2Sdk
     /**
      * Set search synonyms for a specific language.
      *
+     * @deprecated Synonyms are query-time rules now. Send them as `synonym_rules`
+     *             in the search configuration (SearchSettingsRequest::$synonymRules).
+     *             This endpoint writes to the active index only and is removed one release later.
+     *
      * @param  SynonymConfiguration  $config  The synonym configuration
      * @return SynonymResponse Typed response containing language, synonym_count, requires_reindex
      */
@@ -234,6 +238,9 @@ class SyncV2Sdk
 
     /**
      * Get search synonyms for a specific language.
+     *
+     * @deprecated Reads the active index's synonym filter, not `synonym_rules`.
+     *             Removed one release later; read rules from the search configuration.
      *
      * The returned response always carries a non-null synonyms array (empty
      * when there are none), unlike SynonymResponse::fromArray() called directly
@@ -275,6 +282,9 @@ class SyncV2Sdk
 
     /**
      * Delete search synonyms for a specific language.
+     *
+     * @deprecated Clears the active index's synonym filter, not `synonym_rules`.
+     *             Removed one release later; remove rules from the search configuration instead.
      *
      * @param  string  $language  Language code (e.g., "en", "lt")
      * @return array<string, mixed> Raw API response

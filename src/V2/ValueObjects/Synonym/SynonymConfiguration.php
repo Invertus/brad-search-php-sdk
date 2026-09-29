@@ -12,6 +12,10 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  *
  * This immutable ValueObject defines synonyms for a specific language,
  * where each synonym group contains terms that are considered equivalent.
+ *
+ * @deprecated Payload of the deprecated /synonyms endpoints. Use
+ *             SearchSettings\SynonymRule inside SearchSettingsRequest::$synonymRules
+ *             (`synonym_rules[lang][]`) instead. Kept for one release.
  */
 final readonly class SynonymConfiguration extends ValueObject
 {

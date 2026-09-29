@@ -1,0 +1,27 @@
+{
+    "app_id": "193d520f-6732-49ac-98ba-e26fdcf676a5",
+    "supported_locales": ["lt-LT"],
+    "query_config": {
+        "fields": [
+            {
+                "type": "text",
+                "name": "name",
+                "locale_suffix": true,
+                "position": 1,
+                "searchTypes": ["match", "match-fuzzy", "stemmed"]
+            },
+            {
+                "type": "text",
+                "name": "sku",
+                "position": 0,
+                "searchTypes": ["exact", "autocomplete", "match-fuzzy"]
+            }
+        ]
+    },
+    "synonym_rules": {
+        "lt": [
+            {"when": "samet", "match": "t-550", "field": "sku"},
+            {"when": "james brown", "match": "jb", "field": "name"}
+        ]
+    }
+}

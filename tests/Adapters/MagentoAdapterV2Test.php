@@ -952,6 +952,439 @@ class MagentoAdapterV2Test extends TestCase
         ], $overrides);
     }
 
+    // --- Store View Map (multiple locales) Tests ---
+
+    public function testStoreViewMapProducesOneProductPerSkuWithEveryLocaleSuffix(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            'data' => ['bradProducts' => ['items' => [$this->buildLocalizedProduct('lv')]]],
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv')]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru')]),
+            ],
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+        $this->assertInstanceOf(BulkOperationsRequest::class, $result['request']);
+
+        $serialized = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame('SKU-001', $serialized['sku']);
+        $this->assertSame('Name lv', $serialized['name_lv-LV']);
+        $this->assertSame('Name ru', $serialized['name_ru-RU']);
+        $this->assertSame('Description lv', $serialized['description_lv-LV']);
+        $this->assertSame('Description ru', $serialized['description_ru-RU']);
+        $this->assertSame('Short lv', $serialized['descriptionShort_lv-LV']);
+        $this->assertSame('Short ru', $serialized['descriptionShort_ru-RU']);
+        $this->assertSame('https://example.com/lv.html', $serialized['productUrl_lv-LV']);
+        $this->assertSame('https://example.com/ru.html', $serialized['productUrl_ru-RU']);
+        $this->assertSame(['Tools lv'], $serialized['categories_lv-LV']);
+        $this->assertSame(['Tools ru'], $serialized['categories_ru-RU']);
+        $this->assertSame('Tools lv', $serialized['categoryDefault_lv-LV']);
+        $this->assertSame('Tools ru', $serialized['categoryDefault_ru-RU']);
+        $this->assertSame('Bosch', $serialized['brand_lv-LV']);
+        $this->assertSame('Bosch', $serialized['brand_ru-RU']);
+        $this->assertSame('Bosch', $serialized['feature_manufacturer_lv-LV']);
+        $this->assertSame('Bosch', $serialized['feature_manufacturer_ru-RU']);
+        $this->assertSame('Silver lv', $serialized['feature_color_lv-LV']);
+        $this->assertSame('Silver ru', $serialized['feature_color_ru-RU']);
+    }
+
+    public function testStoreViewMapTakesLocaleAgnosticFieldsFromPrimaryViewOnly(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $primary = $this->buildLocalizedProduct('lv', ['sort_popularity_sales' => 10, 'sort_popularity' => 'I010I002']);
+        $secondary = $this->buildLocalizedProduct('ru', [
+            'sort_popularity_sales' => 500,
+            'sort_popularity' => 'N500N100',
+            'image_optimized' => 'https://example.com/other.jpg',
+            'is_in_stock' => false,
+            'calculated_price' => ['minimum_price' => ['final_price' => ['value' => 99.0]]],
+            'attributes' => [
+                ['code' => 'manufacturer', 'value' => 'Bosch', 'is_filterable' => true],
+                ['code' => 'color', 'value' => 'Silver ru', 'is_filterable' => true],
+                ['code' => 'mpn', 'value' => 'RU-MPN'],
+                ['code' => 'beginning_of_product_nam', 'value' => 'Ru short'],
+            ],
+        ]);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$primary]),
+                'lv_ru' => $this->wrapMagentoData([$secondary]),
+            ],
+        ]);
+
+        $serialized = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame(990, $serialized['sort_popularity_sales']);
+        $this->assertSame(997, $serialized['delivery_speed']);
+        $this->assertTrue($serialized['hasImage']);
+        $this->assertSame('https://example.com/image.jpg', $serialized['imageUrl']['small']);
+        $this->assertTrue($serialized['inStock']);
+        $this->assertSame(5.99, $serialized['price']);
+        $this->assertSame('E-03707', $serialized['mpn']);
+        $this->assertSame('Lv short', $serialized['nameShort']);
+        $this->assertSame([['name' => 'manufacturer', 'value' => 'Bosch'], ['name' => 'color', 'value' => 'Silver lv']], $serialized['features']);
+    }
+
+    public function testStoreViewMapMergesBySkuAcrossDifferentItemOrder(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([
+                    $this->buildLocalizedProduct('lv', ['id' => 1, 'sku' => 'A']),
+                    $this->buildLocalizedProduct('lv', ['id' => 2, 'sku' => 'B']),
+                ]),
+                'lv_ru' => $this->wrapMagentoData([
+                    $this->buildLocalizedProduct('ru', ['id' => 2, 'sku' => 'B', 'name' => 'B ru']),
+                    $this->buildLocalizedProduct('ru', ['id' => 1, 'sku' => 'A', 'name' => 'A ru']),
+                ]),
+            ],
+        ]);
+
+        $this->assertCount(2, $result['products']);
+        $bySku = [];
+        foreach ($result['products'] as $product) {
+            $bySku[$product->sku] = $product->jsonSerialize();
+        }
+
+        $this->assertSame('1', $bySku['A']['id']);
+        $this->assertSame('A ru', $bySku['A']['name_ru-RU']);
+        $this->assertSame('2', $bySku['B']['id']);
+        $this->assertSame('B ru', $bySku['B']['name_ru-RU']);
+    }
+
+    public function testStoreViewMapIndexesSkuPresentOnlyInSecondaryView(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru', ['sku' => 'RU-ONLY'])]),
+            ],
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $serialized = $result['products'][0]->jsonSerialize();
+        $this->assertSame('RU-ONLY', $serialized['sku']);
+        $this->assertSame('Name ru', $serialized['name_ru-RU']);
+        $this->assertArrayNotHasKey('name_lv-LV', $serialized);
+    }
+
+    public function testStoreViewMapLeavesLocaleAbsentWhenViewIsMissingFromPayload(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv')]),
+            ],
+        ]);
+
+        $serialized = $result['products'][0]->jsonSerialize();
+        $this->assertSame('Name lv', $serialized['name_lv-LV']);
+        $this->assertArrayNotHasKey('name_ru-RU', $serialized);
+    }
+
+    public function testStoreViewMapWithPlainResponseUsesPrimaryLocale(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform($this->wrapMagentoData([$this->buildLocalizedProduct('lv')]));
+
+        $serialized = $result['products'][0]->jsonSerialize();
+        $this->assertSame('Name lv', $serialized['name_lv-LV']);
+        $this->assertArrayNotHasKey('name_ru-RU', $serialized);
+    }
+
+    public function testSingleLocaleAdapterIgnoresStoreViewsKey(): void
+    {
+        $result = $this->adapter->transform([
+            'data' => ['bradProducts' => ['items' => [$this->buildLocalizedProduct('lv')]]],
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru')]),
+            ],
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $serialized = $result['products'][0]->jsonSerialize();
+        $this->assertSame('Name lv', $serialized['name_lt-LT']);
+        $this->assertArrayNotHasKey('name_ru-RU', $serialized);
+    }
+
+    public function testStoreViewMapCollectsErrorsPerSku(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([
+                    ['id' => 1, 'sku' => 'NO-IMAGE', 'name' => 'x'],
+                    ['id' => 2, 'name' => 'no sku'],
+                    $this->buildLocalizedProduct('lv', ['id' => 3, 'sku' => 'OK']),
+                ]),
+                'lv_ru' => $this->wrapMagentoData([
+                    $this->buildLocalizedProduct('ru', ['id' => 3, 'sku' => 'OK']),
+                ]),
+            ],
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertSame('OK', $result['products'][0]->sku);
+        $this->assertCount(2, $result['errors']);
+        $this->assertSame('2', $result['errors'][0]['product_id']);
+        $this->assertSame('1', $result['errors'][1]['product_id']);
+        $this->assertSame('lv_store', $result['errors'][0]['store_view']);
+        $this->assertSame('lv_store', $result['errors'][1]['store_view']);
+        $this->assertSame($result['errors'], $adapter->getErrors());
+    }
+
+    public function testStoreViewMapRecordsSkuLessProductOnceAcrossViews(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([['id' => 2, 'name' => 'no sku lv']]),
+                'lv_ru' => $this->wrapMagentoData([
+                    ['id' => 2, 'name' => 'no sku ru'],
+                    ['id' => 5, 'name' => 'no sku, ru only'],
+                ]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(2, $result['errors']);
+        $this->assertSame(['2', 'lv_store', 0], [$result['errors'][0]['product_id'], $result['errors'][0]['store_view'], $result['errors'][0]['product_index']]);
+        $this->assertSame(['5', 'lv_ru', 1], [$result['errors'][1]['product_id'], $result['errors'][1]['store_view'], $result['errors'][1]['product_index']]);
+    }
+
+    public function testStoreViewMapFallsBackToNextViewWhenPrimaryCopyCannotBeBuilt(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv', ['id' => null])]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru')]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['errors']);
+        $this->assertCount(1, $result['products']);
+
+        $serialized = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame('123', $serialized['id']);
+        $this->assertSame('Name ru', $serialized['name_ru-RU']);
+        $this->assertSame('Name lv', $serialized['name_lv-LV']);
+        $this->assertSame('Silver ru', $serialized['feature_color_ru-RU']);
+        $this->assertSame('Silver lv', $serialized['feature_color_lv-LV']);
+    }
+
+    public function testStoreViewMapRecordsOneErrorWhenNoViewCopyCanBeBuilt(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([$this->buildLocalizedProduct('lv', ['id' => null])]),
+                'lv_ru' => $this->wrapMagentoData([$this->buildLocalizedProduct('ru', ['id' => null])]),
+            ],
+        ]);
+
+        $this->assertCount(0, $result['products']);
+        $this->assertCount(1, $result['errors']);
+        $this->assertSame('lv_store', $result['errors'][0]['store_view']);
+        $this->assertSame("Required field 'id' is missing from Magento data", $result['errors'][0]['message']);
+    }
+
+    public function testStoreViewMapThrowsOnUnknownStoreView(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV']);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage("unknown store view 'de_store'");
+
+        $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => [
+                'lv_store' => $this->wrapMagentoData([]),
+                'de_store' => $this->wrapMagentoData([]),
+            ],
+        ]);
+    }
+
+    public function testStoreViewMapThrowsOnInvalidViewResponse(): void
+    {
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV']);
+
+        $this->expectException(ValidationException::class);
+        $this->expectExceptionMessage('missing data field');
+
+        $adapter->transform([
+            MagentoAdapterV2::STORE_VIEWS_KEY => ['lv_store' => ['items' => []]],
+        ]);
+    }
+
+    public function testEmptyStoreViewMapIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+        new MagentoAdapterV2([]);
+    }
+
+    public function testStoreViewMapWithEmptyLocaleIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+        new MagentoAdapterV2(['lv_store' => '']);
+    }
+
+    // --- Full bradProducts page shape: two store views of one product ---
+
+    public function testFullPageShapeSingleViewProducesLatvianDocument(): void
+    {
+        $fixture = $this->loadStoreViewsFixture();
+
+        $result = (new MagentoAdapterV2('lv-LV'))->transform($fixture['lv_store']);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+
+        $doc = $result['products'][0]->jsonSerialize();
+
+        $this->assertSame('20074', $doc['id']);
+        $this->assertSame('20074', $doc['sku']);
+        $this->assertSame(119.99, $doc['price']);
+        $this->assertSame(149.99, $doc['basePrice']);
+        $this->assertSame(99.17, $doc['priceTaxExcluded']);
+        $this->assertTrue($doc['inStock']);
+        $this->assertTrue($doc['hasImage']);
+        $this->assertSame(999, $doc['delivery_speed']);
+        $this->assertSame(1, $doc['sort_popularity_sales']);
+        $this->assertSame('Ekscentra slīpmašīna Bosch GEX 125-1 AE', $doc['name_lv-LV']);
+        $this->assertArrayNotHasKey('description_lv-LV', $doc);
+        $this->assertStringStartsWith('Pagariniet Bosch instrumenta garantiju', $doc['descriptionShort_lv-LV']);
+        $this->assertStringNotContainsString('<a', $doc['descriptionShort_lv-LV']);
+        $this->assertSame(
+            ['Slīpmašīnas un pulētāji', 'Slīpmašīnas un pulētāji > Ekscentra slīpmašīnas'],
+            $doc['categories_lv-LV']
+        );
+        $this->assertSame('Ekscentra slīpmašīnas', $doc['categoryDefault_lv-LV']);
+        $this->assertSame('Bosch', $doc['brand_lv-LV']);
+        $this->assertSame('0601387500', $doc['mpn']);
+        $this->assertSame('3165140438278', $doc['barcode']);
+        $this->assertSame('Ekscentra slīpmašīna', $doc['nameShort']);
+        $this->assertSame('125 mm', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_lv-LV']);
+        $this->assertSame('Slīpmašīnas un pulētāji', $doc['feature_b6f2c76b997fff72c8a41e1531e5ab_lv-LV']);
+        $this->assertSame('1.600000', $doc['feature_weight_slider_lv-LV']);
+        $this->assertArrayNotHasKey('feature_mpn_lv-LV', $doc);
+        $this->assertSame(
+            ['manufacturer', 'b6f2c76b997fff72c8a41e1531e5ab', 'f71a39ed758a2aba322bd3a9212e01', 'attr_9d8856a44b8c2873999555aedf7bf8'],
+            array_column($doc['features'], 'name')
+        );
+    }
+
+    public function testFullPageShapeTwoViewsMergeIntoOneDocumentWithBothLocales(): void
+    {
+        $fixture = $this->loadStoreViewsFixture();
+        $adapter = new MagentoAdapterV2(['lv_store' => 'lv-LV', 'lv_ru' => 'ru-RU']);
+
+        $result = $adapter->transform([
+            'data' => $fixture['lv_store']['data'],
+            MagentoAdapterV2::STORE_VIEWS_KEY => $fixture,
+        ]);
+
+        $this->assertCount(1, $result['products']);
+        $this->assertCount(0, $result['errors']);
+
+        $doc = $result['products'][0]->jsonSerialize();
+        $single = (new MagentoAdapterV2('lv-LV'))->transform($fixture['lv_store'])['products'][0]->jsonSerialize();
+
+        // Everything the single-view sync produced is still there, unchanged.
+        foreach ($single as $key => $value) {
+            $this->assertSame($value, $doc[$key], "field {$key} changed by the merge");
+        }
+
+        // The RU view added only its own suffixed fields.
+        $added = array_diff_key($doc, $single);
+        $this->assertNotEmpty($added);
+        foreach (array_keys($added) as $key) {
+            $this->assertStringEndsWith('_ru-RU', $key, "unexpected unsuffixed field {$key} from the secondary view");
+        }
+
+        $this->assertSame('Эксцентриковая шлифмашина Bosch GEX 125-1 AE', $doc['name_ru-RU']);
+        // The RU view has an empty short_description, so no descriptionShort_ru-RU and the LV one stays.
+        $this->assertArrayNotHasKey('descriptionShort_ru-RU', $doc);
+        $this->assertArrayHasKey('descriptionShort_lv-LV', $doc);
+        $this->assertSame('https://magento.example.com/jekscentrikovaja-shlifmashina-bosch-gex-125-1-ae.html', $doc['productUrl_ru-RU']);
+        $this->assertSame(
+            ['Шлифовальные и полировальные машины', 'Шлифовальные и полировальные машины > Эксцентриковые шлифмашины'],
+            $doc['categories_ru-RU']
+        );
+        $this->assertSame('Эксцентриковые шлифмашины', $doc['categoryDefault_ru-RU']);
+        $this->assertSame('Bosch', $doc['brand_ru-RU']);
+        $this->assertSame('125 mm', $doc['feature_attr_9d8856a44b8c2873999555aedf7bf8_ru-RU']);
+        $this->assertSame('Электрический', $doc['feature_engine_type_ru-RU']);
+        $this->assertSame('фильтр', $doc['feature_set_includes_grinders_ru-RU']);
+        // Price, image and popularity differ between the two views; the primary view's values win.
+        $this->assertSame(119.99, $doc['price']);
+        $this->assertSame(149.99, $doc['basePrice']);
+        $this->assertStringNotContainsString('/ru/', $doc['imageUrl']['small']);
+        $this->assertSame(1, $doc['sort_popularity_sales']);
+
+        // Same count of feature_* fields per locale: every attribute got both suffixes.
+        $lvFeatures = array_filter(array_keys($doc), fn(string $k) => str_starts_with($k, 'feature_') && str_ends_with($k, '_lv-LV'));
+        $ruFeatures = array_filter(array_keys($doc), fn(string $k) => str_starts_with($k, 'feature_') && str_ends_with($k, '_ru-RU'));
+        $this->assertCount(17, $lvFeatures);
+        $this->assertCount(count($lvFeatures), $ruFeatures);
+    }
+
+    /**
+     * @return array<string, array<string, mixed>>
+     */
+    private function loadStoreViewsFixture(): array
+    {
+        $json = file_get_contents(__DIR__ . '/../fixtures/magento/store-views-two-locales.json');
+        $this->assertNotFalse($json);
+
+        return json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
+    private function buildLocalizedProduct(string $lang, array $overrides = []): array
+    {
+        return array_merge([
+            'id' => 123,
+            'sku' => 'SKU-001',
+            'name' => "Name {$lang}",
+            'full_url' => "https://example.com/{$lang}.html",
+            'description' => ['html' => "<p>Description {$lang}</p>"],
+            'short_description' => ['html' => "<p>Short {$lang}</p>"],
+            'image_optimized' => 'https://example.com/image.jpg',
+            'is_in_stock' => true,
+            'calculated_price' => ['minimum_price' => ['final_price' => ['value' => 5.99]]],
+            'categories' => [
+                ['id' => '2', 'name' => "Tools {$lang}", 'path' => '1/2', 'level' => 1],
+            ],
+            'attributes' => [
+                ['code' => 'manufacturer', 'value' => 'Bosch', 'is_filterable' => true],
+                ['code' => 'color', 'value' => "Silver {$lang}", 'is_filterable' => true],
+                ['code' => 'mpn', 'value' => 'E-03707'],
+                ['code' => 'beginning_of_product_nam', 'value' => ucfirst($lang) . ' short'],
+            ],
+        ], $overrides);
+    }
+
     /**
      * @param array<int, array<string, mixed>> $items
      * @return array<string, mixed>
