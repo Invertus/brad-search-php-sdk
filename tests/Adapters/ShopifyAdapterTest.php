@@ -1170,6 +1170,99 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('39.99', $result['products'][0]['basePrice']);
     }
 
+    public function testBasePriceEqualsPriceWhenVariantPricesDifferWithoutSale(): void
+    {
+        $product = $this->makeProductWithVariantPrices([
+            ['9.00', null],
+            ['10.00', null],
+            ['11.00', '0.00'],
+            ['12.00', null],
+        ]);
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $transformed = $result['products'][0];
+
+        $this->assertEquals('9.00', $transformed['price']);
+        $this->assertEquals('9.00', $transformed['basePrice']);
+        $this->assertEquals('9.00', $transformed['priceTaxExcluded']);
+        $this->assertEquals('9.00', $transformed['basePriceTaxExcluded']);
+        $this->assertEquals('12.00', $transformed['variants'][3]['price']);
+        $this->assertEquals('12.00', $transformed['variants'][3]['basePrice']);
+    }
+
+    public function testBasePriceIgnoresSaleOnNonCheapestVariant(): void
+    {
+        $product = $this->makeProductWithVariantPrices([
+            ['9.00', null],
+            ['10.00', '15.00'],
+        ]);
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $transformed = $result['products'][0];
+
+        $this->assertEquals('9.00', $transformed['price']);
+        $this->assertEquals('9.00', $transformed['basePrice']);
+        $this->assertEquals('15.00', $transformed['variants'][1]['basePrice']);
+    }
+
+    public function testBasePriceUsesCompareAtOfCheapestVariantOnSale(): void
+    {
+        $product = $this->makeProductWithVariantPrices([
+            ['12.00', '14.00'],
+            ['9.00', '11.00'],
+        ]);
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $transformed = $result['products'][0];
+
+        $this->assertEquals('9.00', $transformed['price']);
+        $this->assertEquals('11.00', $transformed['basePrice']);
+        $this->assertEquals('11.00', $transformed['basePriceTaxExcluded']);
+        $this->assertEquals('14.00', $transformed['variants'][0]['basePrice']);
+    }
+
+    public function testBasePriceTakesCompareAtFromAnyCheapestVariantOnSale(): void
+    {
+        $product = $this->makeProductWithVariantPrices([
+            ['9.00', '0.00'],
+            ['9.00', '20.00'],
+            ['30.00', '40.00'],
+        ]);
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+
+        $this->assertEquals('9.00', $result['products'][0]['price']);
+        $this->assertEquals('20.00', $result['products'][0]['basePrice']);
+    }
+
+    /**
+     * @param array<int, array{0: string, 1: string|null}> $prices [price, compareAtPrice] per variant
+     */
+    private function makeProductWithVariantPrices(array $prices): array
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Good Sandals', 'Desc', 'BrandX', 'Shoes');
+        $edges = [];
+        foreach ($prices as $i => [$price, $compareAt]) {
+            $edges[] = ['node' => [
+                'id' => 'gid://shopify/ProductVariant/' . ($i + 100),
+                'sku' => 'SKU-' . $i,
+                'price' => $price,
+                'compareAtPrice' => $compareAt,
+                'availableForSale' => true,
+                'selectedOptions' => [],
+            ]];
+        }
+        $amounts = array_column($prices, 0);
+        usort($amounts, fn(string $a, string $b) => bccomp($a, $b, 2));
+        $product['node']['variants'] = ['edges' => $edges];
+        $product['node']['priceRangeV2'] = [
+            'minVariantPrice' => ['amount' => $amounts[0], 'currencyCode' => 'USD'],
+            'maxVariantPrice' => ['amount' => end($amounts), 'currencyCode' => 'USD'],
+        ];
+
+        return $product;
+    }
+
     // ─── In stock ───
 
     public function testInStockWhenVariantAvailable(): void

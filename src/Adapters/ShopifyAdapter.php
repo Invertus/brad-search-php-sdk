@@ -596,30 +596,27 @@ class ShopifyAdapter
     }
 
     /**
-     * Extract base price from variants' compareAtPrice.
-     * Uses the maximum compareAtPrice across all variants.
+     * Base price of the cheapest variant: its compareAtPrice when on sale, otherwise the price itself.
      */
     private function extractBasePrice(array $product): string
     {
+        $price = $this->extractPrice($product);
         $edges = $this->getNestedValue($product, ['variants', 'edges'], []);
+        $basePrice = $price;
 
-        $compareAtPrices = array_filter(
-            array_map(fn($edge) => $this->getNestedValue($edge, ['node', 'compareAtPrice']), $edges),
-            fn($price) => $price !== null
-        );
+        foreach ($edges as $edge) {
+            $variantPrice = $this->getNestedValue($edge, ['node', 'price']);
+            if (! is_numeric($variantPrice) || bccomp((string) $variantPrice, $price, 2) !== 0) {
+                continue;
+            }
 
-        if (! empty($compareAtPrices)) {
-            $max = array_reduce($compareAtPrices, fn($carry, $price) =>
-                bccomp((string) $price, $carry, 2) > 0 ? (string) $price : $carry, '0.00');
-
-            if (bccomp($max, '0.00', 2) > 0) {
-                return $max;
+            $compareAt = $this->getNestedValue($edge, ['node', 'compareAtPrice']);
+            if (is_numeric($compareAt) && bccomp((string) $compareAt, $basePrice, 2) > 0) {
+                $basePrice = (string) $compareAt;
             }
         }
 
-        $amount = $this->getNestedValue($product, ['priceRangeV2', 'maxVariantPrice', 'amount']);
-
-        return is_string($amount) ? $amount : $this->extractPrice($product);
+        return $basePrice;
     }
 
     /**
