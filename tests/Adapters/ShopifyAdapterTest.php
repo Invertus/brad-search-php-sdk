@@ -1221,6 +1221,22 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('14.00', $transformed['variants'][0]['basePrice']);
     }
 
+    public function testBasePriceKeepsSaleWhenAllVariantsSharePriceAndCompareAt(): void
+    {
+        $product = $this->makeProductWithVariantPrices([
+            ['399.00', '698.00'],
+            ['399.00', '698.00'],
+        ]);
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product]));
+        $transformed = $result['products'][0];
+
+        $this->assertEquals('399.00', $transformed['price']);
+        $this->assertEquals('698.00', $transformed['basePrice']);
+        $this->assertEquals('698.00', $transformed['variants'][0]['basePrice']);
+        $this->assertEquals('698.00', $transformed['variants'][1]['basePrice']);
+    }
+
     public function testBasePriceTakesCompareAtFromAnyCheapestVariantOnSale(): void
     {
         $product = $this->makeProductWithVariantPrices([
