@@ -12,6 +12,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Normalize\NormalizeRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\ForceMergeResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\NormalizeResponse;
@@ -143,6 +144,23 @@ class SyncV2Sdk
         );
 
         return VersionActivateResponse::fromArray($response);
+    }
+
+    /**
+     * Merge the live index down to one segment in the background, so fuzzy queries run faster.
+     *
+     * Not retried: the engine answers at once, and a repeat would queue a second merge.
+     * Call it outside shopper hours; the merge needs free disk about the size of the index.
+     *
+     * @return ForceMergeResponse Typed response with the merged index and the OpenSearch task id
+     */
+    public function forceMergeIndex(): ForceMergeResponse
+    {
+        $response = $this->getHttpClient()->post(
+            $this->baseApiPath . 'index/forcemerge'
+        );
+
+        return ForceMergeResponse::fromArray($response);
     }
 
     /**
