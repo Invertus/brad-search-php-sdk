@@ -12,8 +12,10 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\BulkOperationsRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Normalize\NormalizeRequest;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\BulkOperationsResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\ForceMergeResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexCreationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexInfoResponse;
+use BradSearch\SyncSdk\V2\ValueObjects\Response\IndexSegmentsResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\NormalizeResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\QueryConfigurationResponse;
 use BradSearch\SyncSdk\V2\ValueObjects\Response\SettingsResponse;
@@ -143,6 +145,36 @@ class SyncV2Sdk
         );
 
         return VersionActivateResponse::fromArray($response);
+    }
+
+    /**
+     * Merge state of the live index: segments, size, free disk, running merge or rewrite.
+     */
+    public function getIndexSegments(): IndexSegmentsResponse
+    {
+        $response = $this->getHttpClient()->get(
+            $this->baseApiPath . 'index/segments'
+        );
+
+        return IndexSegmentsResponse::fromArray($response);
+    }
+
+    /**
+     * Merge the live index down to one segment in the background, so fuzzy queries run faster.
+     *
+     * Not retried: the engine answers at once, and a repeat would queue a second merge.
+     * The engine refuses with 503 (TransientApiException, details.reason in the body) while a
+     * merge or rewrite runs, or when free disk is under twice the index size.
+     *
+     * @return ForceMergeResponse Typed response with the merged index and the OpenSearch task id
+     */
+    public function forceMergeIndex(): ForceMergeResponse
+    {
+        $response = $this->getHttpClient()->post(
+            $this->baseApiPath . 'index/forcemerge'
+        );
+
+        return ForceMergeResponse::fromArray($response);
     }
 
     /**
