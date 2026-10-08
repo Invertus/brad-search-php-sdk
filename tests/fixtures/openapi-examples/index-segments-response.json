@@ -1,0 +1,9 @@
+{
+  "index": "193d520f-6732-49ac-98ba-e26fdcf676a5-v2",
+  "segments": 12,
+  "deleted_docs": 1500,
+  "store_bytes": 2147483648,
+  "free_disk_bytes": 10737418240,
+  "merge_running": false,
+  "rewrite_running": false
+}

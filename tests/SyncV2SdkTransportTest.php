@@ -117,6 +117,23 @@ class SyncV2SdkTransportTest extends TestCase
         $this->assertSame('node-1:42', $response->task);
     }
 
+    public function testGetIndexSegmentsReadsTheSegmentsEndpoint(): void
+    {
+        $transport = new FakeTransport([new HttpResponse(200, json_encode([
+            'index' => self::APP_ID . '-v2',
+            'segments' => 1,
+            'merge_running' => true,
+        ], JSON_THROW_ON_ERROR))]);
+
+        $response = (new SyncV2Sdk($this->fastRetryConfig(), $transport))->getIndexSegments();
+
+        $request = $transport->requests[0];
+        $this->assertSame('GET', $request->method);
+        $this->assertSame('https://api.example.com/api/v2/applications/' . self::APP_ID . '/index/segments', $request->url);
+        $this->assertSame(1, $response->segments);
+        $this->assertTrue($response->mergeRunning);
+    }
+
     public function testForceMergeIndexIsNotRetriedOn503(): void
     {
         $transport = new FakeTransport([new HttpResponse(503, 'unavailable')]);
