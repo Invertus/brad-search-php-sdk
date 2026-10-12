@@ -199,7 +199,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `productType` | `categoryDefault` | Primary category |
 | `productType` + `tags` | `categories` | Combined categories |
 | `priceRangeV2.minVariantPrice` | `price` | Minimum variant price |
-| `variants.*.compareAtPrice` | `basePrice` | Maximum compareAtPrice across variants; falls back to maxVariantPrice, then minVariantPrice if unavailable |
+| `variants.*.compareAtPrice` | `basePrice` | compareAtPrice of the cheapest variant (the one matching minVariantPrice) when above 0; otherwise equals `price` |
 | `variants[0].sku` | `sku` | First variant SKU |
 | `variants.*.availableForSale` | `inStock` | Any variant available |
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
