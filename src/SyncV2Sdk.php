@@ -164,7 +164,7 @@ class SyncV2Sdk
      *
      * Not retried: the engine answers at once, and a repeat would queue a second merge.
      * The engine refuses with 503 (TransientApiException, details.reason in the body) while a
-     * merge or rewrite runs, or when free disk is under twice the index size.
+     * merge or rewrite runs, or when one more copy of the index would pass the disk high watermark.
      *
      * @return ForceMergeResponse Typed response with the merged index and the OpenSearch task id
      */

@@ -19,7 +19,8 @@ final readonly class IndexSegmentsResponse extends ValueObject
         public int $storeBytes,
         public int $freeDiskBytes,
         public bool $mergeRunning,
-        public bool $rewriteRunning
+        public bool $rewriteRunning,
+        public int $watermarkFreeBytes = 0
     ) {
         if (trim($index) === '') {
             throw new InvalidArgumentException('index cannot be empty.', 'index', $index);
@@ -46,7 +47,8 @@ final readonly class IndexSegmentsResponse extends ValueObject
             storeBytes: (int) ($data['store_bytes'] ?? 0),
             freeDiskBytes: (int) ($data['free_disk_bytes'] ?? 0),
             mergeRunning: (bool) ($data['merge_running'] ?? false),
-            rewriteRunning: (bool) ($data['rewrite_running'] ?? false)
+            rewriteRunning: (bool) ($data['rewrite_running'] ?? false),
+            watermarkFreeBytes: (int) ($data['watermark_free_bytes'] ?? 0)
         );
     }
 
@@ -61,6 +63,7 @@ final readonly class IndexSegmentsResponse extends ValueObject
             'deleted_docs' => $this->deletedDocs,
             'store_bytes' => $this->storeBytes,
             'free_disk_bytes' => $this->freeDiskBytes,
+            'watermark_free_bytes' => $this->watermarkFreeBytes,
             'merge_running' => $this->mergeRunning,
             'rewrite_running' => $this->rewriteRunning,
         ];

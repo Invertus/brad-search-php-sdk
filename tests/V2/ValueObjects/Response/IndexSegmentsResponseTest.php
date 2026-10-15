@@ -26,6 +26,7 @@ class IndexSegmentsResponseTest extends TestCase
         $this->assertSame(1500, $response->deletedDocs);
         $this->assertSame(2147483648, $response->storeBytes);
         $this->assertSame(10737418240, $response->freeDiskBytes);
+        $this->assertSame(5368709120, $response->watermarkFreeBytes);
         $this->assertFalse($response->mergeRunning);
         $this->assertFalse($response->rewriteRunning);
         $this->assertSame($data, $response->jsonSerialize());
@@ -36,7 +37,15 @@ class IndexSegmentsResponseTest extends TestCase
         $response = IndexSegmentsResponse::fromArray(['index' => 'app-v1', 'segments' => 3]);
 
         $this->assertSame(0, $response->deletedDocs);
+        $this->assertSame(0, $response->watermarkFreeBytes);
         $this->assertFalse($response->mergeRunning);
+    }
+
+    public function testNegativeWatermarkFreeBytesIsKept(): void
+    {
+        $response = IndexSegmentsResponse::fromArray(['index' => 'app-v1', 'segments' => 3, 'watermark_free_bytes' => -1024]);
+
+        $this->assertSame(-1024, $response->watermarkFreeBytes);
     }
 
     public function testMissingSegmentsThrows(): void
