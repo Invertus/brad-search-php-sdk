@@ -41,6 +41,51 @@ class ShopifyAdapterTest extends TestCase
         $this->assertSame([], $product['categories']);
     }
 
+    public function testMetafieldsBecomeFeatureFieldsPerLocaleWithTranslationFallback(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'custom', 'key' => 'custom.sport_type', 'type' => 'single_line_text_field', 'jsonValue' => 'Freestyle',
+                'translations' => ['lt' => [['key' => 'value', 'value' => 'Laisvasis stilius']]]],
+            ['namespace' => 'test_data', 'key' => 'snowboard_length', 'type' => 'dimension', 'jsonValue' => ['value' => 159, 'unit' => 'CENTIMETERS']],
+            ['namespace' => 'shopify', 'key' => 'color-pattern', 'type' => 'list.metaobject_reference', 'jsonValue' => ['gid://shopify/Metaobject/1', 'gid://shopify/Metaobject/2'],
+                'references' => ['nodes' => [['displayName' => 'Blue'], ['displayName' => 'Red']]]],
+            ['namespace' => 'custom', 'key' => 'on_sale', 'type' => 'boolean', 'jsonValue' => true],
+            ['namespace' => 'custom', 'key' => 'sizes', 'type' => 'list.single_line_text_field', 'jsonValue' => ['S', '', 'M'],
+                'translations' => ['lt' => [['key' => 'value', 'value' => '["Mažas","Vidutinis"]']]]],
+            ['namespace' => 'custom', 'key' => 'manual', 'type' => 'file_reference', 'jsonValue' => 'gid://shopify/MediaImage/1'],
+            ['namespace' => 'custom', 'key' => 'empty', 'type' => 'single_line_text_field', 'jsonValue' => ''],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt'])['products'][0];
+
+        $this->assertSame('Freestyle', $p['feature_custom_sport_type_en']);
+        $this->assertSame('Laisvasis stilius', $p['feature_custom_sport_type_lt']);
+        $this->assertSame('159 cm', $p['feature_test_data_snowboard_length_en']);
+        $this->assertSame('159 cm', $p['feature_test_data_snowboard_length_lt']);
+        $this->assertSame(['Blue', 'Red'], $p['feature_shopify_color_pattern_en']);
+        $this->assertSame(['Blue', 'Red'], $p['feature_shopify_color_pattern_lt']);
+        $this->assertSame('true', $p['feature_custom_on_sale_en']);
+        $this->assertSame(['S', 'M'], $p['feature_custom_sizes_en']);
+        $this->assertSame(['Mažas', 'Vidutinis'], $p['feature_custom_sizes_lt']);
+        $this->assertArrayNotHasKey('feature_custom_manual_en', $p);
+        $this->assertArrayNotHasKey('feature_custom_empty_en', $p);
+    }
+
+    public function testMetafieldSlugMatchesTheShopifyAppFeatureIds(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'shopify--discovery--product_search_boost', 'key' => 'queries', 'type' => 'single_line_text_field', 'jsonValue' => 'snow'],
+            ['namespace' => 'Mano Laukai', 'key' => 'Spalvų Grupė', 'type' => 'single_line_text_field', 'jsonValue' => 'x'],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame('snow', $p['feature_shopify_discovery_product_search_boost_queries']);
+        $this->assertSame('x', $p['feature_mano_laukai_spalvų_grupė']);
+    }
+
     public function testTransformWithoutLocalesOmitsEmptyDescription(): void
     {
         $data = $this->makeShopifyResponse([

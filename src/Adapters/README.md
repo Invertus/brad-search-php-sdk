@@ -216,6 +216,29 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 "id": "6843600694995"
 ```
 
+#### Metafields as features
+
+Product metafields the connector attaches under `metafields.nodes` become `feature_<slug>` fields
+(`feature_<slug>_<locale>` with locales). The slug is `namespace_key` lowercased with every run of
+characters other than letters, numbers and `_` collapsed to `_`, the same slug the Shopify app
+reports as the feature id, so the field matches the filter row brad-app registers. A `key` that
+arrives as `namespace.key` is stripped of its namespace first.
+
+| Metafield type | Field value |
+|---|---|
+| `single_line_text_field`, `multi_line_text_field`, `url`, `color`, `date`, `date_time`, `id` | the string, HTML stripped |
+| `number_integer`, `number_decimal` | the number as a string |
+| `boolean` | `"true"` or `"false"` |
+| `dimension`, `weight`, `volume` | `"<value> <unit>"`, e.g. `159 cm` |
+| `rating` | the rating value |
+| `metaobject_reference` | the metaobject `displayName` (from `reference`) |
+| `list.<any of the above>` | a list of the values above (`references.nodes` for metaobjects) |
+| anything else (`file_reference`, `json`, `rich_text_field`, ...) | skipped |
+
+A translation on the metafield (`translations[<locale>]`, key `value`) replaces the value for that
+locale; a list translation is a JSON array string. The primary locale and locales without a
+translation keep the default value.
+
 #### Variants with Selected Options
 
 Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOption` GID is ignored on purpose — it is per-product, so using it would create a separate Elasticsearch field for every product's "Color" option.

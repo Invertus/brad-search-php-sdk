@@ -122,6 +122,8 @@ class ShopifyAdapter
             ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $defaultHandle, $productCollections)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $product, $productCollections, $primaryLocale);
 
+        $result += $this->buildFeatureFields($product['metafields']['nodes'] ?? [], $locales, $primaryLocale);
+
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
             if (! empty($imageUrl)) {
@@ -342,6 +344,193 @@ class ShopifyAdapter
         }
 
         return array_values(array_unique($titles));
+    }
+
+    /**
+     * Metafield types whose value is a plain scalar or a list of them.
+     */
+    private const METAFIELD_SCALAR_TYPES = [
+        'single_line_text_field', 'multi_line_text_field', 'number_integer', 'number_decimal',
+        'boolean', 'date', 'date_time', 'url', 'color', 'id',
+    ];
+
+    private const METAFIELD_UNIT_LABELS = [
+        'MILLIMETERS' => 'mm', 'CENTIMETERS' => 'cm', 'METERS' => 'm', 'INCHES' => 'in', 'FEET' => 'ft', 'YARDS' => 'yd',
+        'GRAMS' => 'g', 'KILOGRAMS' => 'kg', 'OUNCES' => 'oz', 'POUNDS' => 'lb',
+        'MILLILITERS' => 'ml', 'CENTILITERS' => 'cl', 'LITERS' => 'l', 'CUBIC_METERS' => 'm³',
+        'FLUID_OUNCES' => 'fl oz', 'PINTS' => 'pt', 'QUARTS' => 'qt', 'GALLONS' => 'gal', 'IMPERIAL_FLUID_OUNCES' => 'fl oz',
+    ];
+
+    /**
+     * Metafields become `feature_<slug>` fields, one per locale when locales are given. The slug
+     * is the one the Shopify app builds from `namespace_key`, so the field matches the filter
+     * row brad-app registered from the metafield definition.
+     *
+     * @param array<int, mixed> $metafields `metafields.nodes` from the connector
+     * @param array<string> $locales
+     * @return array<string, string|array<int, string>>
+     */
+    private function buildFeatureFields(array $metafields, array $locales, string $primaryLocale): array
+    {
+        $fields = [];
+
+        foreach ($metafields as $metafield) {
+            if (! is_array($metafield)) {
+                continue;
+            }
+            $slug = $this->metafieldSlug($metafield);
+            if ($slug === null) {
+                continue;
+            }
+            $value = $this->metafieldValue($metafield);
+            if ($value === null) {
+                continue;
+            }
+
+            if ($locales === []) {
+                $fields["feature_{$slug}"] = $value;
+                continue;
+            }
+
+            foreach ($locales as $locale) {
+                $fields["feature_{$slug}_{$locale}"] = $this->translatedMetafieldValue($metafield, $locale, $primaryLocale) ?? $value;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Mirror of the Shopify app's FeaturesAggregator slug: lowercase `namespace_key`, every run of
+     * characters other than letters, numbers and `_` collapsed to `_`. The connector returns the key
+     * as `namespace.key` when it filtered by keys, so the namespace prefix is stripped first.
+     *
+     * @param array<string, mixed> $metafield
+     */
+    private function metafieldSlug(array $metafield): ?string
+    {
+        $namespace = is_string($metafield['namespace'] ?? null) ? trim($metafield['namespace']) : '';
+        $key = is_string($metafield['key'] ?? null) ? trim($metafield['key']) : '';
+        if ($namespace !== '' && str_starts_with($key, $namespace . '.')) {
+            $key = substr($key, strlen($namespace) + 1);
+        }
+        if ($namespace === '' || $key === '') {
+            return null;
+        }
+
+        $slug = preg_replace('/[^\p{L}\p{N}_]+/u', '_', mb_strtolower($namespace . '_' . $key, 'UTF-8'));
+        $slug = trim((string) $slug, '_');
+
+        return $slug === '' ? null : $slug;
+    }
+
+    /**
+     * @param array<string, mixed> $metafield
+     * @return string|array<int, string>|null
+     */
+    private function metafieldValue(array $metafield): string|array|null
+    {
+        $type = is_string($metafield['type'] ?? null) ? $metafield['type'] : '';
+        $isList = str_starts_with($type, 'list.');
+        $baseType = $isList ? substr($type, 5) : $type;
+        $json = $metafield['jsonValue'] ?? null;
+
+        if ($baseType === 'metaobject_reference') {
+            $names = $isList
+                ? array_map(fn($node) => $node['displayName'] ?? null, $metafield['references']['nodes'] ?? [])
+                : [$metafield['reference']['displayName'] ?? null];
+
+            return $this->metafieldList($names, $isList);
+        }
+
+        if (in_array($baseType, ['dimension', 'weight', 'volume'], true)) {
+            $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+            return $this->metafieldList(array_map($this->formatMeasurement(...), $items), $isList);
+        }
+
+        if (in_array($baseType, ['rating'], true)) {
+            $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+            return $this->metafieldList(array_map(fn($item) => $this->scalarToString($item['value'] ?? null), $items), $isList);
+        }
+
+        if (! in_array($baseType, self::METAFIELD_SCALAR_TYPES, true)) {
+            return null;
+        }
+
+        $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+        return $this->metafieldList(array_map($this->scalarToString(...), $items), $isList);
+    }
+
+    /**
+     * @param array<int, mixed> $values
+     * @return string|array<int, string>|null
+     */
+    private function metafieldList(array $values, bool $isList): string|array|null
+    {
+        $clean = array_values(array_filter($values, fn($v) => is_string($v) && $v !== ''));
+        if ($clean === []) {
+            return null;
+        }
+
+        return $isList ? $clean : $clean[0];
+    }
+
+    private function scalarToString(mixed $value): ?string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+        if (is_string($value)) {
+            $trimmed = trim(strip_tags($value));
+
+            return $trimmed === '' ? null : $trimmed;
+        }
+
+        return null;
+    }
+
+    private function formatMeasurement(mixed $item): ?string
+    {
+        if (! is_array($item) || ! isset($item['value']) || ! is_numeric($item['value'])) {
+            return null;
+        }
+        $unit = is_string($item['unit'] ?? null) ? $item['unit'] : '';
+        $label = self::METAFIELD_UNIT_LABELS[$unit] ?? strtolower(str_replace('_', ' ', $unit));
+
+        return trim((string) $item['value'] . ' ' . $label);
+    }
+
+    /**
+     * Translate & Adapt stores a metafield translation under key `value`. Lists come back as a
+     * JSON array string.
+     *
+     * @param array<string, mixed> $metafield
+     * @return string|array<int, string>|null
+     */
+    private function translatedMetafieldValue(array $metafield, string $locale, string $primaryLocale): string|array|null
+    {
+        if ($locale === $primaryLocale || ! is_array($metafield['translations'][$locale] ?? null)) {
+            return null;
+        }
+        $translated = $this->translated($metafield['translations'][$locale], 'value');
+        if ($translated === null) {
+            return null;
+        }
+
+        $type = is_string($metafield['type'] ?? null) ? $metafield['type'] : '';
+        if (str_starts_with($type, 'list.')) {
+            $decoded = json_decode($translated, true);
+
+            return is_array($decoded) ? $this->metafieldList(array_map($this->scalarToString(...), $decoded), true) : null;
+        }
+
+        return $this->scalarToString($translated);
     }
 
     /**
