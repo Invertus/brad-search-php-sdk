@@ -315,6 +315,66 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals(['en' => 'L', 'lt' => 'L'], $variant['attrs']['size']);
     }
 
+    public function testVariantOptionValuesUseTranslationsPerLocaleWithFallback(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            [
+                'name' => 'Color',
+                'translations' => ['lt' => [['key' => 'name', 'value' => 'Spalva']]],
+                'optionValues' => [
+                    ['name' => 'White', 'translations' => ['lt' => [['key' => 'name', 'value' => 'Balta']], 'fr' => [['key' => 'name', 'value' => 'Blanc']]]],
+                    ['name' => 'Black', 'translations' => ['lt' => [['key' => 'name', 'value' => '']]]],
+                ],
+            ],
+            [
+                'name' => 'Size',
+                'optionValues' => [
+                    ['name' => 'L', 'translations' => ['lt' => [['key' => 'name', 'value' => 'Didelis']]]],
+                ],
+            ],
+        ];
+        $product['node']['variants'] = [
+            'edges' => [
+                ['node' => ['id' => 'gid://shopify/ProductVariant/100', 'sku' => 'A', 'selectedOptions' => [
+                    ['name' => 'Color', 'value' => 'White'],
+                    ['name' => 'Size', 'value' => 'L'],
+                ]]],
+                ['node' => ['id' => 'gid://shopify/ProductVariant/101', 'sku' => 'B', 'selectedOptions' => [
+                    ['name' => 'Color', 'value' => 'Black'],
+                    ['name' => 'Size', 'value' => 'M'],
+                ]]],
+            ],
+        ];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt', 'fr']);
+        [$white, $black] = $result['products'][0]['variants'];
+
+        // Slug stays the default option name; values follow the locale, falling back to the default.
+        $this->assertSame(['en' => 'White', 'lt' => 'Balta', 'fr' => 'Blanc'], $white['attrs']['color']);
+        $this->assertSame(['en' => 'L', 'lt' => 'Didelis', 'fr' => 'L'], $white['attrs']['size']);
+        $this->assertSame(['en' => 'Black', 'lt' => 'Black', 'fr' => 'Black'], $black['attrs']['color']);
+        $this->assertSame(['en' => 'M', 'lt' => 'M', 'fr' => 'M'], $black['attrs']['size']);
+        $this->assertArrayNotHasKey('spalva', $white['attrs']);
+    }
+
+    public function testVariantOptionValuesIgnoreTranslationsForThePrimaryLocale(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
+        $product['node']['options'] = [
+            ['name' => 'Color', 'optionValues' => [
+                ['name' => 'White', 'translations' => ['en' => [['key' => 'name', 'value' => 'Should not apply']]]],
+            ]],
+        ];
+        $product['node']['variants'] = ['edges' => [
+            ['node' => ['id' => 'gid://shopify/ProductVariant/100', 'sku' => 'A', 'selectedOptions' => [['name' => 'Color', 'value' => 'White']]]],
+        ]];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en']);
+
+        $this->assertSame(['en' => 'White'], $result['products'][0]['variants'][0]['attrs']['color']);
+    }
+
     public function testVariantsUseAttributesFormatWithoutLocales(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Snowboard', 'Desc', 'BrandX', 'Sports');
