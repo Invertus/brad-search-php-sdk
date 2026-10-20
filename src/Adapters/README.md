@@ -204,6 +204,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `variants.*.availableForSale` | `inStock` | Any variant available |
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
 | `variants.selectedOptions` | `variants.attrs` / `variants.attributes` | Keyed by a slug derived from the option name (Unicode-safe, lowercase, dash-joined). Shopify assigns a unique GID per product for the same option, so GIDs cannot be used as a shared key. |
+| `marketAvailability` | `markets` | ISO country codes of the markets the product is published in. Only set when the product is hidden from at least one market; absent means available everywhere. |
 
 ### Shopify-Specific Transformations
 
@@ -272,6 +273,19 @@ Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOptio
 "categoryDefault": "Shoes",
 "categories": ["Shoes", "Running", "Athletic", "Men"]
 ```
+
+#### Markets
+The connector asks Shopify, per country of every active market, whether the product is published there:
+
+```php
+// Shopify input
+"marketAvailability": {"LT": true, "DE": true, "FR": true, "CA": false}
+
+// BradSearch output
+"markets": ["LT", "DE", "FR"]
+```
+
+A product published in every country gets no `markets` field, so brad-search treats it as available everywhere. A product published nowhere gets `markets: []`.
 
 ### Error Handling
 

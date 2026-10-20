@@ -122,6 +122,11 @@ class ShopifyAdapter
             ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $defaultHandle, $productCollections)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $product, $productCollections, $primaryLocale);
 
+        $markets = $this->restrictedMarketCountries($product['marketAvailability'] ?? null);
+        if ($markets !== null) {
+            $result['markets'] = $markets;
+        }
+
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
             if (! empty($imageUrl)) {
@@ -342,6 +347,36 @@ class ShopifyAdapter
         }
 
         return array_values(array_unique($titles));
+    }
+
+    /**
+     * Country codes the product is published in, or null when nothing restricts it: no market
+     * data, or published in every country. brad-search treats a missing `markets` field as
+     * "available everywhere".
+     *
+     * @param mixed $availability ISO country code => bool, from the connector
+     * @return array<int, string>|null
+     */
+    private function restrictedMarketCountries(mixed $availability): ?array
+    {
+        if (! is_array($availability) || $availability === []) {
+            return null;
+        }
+
+        $countries = [];
+        $restricted = false;
+        foreach ($availability as $country => $published) {
+            if (! is_string($country) || preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+                continue;
+            }
+            if ($published === true) {
+                $countries[] = $country;
+            } else {
+                $restricted = true;
+            }
+        }
+
+        return $restricted ? $countries : null;
     }
 
     /**

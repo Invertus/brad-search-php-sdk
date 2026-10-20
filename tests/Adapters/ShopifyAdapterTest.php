@@ -41,6 +41,40 @@ class ShopifyAdapterTest extends TestCase
         $this->assertSame([], $product['categories']);
     }
 
+    public function testMarketsFieldListsCountriesOnlyForRestrictedProducts(): void
+    {
+        $everywhere = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $everywhere['node']['marketAvailability'] = ['LT' => true, 'DE' => true, 'CA' => true];
+
+        $euOnly = $this->makeProduct('gid://shopify/Product/2', 'Jacket', 'Desc', 'BrandX', 'Jackets');
+        $euOnly['node']['marketAvailability'] = ['LT' => true, 'DE' => true, 'CA' => false, 'Canada' => true];
+
+        $nowhere = $this->makeProduct('gid://shopify/Product/3', 'Gloves', 'Desc', 'BrandX', 'Gloves');
+        $nowhere['node']['marketAvailability'] = ['LT' => false, 'CA' => false];
+
+        $noData = $this->makeProduct('gid://shopify/Product/4', 'Hat', 'Desc', 'BrandX', 'Hats');
+        $noData['node']['marketAvailability'] = [];
+
+        [$a, $b, $c, $d] = $this->adapter->transform(
+            $this->makeShopifyResponse([$everywhere, $euOnly, $nowhere, $noData], 'en'),
+            ['en']
+        )['products'];
+
+        $this->assertArrayNotHasKey('markets', $a);
+        $this->assertSame(['LT', 'DE'], $b['markets']);
+        $this->assertSame([], $c['markets']);
+        $this->assertArrayNotHasKey('markets', $d);
+    }
+
+    public function testMarketsFieldIsAbsentWithoutAvailabilityData(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertArrayNotHasKey('markets', $p);
+    }
+
     public function testTransformWithoutLocalesOmitsEmptyDescription(): void
     {
         $data = $this->makeShopifyResponse([
