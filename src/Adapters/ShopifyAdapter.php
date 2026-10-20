@@ -11,6 +11,9 @@ class ShopifyAdapter
     /** @var array<string, string> memoized option-name slugs */
     private array $optionSlugCache = [];
 
+    /** ISO 3166-1 user-assigned code, never a real country: marks a product published nowhere */
+    private const MARKETS_NOWHERE = 'ZZ';
+
     public function __construct()
     {
         if (!function_exists('bccomp')) {
@@ -351,8 +354,9 @@ class ShopifyAdapter
 
     /**
      * Country codes the product is published in, or null when nothing restricts it: no market
-     * data, or published in every country. brad-search treats a missing `markets` field as
-     * "available everywhere".
+     * data, or published in every country. A product published nowhere gets the sentinel
+     * only, because OpenSearch treats an empty list as a missing field, and a missing field
+     * means "available everywhere" to brad-search.
      *
      * @param mixed $availability ISO country code => bool, from the connector
      * @return array<int, string>|null
@@ -366,17 +370,29 @@ class ShopifyAdapter
         $countries = [];
         $restricted = false;
         foreach ($availability as $country => $published) {
-            if (! is_string($country) || preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+            if (! is_string($country) || ! is_bool($published)) {
                 continue;
             }
-            if ($published === true) {
+            $country = strtoupper($country);
+            if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+                continue;
+            }
+            if ($published) {
                 $countries[] = $country;
             } else {
                 $restricted = true;
             }
         }
 
-        return $restricted ? $countries : null;
+        if (! $restricted) {
+            return null;
+        }
+        if ($countries === []) {
+            return [self::MARKETS_NOWHERE];
+        }
+        sort($countries);
+
+        return array_values(array_unique($countries));
     }
 
     /**

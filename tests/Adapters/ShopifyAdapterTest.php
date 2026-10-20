@@ -6,6 +6,7 @@ namespace BradSearch\SyncSdk\Tests\Adapters;
 
 use BradSearch\SyncSdk\Adapters\ShopifyAdapter;
 use BradSearch\SyncSdk\Exceptions\ValidationException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class ShopifyAdapterTest extends TestCase
@@ -47,32 +48,54 @@ class ShopifyAdapterTest extends TestCase
         $everywhere['node']['marketAvailability'] = ['LT' => true, 'DE' => true, 'CA' => true];
 
         $euOnly = $this->makeProduct('gid://shopify/Product/2', 'Jacket', 'Desc', 'BrandX', 'Jackets');
-        $euOnly['node']['marketAvailability'] = ['LT' => true, 'DE' => true, 'CA' => false, 'Canada' => true];
+        $euOnly['node']['marketAvailability'] = ['LT' => true, 'DE' => true, 'CA' => false];
 
         $nowhere = $this->makeProduct('gid://shopify/Product/3', 'Gloves', 'Desc', 'BrandX', 'Gloves');
         $nowhere['node']['marketAvailability'] = ['LT' => false, 'CA' => false];
 
-        $noData = $this->makeProduct('gid://shopify/Product/4', 'Hat', 'Desc', 'BrandX', 'Hats');
-        $noData['node']['marketAvailability'] = [];
-
-        [$a, $b, $c, $d] = $this->adapter->transform(
-            $this->makeShopifyResponse([$everywhere, $euOnly, $nowhere, $noData], 'en'),
+        [$a, $b, $c] = $this->adapter->transform(
+            $this->makeShopifyResponse([$everywhere, $euOnly, $nowhere], 'en'),
             ['en']
         )['products'];
 
         $this->assertArrayNotHasKey('markets', $a);
-        $this->assertSame(['LT', 'DE'], $b['markets']);
-        $this->assertSame([], $c['markets']);
-        $this->assertArrayNotHasKey('markets', $d);
+        $this->assertSame(['DE', 'LT'], $b['markets']);
+        $this->assertSame(['ZZ'], $c['markets']);
     }
 
-    public function testMarketsFieldIsAbsentWithoutAvailabilityData(): void
+    /**
+     * @return array<string, array{0: mixed, 1: array<int, string>|null}>
+     */
+    public static function marketAvailabilityEdgeCases(): array
+    {
+        return [
+            'no data' => [null, null],
+            'empty map' => [[], null],
+            'not a map' => ['CA', null],
+            'lowercase keys are accepted' => [['lt' => true, 'ca' => false], ['LT']],
+            'malformed keys are ignored, even when false' => [['Canada' => false, 'LT' => true], null],
+            'numeric keys are ignored' => [[0 => false, 'LT' => true], null],
+            'non-bool values are ignored' => [['LT' => 1, 'DE' => 'false', 'CA' => null, 'US' => true, 'FR' => false], ['US']],
+            'all values unknown' => [['LT' => 'yes', 'CA' => 0], null],
+        ];
+    }
+
+    /**
+     * @param array<int, string>|null $expected
+     */
+    #[DataProvider('marketAvailabilityEdgeCases')]
+    public function testMarketsFieldEdgeCases(mixed $availability, ?array $expected): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketAvailability'] = $availability;
 
         $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
 
-        $this->assertArrayNotHasKey('markets', $p);
+        if ($expected === null) {
+            $this->assertArrayNotHasKey('markets', $p);
+        } else {
+            $this->assertSame($expected, $p['markets']);
+        }
     }
 
     public function testTransformWithoutLocalesOmitsEmptyDescription(): void
