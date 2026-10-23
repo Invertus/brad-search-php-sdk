@@ -139,6 +139,7 @@ class ShopifyAdapter
                 $defaultHandle,
                 $translations,
                 $primaryLocale,
+                $this->buildOptionValueTranslations($product['options'] ?? []),
             );
         }
 
@@ -894,6 +895,7 @@ class ShopifyAdapter
         string $defaultHandle = '',
         array $translations = [],
         string $primaryLocale = '',
+        array $optionValueTranslations = [],
     ): array {
         if (! isset($variantsData['edges']) || ! is_array($variantsData['edges'])) {
             return [];
@@ -907,7 +909,7 @@ class ShopifyAdapter
             $localeHandles[$locale] = $this->translated($localeTranslations, 'handle');
         }
 
-        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles): array {
+        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles, $optionValueTranslations): array {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
                 throw new ValidationException('Variant has malformed node structure');
             }
@@ -947,7 +949,7 @@ class ShopifyAdapter
             }
 
             if (! empty($locales)) {
-                $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales);
+                $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales, $primaryLocale, $optionValueTranslations);
                 foreach ($locales as $locale) {
                     $url = $this->buildLocaleProductUrl(
                         $productUrl,
@@ -992,20 +994,67 @@ class ShopifyAdapter
     }
 
     /**
-     * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
+     * Output: {"color": {"en-US": "White", "lt-LT": "Balta"}}. The slug always comes from the
+     * default option name; a locale without a translation keeps the default value.
      *
+     * @param array<string, array<string, array<string, string>>> $optionValueTranslations
      * @return array<string, array<string, string>>
      */
-    private function transformVariantOptionsWithLocales(array $selectedOptions, array $locales): array
-    {
+    private function transformVariantOptionsWithLocales(
+        array $selectedOptions,
+        array $locales,
+        string $primaryLocale = '',
+        array $optionValueTranslations = [],
+    ): array {
         $validOptions = array_filter($selectedOptions, $this->isValidOption(...));
 
         $result = [];
         foreach ($validOptions as $option) {
-            $result[$this->slugifyOptionName($option['name'])] = array_fill_keys($locales, $option['value']);
+            $translated = $optionValueTranslations[$option['name']][$option['value']] ?? [];
+            $values = [];
+            foreach ($locales as $locale) {
+                $values[$locale] = $locale !== $primaryLocale && isset($translated[$locale])
+                    ? $translated[$locale]
+                    : $option['value'];
+            }
+            $result[$this->slugifyOptionName($option['name'])] = $values;
         }
 
         return $result;
+    }
+
+    /**
+     * Index the option value translations the connector attaches to `options[].optionValues[]`:
+     * [option name => [default value => [locale => translated value]]].
+     *
+     * @param array<int, mixed> $options
+     * @return array<string, array<string, array<string, string>>>
+     */
+    private function buildOptionValueTranslations(array $options): array
+    {
+        $map = [];
+
+        foreach ($options as $option) {
+            if (! is_array($option) || ! is_string($option['name'] ?? null)) {
+                continue;
+            }
+            foreach ($option['optionValues'] ?? [] as $value) {
+                if (! is_array($value) || ! is_string($value['name'] ?? null) || ! is_array($value['translations'] ?? null)) {
+                    continue;
+                }
+                foreach ($value['translations'] as $locale => $entries) {
+                    if (! is_string($locale) || ! is_array($entries)) {
+                        continue;
+                    }
+                    $translatedName = $this->translated($entries, 'name');
+                    if ($translatedName !== null) {
+                        $map[$option['name']][$value['name']][$locale] = $translatedName;
+                    }
+                }
+            }
+        }
+
+        return $map;
     }
 
     /**

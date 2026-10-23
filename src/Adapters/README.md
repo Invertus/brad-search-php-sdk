@@ -298,6 +298,28 @@ Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOptio
 ]
 ```
 
+When the connector attaches `translations` to `options[].optionValues[]` (the Shopify app does, one
+entry per non-primary locale with key `name`), the value for that locale is the translated one. A
+locale without a translation keeps the default value. The attribute key always comes from the
+default option name.
+
+```php
+// Shopify input (product level)
+"options": [
+    {
+        "name": "Color",
+        "optionValues": [
+            {"name": "Blue", "translations": {"lt": [{"key": "name", "value": "Mėlyna"}]}}
+        ]
+    }
+]
+
+// BradSearch output (with locales ['en', 'lt'])
+"attrs": {
+    "color": {"en": "Blue", "lt": "Mėlyna"}
+}
+```
+
 #### Categories, Product Type and Tags
 ```php
 // Shopify input
