@@ -354,6 +354,12 @@ class ShopifyAdapter
         'boolean', 'date', 'date_time', 'url', 'color', 'id',
     ];
 
+    /**
+     * Longest feature value kept, in characters. Feature fields have keyword subfields without
+     * `ignore_above`, and OpenSearch rejects the whole document for a term over 32,766 bytes.
+     */
+    private const METAFIELD_MAX_VALUE_LENGTH = 1000;
+
     private const METAFIELD_UNIT_LABELS = [
         'MILLIMETERS' => 'mm', 'CENTIMETERS' => 'cm', 'METERS' => 'm', 'INCHES' => 'in', 'FEET' => 'ft', 'YARDS' => 'yd',
         'GRAMS' => 'g', 'KILOGRAMS' => 'kg', 'OUNCES' => 'oz', 'POUNDS' => 'lb',
@@ -373,19 +379,21 @@ class ShopifyAdapter
     private function buildFeatureFields(array $metafields, array $locales, string $primaryLocale): array
     {
         $fields = [];
+        $seen = [];
 
         foreach ($metafields as $metafield) {
             if (! is_array($metafield)) {
                 continue;
             }
             $slug = $this->metafieldSlug($metafield);
-            if ($slug === null) {
+            if ($slug === null || isset($seen[$slug])) {
                 continue;
             }
             $value = $this->metafieldValue($metafield);
             if ($value === null) {
                 continue;
             }
+            $seen[$slug] = true;
 
             if ($locales === []) {
                 $fields["feature_{$slug}"] = $value;
@@ -404,6 +412,7 @@ class ShopifyAdapter
      * Mirror of the Shopify app's FeaturesAggregator slug: lowercase `namespace_key`, every run of
      * characters other than letters, numbers and `_` collapsed to `_`. The connector returns the key
      * as `namespace.key` when it filtered by keys, so the namespace prefix is stripped first.
+     * Two metafields with the same slug: the first one wins, like the app's feature list.
      *
      * @param array<string, mixed> $metafield
      */
@@ -449,7 +458,7 @@ class ShopifyAdapter
             return $this->metafieldList(array_map($this->formatMeasurement(...), $items), $isList);
         }
 
-        if (in_array($baseType, ['rating'], true)) {
+        if ($baseType === 'rating') {
             $items = $isList ? (is_array($json) ? $json : []) : [$json];
 
             return $this->metafieldList(array_map(fn($item) => $this->scalarToString($item['value'] ?? null), $items), $isList);
@@ -487,9 +496,10 @@ class ShopifyAdapter
             return (string) $value;
         }
         if (is_string($value)) {
-            $trimmed = trim(strip_tags($value));
+            // Only real tags: a bare `<` as in "<5 kg" is text, which strip_tags() would cut.
+            $trimmed = trim((string) preg_replace('/<\/?[a-z][^<>]*>/i', '', $value));
 
-            return $trimmed === '' ? null : $trimmed;
+            return $trimmed === '' ? null : mb_substr($trimmed, 0, self::METAFIELD_MAX_VALUE_LENGTH, 'UTF-8');
         }
 
         return null;

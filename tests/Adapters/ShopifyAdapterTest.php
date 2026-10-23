@@ -78,12 +78,89 @@ class ShopifyAdapterTest extends TestCase
         $product['node']['metafields'] = ['nodes' => [
             ['namespace' => 'shopify--discovery--product_search_boost', 'key' => 'queries', 'type' => 'single_line_text_field', 'jsonValue' => 'snow'],
             ['namespace' => 'Mano Laukai', 'key' => 'Spalvų Grupė', 'type' => 'single_line_text_field', 'jsonValue' => 'x'],
+            ['namespace' => '_private', 'key' => 'key_', 'type' => 'single_line_text_field', 'jsonValue' => 'y'],
         ]];
 
         $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
 
         $this->assertSame('snow', $p['feature_shopify_discovery_product_search_boost_queries']);
         $this->assertSame('x', $p['feature_mano_laukai_spalvų_grupė']);
+        $this->assertSame('y', $p['feature_private_key']);
+    }
+
+    public function testMetafieldTypesWithoutLocalesGiveUnsuffixedFields(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'custom', 'key' => 'site', 'type' => 'url', 'jsonValue' => 'https://example.com/board'],
+            ['namespace' => 'custom', 'key' => 'released', 'type' => 'date', 'jsonValue' => '2026-01-15'],
+            ['namespace' => 'custom', 'key' => 'flex', 'type' => 'number_decimal', 'jsonValue' => '6.5'],
+            ['namespace' => 'custom', 'key' => 'layers', 'type' => 'number_integer', 'jsonValue' => 3],
+            ['namespace' => 'custom', 'key' => 'stars', 'type' => 'rating', 'jsonValue' => ['value' => '4.5', 'scale_min' => '1.0', 'scale_max' => '5.0']],
+            ['namespace' => 'custom', 'key' => 'weights', 'type' => 'list.weight', 'jsonValue' => [['value' => 2.5, 'unit' => 'KILOGRAMS'], ['value' => 3, 'unit' => 'KILOGRAMS']]],
+            ['namespace' => 'custom', 'key' => 'brand', 'type' => 'metaobject_reference', 'jsonValue' => 'gid://shopify/Metaobject/1', 'reference' => ['displayName' => 'Acme']],
+            ['namespace' => 'custom', 'key' => 'waterproof', 'type' => 'boolean', 'jsonValue' => false],
+            ['namespace' => 'custom', 'key' => 'story', 'type' => 'rich_text_field', 'jsonValue' => ['type' => 'root', 'children' => []]],
+            ['namespace' => 'custom', 'key' => 'specs', 'type' => 'json', 'jsonValue' => ['a' => 1]],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame('https://example.com/board', $p['feature_custom_site']);
+        $this->assertSame('2026-01-15', $p['feature_custom_released']);
+        $this->assertSame('6.5', $p['feature_custom_flex']);
+        $this->assertSame('3', $p['feature_custom_layers']);
+        $this->assertSame('4.5', $p['feature_custom_stars']);
+        $this->assertSame(['2.5 kg', '3 kg'], $p['feature_custom_weights']);
+        $this->assertSame('Acme', $p['feature_custom_brand']);
+        $this->assertSame('false', $p['feature_custom_waterproof']);
+        $this->assertArrayNotHasKey('feature_custom_story', $p);
+        $this->assertArrayNotHasKey('feature_custom_specs', $p);
+    }
+
+    public function testMetafieldTextKeepsABareLessThanAndDropsRealTags(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'custom', 'key' => 'load', 'type' => 'single_line_text_field', 'jsonValue' => '<5 kg load'],
+            ['namespace' => 'custom', 'key' => 'ratio', 'type' => 'single_line_text_field', 'jsonValue' => 'a<b'],
+            ['namespace' => 'custom', 'key' => 'note', 'type' => 'multi_line_text_field', 'jsonValue' => "<p>Wax <b>weekly</b></p>"],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame('<5 kg load', $p['feature_custom_load']);
+        $this->assertSame('a<b', $p['feature_custom_ratio']);
+        $this->assertSame('Wax weekly', $p['feature_custom_note']);
+    }
+
+    public function testLongMetafieldValuesAreCutBelowTheOpenSearchTermLimit(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'custom', 'key' => 'manual', 'type' => 'multi_line_text_field', 'jsonValue' => str_repeat('ž', 40000),
+                'translations' => ['lt' => [['key' => 'value', 'value' => str_repeat('a', 40000)]]]],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt'])['products'][0];
+
+        $this->assertSame(1000, mb_strlen($p['feature_custom_manual_en'], 'UTF-8'));
+        $this->assertLessThan(32766, strlen($p['feature_custom_manual_en']));
+        $this->assertSame(1000, strlen($p['feature_custom_manual_lt']));
+    }
+
+    public function testFirstMetafieldWinsWhenTwoShareASlug(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['metafields'] = ['nodes' => [
+            ['namespace' => 'custom', 'key' => 'a-b', 'type' => 'single_line_text_field', 'jsonValue' => 'first'],
+            ['namespace' => 'custom', 'key' => 'a_b', 'type' => 'single_line_text_field', 'jsonValue' => 'second'],
+        ]];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt'])['products'][0];
+
+        $this->assertSame('first', $p['feature_custom_a_b_en']);
+        $this->assertSame('first', $p['feature_custom_a_b_lt']);
     }
 
     public function testTransformWithoutLocalesOmitsEmptyDescription(): void

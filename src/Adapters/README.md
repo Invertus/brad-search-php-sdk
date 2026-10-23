@@ -226,7 +226,7 @@ arrives as `namespace.key` is stripped of its namespace first.
 
 | Metafield type | Field value |
 |---|---|
-| `single_line_text_field`, `multi_line_text_field`, `url`, `color`, `date`, `date_time`, `id` | the string, HTML stripped |
+| `single_line_text_field`, `multi_line_text_field`, `url`, `color`, `date`, `date_time`, `id` | the string with HTML tags removed (a bare `<`, as in `<5 kg`, stays) |
 | `number_integer`, `number_decimal` | the number as a string |
 | `boolean` | `"true"` or `"false"` |
 | `dimension`, `weight`, `volume` | `"<value> <unit>"`, e.g. `159 cm` |
@@ -238,6 +238,17 @@ arrives as `namespace.key` is stripped of its namespace first.
 A translation on the metafield (`translations[<locale>]`, key `value`) replaces the value for that
 locale; a list translation is a JSON array string. The primary locale and locales without a
 translation keep the default value.
+
+Every value is cut to 1,000 characters: feature fields have keyword subfields, and OpenSearch
+rejects the whole product for a single term over 32,766 bytes. When two metafields share a slug
+(`custom.a-b` and `custom.a_b`), the first one wins; the Shopify app already leaves the later
+definition out of the feature list and the product query, and logs it.
+
+Known limits:
+- Metaobject names (`displayName`) are not translated, so every locale gets the default-language
+  name.
+- Booleans are the words `true` / `false`. Like every feature value they are copied into
+  `_features_text_<locale>`, so a search for "true" can match them.
 
 #### Variants with Selected Options
 
