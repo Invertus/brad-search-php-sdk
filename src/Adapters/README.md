@@ -156,7 +156,7 @@ The `ShopifyAdapter` transforms Shopify GraphQL product data into the standardiz
 - **GraphQL to BradSearch**: Handles Shopify's GraphQL response structure (edges/nodes)
 - **GID extraction**: Converts Shopify GIDs (`gid://shopify/Product/123`) to numeric IDs
 - **Variant transformation**: Converts `selectedOptions` to BradSearch attributes format
-- **Category extraction**: Combines `productType` and `tags` into categories
+- **Category extraction**: Categories come from the Shopify taxonomy path only; `productType` and `tags` are their own fields
 - **Price handling**: Extracts prices from `priceRangeV2` structure with BCMath precision
 - **Image processing**: Flattens GraphQL image edges to simple URLs
 
@@ -196,8 +196,10 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `title` | `name` | Product title |
 | `descriptionHtml` | `description` | HTML tags stripped |
 | `vendor` | `brand` | Shopify vendor = brand |
-| `productType` | `categoryDefault` | Primary category |
-| `productType` + `tags` | `categories` | Combined categories |
+| `category.fullName` | `categoryDefault` | Taxonomy path; absent when the product has no taxonomy category |
+| `category.fullName` | `categories` | Taxonomy path only |
+| `productType` | `productType` | Free-text type |
+| `tags` | `tags` | Product tags |
 | `priceRangeV2.minVariantPrice` | `price` | Minimum variant price |
 | `variants.*.compareAtPrice` | `basePrice` | compareAtPrice of the cheapest variant (the one matching minVariantPrice) when above 0; otherwise equals `price` |
 | `variants[0].sku` | `sku` | First variant SKU |
@@ -216,6 +218,40 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 // BradSearch output
 "id": "6843600694995"
 ```
+
+#### Metafields as features
+
+Product metafields the connector attaches under `metafields.nodes` become `feature_<slug>` fields
+(`feature_<slug>_<locale>` with locales). The slug is `namespace_key` lowercased with every run of
+characters other than letters, numbers and `_` collapsed to `_`, the same slug the Shopify app
+reports as the feature id, so the field matches the filter row brad-app registers. A `key` that
+arrives as `namespace.key` is stripped of its namespace first.
+
+| Metafield type | Field value |
+|---|---|
+| `single_line_text_field`, `multi_line_text_field`, `url`, `color`, `date`, `date_time`, `id` | the string with HTML tags removed (a bare `<`, as in `<5 kg`, stays) |
+| `number_integer`, `number_decimal` | the number as a string |
+| `boolean` | `"true"` or `"false"` |
+| `dimension`, `weight`, `volume` | `"<value> <unit>"`, e.g. `159 cm` |
+| `rating` | the rating value |
+| `metaobject_reference` | the metaobject `displayName` (from `reference`) |
+| `list.<any of the above>` | a list of the values above (`references.nodes` for metaobjects) |
+| anything else (`file_reference`, `json`, `rich_text_field`, ...) | skipped |
+
+A translation on the metafield (`translations[<locale>]`, key `value`) replaces the value for that
+locale; a list translation is a JSON array string. The primary locale and locales without a
+translation keep the default value.
+
+Every value is cut to 1,000 characters: feature fields have keyword subfields, and OpenSearch
+rejects the whole product for a single term over 32,766 bytes. When two metafields share a slug
+(`custom.a-b` and `custom.a_b`), the first one wins; the Shopify app already leaves the later
+definition out of the feature list and the product query, and logs it.
+
+Known limits:
+- Metaobject names (`displayName`) are not translated, so every locale gets the default-language
+  name.
+- Booleans are the words `true` / `false`. Like every feature value they are copied into
+  `_features_text_<locale>`, so a search for "true" can match them.
 
 #### Variants with Selected Options
 
@@ -263,15 +299,40 @@ Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOptio
 ]
 ```
 
-#### Categories from ProductType and Tags
+When the connector attaches `translations` to `options[].optionValues[]` (the Shopify app does, one
+entry per non-primary locale with key `name`), the value for that locale is the translated one. A
+locale without a translation keeps the default value. The attribute key always comes from the
+default option name.
+
+```php
+// Shopify input (product level)
+"options": [
+    {
+        "name": "Color",
+        "optionValues": [
+            {"name": "Blue", "translations": {"lt": [{"key": "name", "value": "Mėlyna"}]}}
+        ]
+    }
+]
+
+// BradSearch output (with locales ['en', 'lt'])
+"attrs": {
+    "color": {"en": "Blue", "lt": "Mėlyna"}
+}
+```
+
+#### Categories, Product Type and Tags
 ```php
 // Shopify input
+"category": {"fullName": "Apparel & Accessories > Shoes"},
 "productType": "Shoes",
 "tags": ["Running", "Athletic", "Men"]
 
 // BradSearch output
-"categoryDefault": "Shoes",
-"categories": ["Shoes", "Running", "Athletic", "Men"]
+"categoryDefault": "Apparel & Accessories > Shoes",
+"categories": ["Apparel & Accessories > Shoes"],
+"productType": "Shoes",
+"tags": ["Running", "Athletic", "Men"]
 ```
 
 #### Markets
