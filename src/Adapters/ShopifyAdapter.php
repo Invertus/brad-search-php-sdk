@@ -11,6 +11,9 @@ class ShopifyAdapter
     /** @var array<string, string> memoized option-name slugs */
     private array $optionSlugCache = [];
 
+    /** ISO 3166-1 user-assigned code, never a real country: marks a product published nowhere */
+    private const MARKETS_NOWHERE = 'ZZ';
+
     public function __construct()
     {
         if (!function_exists('bccomp')) {
@@ -121,6 +124,11 @@ class ShopifyAdapter
         $result += ! empty($locales)
             ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $defaultHandle, $productCollections)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $product, $productCollections, $primaryLocale);
+
+        $markets = $this->restrictedMarketCountries($product['marketAvailability'] ?? null);
+        if ($markets !== null) {
+            $result['markets'] = $markets;
+        }
 
         $result += $this->buildFeatureFields($product['metafields']['nodes'] ?? [], $locales, $primaryLocale);
 
@@ -352,6 +360,49 @@ class ShopifyAdapter
         }
 
         return array_values(array_unique($titles));
+    }
+
+    /**
+     * Country codes the product is published in, or null when nothing restricts it: no market
+     * data, or published in every country. A product published nowhere gets the sentinel
+     * only, because OpenSearch treats an empty list as a missing field, and a missing field
+     * means "available everywhere" to brad-search.
+     *
+     * @param mixed $availability ISO country code => bool, from the connector
+     * @return array<int, string>|null
+     */
+    private function restrictedMarketCountries(mixed $availability): ?array
+    {
+        if (! is_array($availability) || $availability === []) {
+            return null;
+        }
+
+        $countries = [];
+        $restricted = false;
+        foreach ($availability as $country => $published) {
+            if (! is_string($country) || ! is_bool($published)) {
+                continue;
+            }
+            $country = strtoupper($country);
+            if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+                continue;
+            }
+            if ($published) {
+                $countries[] = $country;
+            } else {
+                $restricted = true;
+            }
+        }
+
+        if (! $restricted) {
+            return null;
+        }
+        if ($countries === []) {
+            return [self::MARKETS_NOWHERE];
+        }
+        sort($countries);
+
+        return array_values(array_unique($countries));
     }
 
     /**
