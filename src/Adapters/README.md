@@ -156,7 +156,7 @@ The `ShopifyAdapter` transforms Shopify GraphQL product data into the standardiz
 - **GraphQL to BradSearch**: Handles Shopify's GraphQL response structure (edges/nodes)
 - **GID extraction**: Converts Shopify GIDs (`gid://shopify/Product/123`) to numeric IDs
 - **Variant transformation**: Converts `selectedOptions` to BradSearch attributes format
-- **Category extraction**: Combines `productType` and `tags` into categories
+- **Category extraction**: Categories come from the Shopify taxonomy path only; `productType` and `tags` are their own fields
 - **Price handling**: Extracts prices from `priceRangeV2` structure with BCMath precision
 - **Image processing**: Flattens GraphQL image edges to simple URLs
 
@@ -196,8 +196,10 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `title` | `name` | Product title |
 | `descriptionHtml` | `description` | HTML tags stripped |
 | `vendor` | `brand` | Shopify vendor = brand |
-| `productType` | `categoryDefault` | Primary category |
-| `productType` + `tags` | `categories` | Combined categories |
+| `category.fullName` | `categoryDefault` | Taxonomy path; absent when the product has no taxonomy category |
+| `category.fullName` | `categories` | Taxonomy path only |
+| `productType` | `productType` | Free-text type |
+| `tags` | `tags` | Product tags |
 | `priceRangeV2.minVariantPrice` | `price` | Minimum variant price |
 | `variants.*.compareAtPrice` | `basePrice` | compareAtPrice of the cheapest variant (the one matching minVariantPrice) when above 0; otherwise equals `price` |
 | `variants[0].sku` | `sku` | First variant SKU |
@@ -262,15 +264,18 @@ Option keys are slugged from `selectedOptions[].name`. The Shopify `ProductOptio
 ]
 ```
 
-#### Categories from ProductType and Tags
+#### Categories, Product Type and Tags
 ```php
 // Shopify input
+"category": {"fullName": "Apparel & Accessories > Shoes"},
 "productType": "Shoes",
 "tags": ["Running", "Athletic", "Men"]
 
 // BradSearch output
-"categoryDefault": "Shoes",
-"categories": ["Shoes", "Running", "Athletic", "Men"]
+"categoryDefault": "Apparel & Accessories > Shoes",
+"categories": ["Apparel & Accessories > Shoes"],
+"productType": "Shoes",
+"tags": ["Running", "Athletic", "Men"]
 ```
 
 ### Error Handling

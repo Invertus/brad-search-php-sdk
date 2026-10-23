@@ -164,6 +164,7 @@ class ShopifyAdapter
         array $productCollections = [],
     ): array {
         $fields = [];
+        $tags = $this->extractTags($product);
 
         foreach ($locales as $locale) {
             $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
@@ -182,9 +183,13 @@ class ShopifyAdapter
             if ($categoryDefault !== '') {
                 $fields["categoryDefault_{$locale}"] = $categoryDefault;
             }
-            $localeCategories = $this->buildCategories($categoryDefault, $this->extractTags($product));
+            $localeCategories = $this->buildCategories($categoryDefault);
             if (!empty($localeCategories)) {
                 $fields["categories_{$locale}"] = $localeCategories;
+            }
+            // Tags are not translatable in Shopify, so every locale gets the same list.
+            if (!empty($tags)) {
+                $fields["tags_{$locale}"] = $tags;
             }
             $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
             if (!empty($flatCategories)) {
@@ -239,13 +244,15 @@ class ShopifyAdapter
         string $primaryLocale,
     ): array {
         $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
+        $tags = $this->extractTags($product);
 
         return array_filter([
             'name' => $title,
             'description' => $description !== '' ? $description : null,
             'brand' => $brand !== '' ? $brand : null,
             'categoryDefault' => $categoryDefault,
-            'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
+            'categories' => $this->buildCategories($categoryDefault),
+            'tags' => $tags !== [] ? $tags : null,
             'productType' => $nativeProductType !== '' ? $nativeProductType : null,
             'productUrl' => $productUrl !== '' ? $productUrl : null,
             'collections' => !empty($collections) ? $collections : null,
@@ -527,22 +534,19 @@ class ShopifyAdapter
      */
     private function extractTags(array $product): array
     {
-        return isset($product['tags']) && is_array($product['tags']) ? $product['tags'] : [];
+        $tags = isset($product['tags']) && is_array($product['tags']) ? $product['tags'] : [];
+
+        return array_values(array_unique(array_filter($tags, fn($tag) => is_string($tag) && $tag !== '')));
     }
 
     /**
-     * Build categories from a product type string and tags.
-     * Shared by both locale and non-locale code paths.
+     * Categories hold the taxonomy path only. Tags have their own field.
      *
-     * @param array<string> $tags
      * @return array<string>
      */
-    private function buildCategories(string $productType, array $tags): array
+    private function buildCategories(string $categoryDefault): array
     {
-        $raw = $productType !== '' ? [$productType, ...$tags] : $tags;
-        $valid = array_filter($raw, fn($c) => is_string($c) && $c !== '');
-
-        return array_values(array_unique($valid));
+        return $categoryDefault !== '' ? [$categoryDefault] : [];
     }
 
     /**

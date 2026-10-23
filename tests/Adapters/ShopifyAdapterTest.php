@@ -146,13 +146,42 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('categoryDefault_en', $p);
         $this->assertArrayNotHasKey('categoryDefault_lt', $p);
 
-        // categories now reflects taxonomy + tags only (productType excluded).
-        $this->assertContains('winter', $p['categories_en']);
-        $this->assertContains('outdoor', $p['categories_en']);
-        $this->assertNotContains('Sports', $p['categories_en']);
-        $this->assertContains('winter', $p['categories_lt']);
-        $this->assertContains('outdoor', $p['categories_lt']);
-        $this->assertNotContains('Sportas', $p['categories_lt']);
+        // categories reflect taxonomy only; this product has none. Tags get their own field.
+        $this->assertArrayNotHasKey('categories_en', $p);
+        $this->assertArrayNotHasKey('categories_lt', $p);
+        $this->assertSame(['winter', 'outdoor'], $p['tags_en']);
+        $this->assertSame(['winter', 'outdoor'], $p['tags_lt']);
+    }
+
+    public function testTagsAreEmittedPerLocaleAndNotInCategories(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shirts');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
+            'name' => 'Shirts',
+            'fullName' => 'Apparel & Accessories > Clothing > Shirts',
+        ];
+        $product['node']['tags'] = ['summer', '', 'cotton', 'summer', 42];
+
+        $result = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en', 'lt']);
+        $p = $result['products'][0];
+
+        $this->assertSame(['summer', 'cotton'], $p['tags_en']);
+        $this->assertSame(['summer', 'cotton'], $p['tags_lt']);
+        $this->assertSame(['Apparel & Accessories > Clothing > Shirts'], $p['categories_en']);
+        $this->assertNotContains('summer', $p['categories_lt']);
+    }
+
+    public function testProductWithoutTagsHasNoTagsField(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shirts');
+        $product['node']['tags'] = [];
+
+        $withLocales = $this->adapter->transform($this->makeShopifyResponse([$product], 'en'), ['en'])['products'][0];
+        $plain = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertArrayNotHasKey('tags_en', $withLocales);
+        $this->assertArrayNotHasKey('tags', $plain);
     }
 
     public function testBrandIsNotTranslatable(): void
@@ -864,9 +893,9 @@ class ShopifyAdapterTest extends TestCase
         $this->assertEquals('Batai', $p['productType_lt-LT']);
     }
 
-    public function testCategoriesArrayContainsTaxonomyAndTagsOnly(): void
+    public function testCategoriesArrayContainsTaxonomyOnlyAndTagsAreSeparate(): void
     {
-        // Taxonomy: categories = [fullName, ...tags]
+        // Taxonomy: categories = [fullName]; tags go to their own field
         $taxProduct = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
         $taxProduct['node']['category'] = [
             'id' => 'gid://shopify/TaxonomyCategory/aa-1-13-8',
@@ -875,12 +904,12 @@ class ShopifyAdapterTest extends TestCase
         ];
         $taxProduct['node']['tags'] = ['summer', 'cotton'];
 
-        // No taxonomy: categories = tags only; productType emitted separately.
+        // No taxonomy: categories empty; productType emitted separately.
         $noTaxProduct = $this->makeProduct('gid://shopify/Product/2', 'Ski', 'Desc', 'BrandX', 'Winter');
         $noTaxProduct['node']['category'] = null;
         $noTaxProduct['node']['tags'] = ['cold'];
 
-        // Both empty: categories = tags only.
+        // Both empty: categories empty, tags still present.
         $emptyProduct = $this->makeProduct('gid://shopify/Product/3', 'Mystery', 'Desc', 'BrandX', '');
         $emptyProduct['node']['category'] = null;
         $emptyProduct['node']['tags'] = ['gift'];
@@ -889,18 +918,18 @@ class ShopifyAdapterTest extends TestCase
         [$a, $b, $c] = $result['products'];
 
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $a['categoryDefault']);
-        $this->assertEqualsCanonicalizing(
-            ['Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
-            $a['categories']
-        );
+        $this->assertSame(['Apparel & Accessories > Clothing > Shirts'], $a['categories']);
+        $this->assertSame(['summer', 'cotton'], $a['tags']);
         $this->assertEquals('Shoes', $a['productType']);
 
         $this->assertSame('', $b['categoryDefault']);
-        $this->assertEquals(['cold'], $b['categories']);
+        $this->assertSame([], $b['categories']);
+        $this->assertSame(['cold'], $b['tags']);
         $this->assertEquals('Winter', $b['productType']);
 
         $this->assertSame('', $c['categoryDefault']);
-        $this->assertEquals(['gift'], $c['categories']);
+        $this->assertSame([], $c['categories']);
+        $this->assertSame(['gift'], $c['tags']);
         $this->assertArrayNotHasKey('productType', $c);
     }
 
