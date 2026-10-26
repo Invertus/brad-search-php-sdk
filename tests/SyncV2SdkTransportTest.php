@@ -99,6 +99,55 @@ class SyncV2SdkTransportTest extends TestCase
         $this->assertCount(1, $transport->requests);
     }
 
+    public function testForceMergeIndexPostsToTheForceMergeEndpoint(): void
+    {
+        $transport = new FakeTransport([new HttpResponse(202, json_encode([
+            'status' => 'accepted',
+            'index' => self::APP_ID . '-v2',
+            'task' => 'node-1:42',
+            'max_num_segments' => 1,
+        ], JSON_THROW_ON_ERROR))]);
+
+        $response = (new SyncV2Sdk($this->fastRetryConfig(), $transport))->forceMergeIndex();
+
+        $request = $transport->requests[0];
+        $this->assertSame('POST', $request->method);
+        $this->assertSame('https://api.example.com/api/v2/applications/' . self::APP_ID . '/index/forcemerge', $request->url);
+        $this->assertSame(self::APP_ID . '-v2', $response->index);
+        $this->assertSame('node-1:42', $response->task);
+    }
+
+    public function testGetIndexSegmentsReadsTheSegmentsEndpoint(): void
+    {
+        $transport = new FakeTransport([new HttpResponse(200, json_encode([
+            'index' => self::APP_ID . '-v2',
+            'segments' => 1,
+            'merge_running' => true,
+        ], JSON_THROW_ON_ERROR))]);
+
+        $response = (new SyncV2Sdk($this->fastRetryConfig(), $transport))->getIndexSegments();
+
+        $request = $transport->requests[0];
+        $this->assertSame('GET', $request->method);
+        $this->assertSame('https://api.example.com/api/v2/applications/' . self::APP_ID . '/index/segments', $request->url);
+        $this->assertSame(1, $response->segments);
+        $this->assertTrue($response->mergeRunning);
+    }
+
+    public function testForceMergeIndexIsNotRetriedOn503(): void
+    {
+        $transport = new FakeTransport([new HttpResponse(503, 'unavailable')]);
+
+        try {
+            (new SyncV2Sdk($this->fastRetryConfig(), $transport))->forceMergeIndex();
+            $this->fail('Expected ApiException');
+        } catch (ApiException $e) {
+            $this->assertSame(503, $e->statusCode);
+        }
+
+        $this->assertCount(1, $transport->requests);
+    }
+
     private function fastRetryConfig(): SyncConfigV2
     {
         return new SyncConfigV2(
