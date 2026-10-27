@@ -794,6 +794,23 @@ class ShopifyAdapterTest extends TestCase
         $this->assertNotContains('Shoes', $p['categories']);
     }
 
+    public function testTaxonomyCategoryIndexesEveryParentPathForTheTreeFilter(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', '');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/sg-4-17-2-17',
+            'name' => 'Snowboards',
+            'fullName' => 'Sporting Goods > Outdoor Recreation > Snowboards',
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+        $expected = ['Sporting Goods', 'Sporting Goods > Outdoor Recreation', 'Sporting Goods > Outdoor Recreation > Snowboards'];
+
+        $this->assertSame($expected, $this->adapter->transform($data)['products'][0]['categories']);
+        $this->assertSame($expected, $this->adapter->transform($data, ['en'])['products'][0]['categories_en']);
+        $this->assertSame('Sporting Goods > Outdoor Recreation > Snowboards', $this->adapter->transform($data)['products'][0]['categoryDefault']);
+    }
+
     public function testNullCategoryEmitsEmptyCategoryDefaultAndProductTypeField(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
@@ -927,7 +944,7 @@ class ShopifyAdapterTest extends TestCase
 
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $a['categoryDefault']);
         $this->assertEqualsCanonicalizing(
-            ['Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
+            ['Apparel & Accessories', 'Apparel & Accessories > Clothing', 'Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
             $a['categories']
         );
         $this->assertEquals('Shoes', $a['productType']);

@@ -539,7 +539,7 @@ class ShopifyAdapter
      */
     private function buildCategories(string $productType, array $tags): array
     {
-        $raw = $productType !== '' ? [$productType, ...$tags] : $tags;
+        $raw = [...AdapterUtils::categoryPathWithParents($productType), ...$tags];
         $valid = array_filter($raw, fn($c) => is_string($c) && $c !== '');
 
         return array_values(array_unique($valid));
