@@ -419,6 +419,43 @@ class ShopifyAdapterTest extends TestCase
         $this->assertArrayNotHasKey('gid://shopify/ProductOption/999', $variantB['attrs']);
     }
 
+    public function testDefaultTitlePlaceholderOptionIsNotIndexed(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Wax', 'Desc', 'BrandX', 'Sports');
+        $product['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/11',
+                    'sku' => 'W-1',
+                    'selectedOptions' => [['name' => 'Title', 'value' => 'Default Title']],
+                ],
+            ]],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $this->assertSame([], $this->adapter->transform($data, ['en'])['products'][0]['variants'][0]['attrs']);
+        $this->assertSame([], $this->adapter->transform($data, [])['products'][0]['variants'][0]['attributes']);
+    }
+
+    public function testRealOptionNamedTitleIsIndexed(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Sports');
+        $product['node']['variants'] = [
+            'edges' => [[
+                'node' => [
+                    'id' => 'gid://shopify/ProductVariant/11',
+                    'sku' => 'B-151',
+                    'selectedOptions' => [['name' => 'Title', 'value' => '151cm']],
+                ],
+            ]],
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+
+        $this->assertSame(['title' => ['en' => '151cm']], $this->adapter->transform($data, ['en'])['products'][0]['variants'][0]['attrs']);
+    }
+
     /**
      * Pathological option names made entirely of separators must not
      * produce an empty key. Must fall back to "unknown" to match
@@ -757,6 +794,23 @@ class ShopifyAdapterTest extends TestCase
         $this->assertNotContains('Shoes', $p['categories']);
     }
 
+    public function testTaxonomyCategoryIndexesEveryParentPathForTheTreeFilter(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', '');
+        $product['node']['category'] = [
+            'id' => 'gid://shopify/TaxonomyCategory/sg-4-17-2-17',
+            'name' => 'Snowboards',
+            'fullName' => 'Sporting Goods > Outdoor Recreation > Snowboards',
+        ];
+
+        $data = $this->makeShopifyResponse([$product], 'en');
+        $expected = ['Sporting Goods', 'Sporting Goods > Outdoor Recreation', 'Sporting Goods > Outdoor Recreation > Snowboards'];
+
+        $this->assertSame($expected, $this->adapter->transform($data)['products'][0]['categories']);
+        $this->assertSame($expected, $this->adapter->transform($data, ['en'])['products'][0]['categories_en']);
+        $this->assertSame('Sporting Goods > Outdoor Recreation > Snowboards', $this->adapter->transform($data)['products'][0]['categoryDefault']);
+    }
+
     public function testNullCategoryEmitsEmptyCategoryDefaultAndProductTypeField(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Tee', 'Desc', 'BrandX', 'Shoes');
@@ -890,7 +944,7 @@ class ShopifyAdapterTest extends TestCase
 
         $this->assertEquals('Apparel & Accessories > Clothing > Shirts', $a['categoryDefault']);
         $this->assertEqualsCanonicalizing(
-            ['Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
+            ['Apparel & Accessories', 'Apparel & Accessories > Clothing', 'Apparel & Accessories > Clothing > Shirts', 'summer', 'cotton'],
             $a['categories']
         );
         $this->assertEquals('Shoes', $a['productType']);
