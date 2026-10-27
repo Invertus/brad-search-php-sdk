@@ -785,7 +785,14 @@ class ShopifyAdapter
         return is_array($option)
             && isset($option['name'], $option['value'])
             && is_string($option['name']) && $option['name'] !== ''
-            && is_string($option['value']) && $option['value'] !== '';
+            && is_string($option['value']) && $option['value'] !== ''
+            && ! $this->isPlaceholderOption($option['name'], $option['value']);
+    }
+
+    // Shopify gives every product without variants a "Title" option valued "Default Title".
+    private function isPlaceholderOption(string $name, string $value): bool
+    {
+        return $name === 'Title' && $value === 'Default Title';
     }
 
     /**
