@@ -11,6 +11,9 @@ class ShopifyAdapter
     /** @var array<string, string> memoized option-name slugs */
     private array $optionSlugCache = [];
 
+    /** ISO 3166-1 user-assigned code, never a real country: marks a product published nowhere */
+    private const MARKETS_NOWHERE = 'ZZ';
+
     public function __construct()
     {
         if (!function_exists('bccomp')) {
@@ -122,6 +125,13 @@ class ShopifyAdapter
             ? $this->buildLocaleFields($locales, $primaryLocale, $translations, $product, $title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $defaultHandle, $productCollections)
             : $this->buildPlainFields($title, $description, $brand, $categoryDefault, $nativeProductType, $productUrl, $product, $productCollections, $primaryLocale);
 
+        $markets = $this->restrictedMarketCountries($product['marketAvailability'] ?? null);
+        if ($markets !== null) {
+            $result['markets'] = $markets;
+        }
+
+        $result += $this->buildFeatureFields($product['metafields']['nodes'] ?? [], $locales, $primaryLocale);
+
         if (isset($product['images']) && is_array($product['images'])) {
             $imageUrl = $this->extractImages($product['images']);
             if (! empty($imageUrl)) {
@@ -137,6 +147,7 @@ class ShopifyAdapter
                 $defaultHandle,
                 $translations,
                 $primaryLocale,
+                $this->buildOptionValueTranslations($product['options'] ?? []),
             );
         }
 
@@ -164,6 +175,7 @@ class ShopifyAdapter
         array $productCollections = [],
     ): array {
         $fields = [];
+        $tags = $this->extractTags($product);
 
         foreach ($locales as $locale) {
             $localeTranslations = $this->resolveTranslationsForLocale($locale, $primaryLocale, $translations);
@@ -182,9 +194,13 @@ class ShopifyAdapter
             if ($categoryDefault !== '') {
                 $fields["categoryDefault_{$locale}"] = $categoryDefault;
             }
-            $localeCategories = $this->buildCategories($categoryDefault, $this->extractTags($product));
+            $localeCategories = $this->buildCategories($categoryDefault);
             if (!empty($localeCategories)) {
                 $fields["categories_{$locale}"] = $localeCategories;
+            }
+            // Tags are not translatable in Shopify, so every locale gets the same list.
+            if (!empty($tags)) {
+                $fields["tags_{$locale}"] = $tags;
             }
             $flatCategories = AdapterUtils::splitCategoryLevels([$categoryDefault]);
             if (!empty($flatCategories)) {
@@ -239,13 +255,15 @@ class ShopifyAdapter
         string $primaryLocale,
     ): array {
         $collections = $this->resolveCollectionTitles($productCollections, $primaryLocale, $primaryLocale);
+        $tags = $this->extractTags($product);
 
         return array_filter([
             'name' => $title,
             'description' => $description !== '' ? $description : null,
             'brand' => $brand !== '' ? $brand : null,
             'categoryDefault' => $categoryDefault,
-            'categories' => $this->buildCategories($categoryDefault, $this->extractTags($product)),
+            'categories' => $this->buildCategories($categoryDefault),
+            'tags' => $tags !== [] ? $tags : null,
             'productType' => $nativeProductType !== '' ? $nativeProductType : null,
             'productUrl' => $productUrl !== '' ? $productUrl : null,
             'collections' => !empty($collections) ? $collections : null,
@@ -342,6 +360,246 @@ class ShopifyAdapter
         }
 
         return array_values(array_unique($titles));
+    }
+
+    /**
+     * Country codes the product is published in, or null when nothing restricts it: no market
+     * data, or published in every country. A product published nowhere gets the sentinel
+     * only, because OpenSearch treats an empty list as a missing field, and a missing field
+     * means "available everywhere" to brad-search.
+     *
+     * @param mixed $availability ISO country code => bool, from the connector
+     * @return array<int, string>|null
+     */
+    private function restrictedMarketCountries(mixed $availability): ?array
+    {
+        if (! is_array($availability) || $availability === []) {
+            return null;
+        }
+
+        $countries = [];
+        $restricted = false;
+        foreach ($availability as $country => $published) {
+            if (! is_string($country) || ! is_bool($published)) {
+                continue;
+            }
+            $country = strtoupper($country);
+            if (preg_match('/^[A-Z]{2}$/', $country) !== 1) {
+                continue;
+            }
+            if ($published) {
+                $countries[] = $country;
+            } else {
+                $restricted = true;
+            }
+        }
+
+        if (! $restricted) {
+            return null;
+        }
+        if ($countries === []) {
+            return [self::MARKETS_NOWHERE];
+        }
+        sort($countries);
+
+        return array_values(array_unique($countries));
+    }
+
+    /**
+     * Metafield types whose value is a plain scalar or a list of them.
+     */
+    private const METAFIELD_SCALAR_TYPES = [
+        'single_line_text_field', 'multi_line_text_field', 'number_integer', 'number_decimal',
+        'boolean', 'date', 'date_time', 'url', 'color', 'id',
+    ];
+
+    /**
+     * Longest feature value kept, in characters. Feature fields have keyword subfields without
+     * `ignore_above`, and OpenSearch rejects the whole document for a term over 32,766 bytes.
+     */
+    private const METAFIELD_MAX_VALUE_LENGTH = 1000;
+
+    private const METAFIELD_UNIT_LABELS = [
+        'MILLIMETERS' => 'mm', 'CENTIMETERS' => 'cm', 'METERS' => 'm', 'INCHES' => 'in', 'FEET' => 'ft', 'YARDS' => 'yd',
+        'GRAMS' => 'g', 'KILOGRAMS' => 'kg', 'OUNCES' => 'oz', 'POUNDS' => 'lb',
+        'MILLILITERS' => 'ml', 'CENTILITERS' => 'cl', 'LITERS' => 'l', 'CUBIC_METERS' => 'm³',
+        'FLUID_OUNCES' => 'fl oz', 'PINTS' => 'pt', 'QUARTS' => 'qt', 'GALLONS' => 'gal', 'IMPERIAL_FLUID_OUNCES' => 'fl oz',
+    ];
+
+    /**
+     * Metafields become `feature_<slug>` fields, one per locale when locales are given. The slug
+     * is the one the Shopify app builds from `namespace_key`, so the field matches the filter
+     * row brad-app registered from the metafield definition.
+     *
+     * @param array<int, mixed> $metafields `metafields.nodes` from the connector
+     * @param array<string> $locales
+     * @return array<string, string|array<int, string>>
+     */
+    private function buildFeatureFields(array $metafields, array $locales, string $primaryLocale): array
+    {
+        $fields = [];
+        $seen = [];
+
+        foreach ($metafields as $metafield) {
+            if (! is_array($metafield)) {
+                continue;
+            }
+            $slug = $this->metafieldSlug($metafield);
+            if ($slug === null || isset($seen[$slug])) {
+                continue;
+            }
+            $value = $this->metafieldValue($metafield);
+            if ($value === null) {
+                continue;
+            }
+            $seen[$slug] = true;
+
+            if ($locales === []) {
+                $fields["feature_{$slug}"] = $value;
+                continue;
+            }
+
+            foreach ($locales as $locale) {
+                $fields["feature_{$slug}_{$locale}"] = $this->translatedMetafieldValue($metafield, $locale, $primaryLocale) ?? $value;
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * Mirror of the Shopify app's FeaturesAggregator slug: lowercase `namespace_key`, every run of
+     * characters other than letters, numbers and `_` collapsed to `_`. The connector returns the key
+     * as `namespace.key` when it filtered by keys, so the namespace prefix is stripped first.
+     * Two metafields with the same slug: the first one wins, like the app's feature list.
+     *
+     * @param array<string, mixed> $metafield
+     */
+    private function metafieldSlug(array $metafield): ?string
+    {
+        $namespace = is_string($metafield['namespace'] ?? null) ? trim($metafield['namespace']) : '';
+        $key = is_string($metafield['key'] ?? null) ? trim($metafield['key']) : '';
+        if ($namespace !== '' && str_starts_with($key, $namespace . '.')) {
+            $key = substr($key, strlen($namespace) + 1);
+        }
+        if ($namespace === '' || $key === '') {
+            return null;
+        }
+
+        $slug = preg_replace('/[^\p{L}\p{N}_]+/u', '_', mb_strtolower($namespace . '_' . $key, 'UTF-8'));
+        $slug = trim((string) $slug, '_');
+
+        return $slug === '' ? null : $slug;
+    }
+
+    /**
+     * @param array<string, mixed> $metafield
+     * @return string|array<int, string>|null
+     */
+    private function metafieldValue(array $metafield): string|array|null
+    {
+        $type = is_string($metafield['type'] ?? null) ? $metafield['type'] : '';
+        $isList = str_starts_with($type, 'list.');
+        $baseType = $isList ? substr($type, 5) : $type;
+        $json = $metafield['jsonValue'] ?? null;
+
+        if ($baseType === 'metaobject_reference') {
+            $names = $isList
+                ? array_map(fn($node) => $node['displayName'] ?? null, $metafield['references']['nodes'] ?? [])
+                : [$metafield['reference']['displayName'] ?? null];
+
+            return $this->metafieldList($names, $isList);
+        }
+
+        if (in_array($baseType, ['dimension', 'weight', 'volume'], true)) {
+            $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+            return $this->metafieldList(array_map($this->formatMeasurement(...), $items), $isList);
+        }
+
+        if ($baseType === 'rating') {
+            $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+            return $this->metafieldList(array_map(fn($item) => $this->scalarToString($item['value'] ?? null), $items), $isList);
+        }
+
+        if (! in_array($baseType, self::METAFIELD_SCALAR_TYPES, true)) {
+            return null;
+        }
+
+        $items = $isList ? (is_array($json) ? $json : []) : [$json];
+
+        return $this->metafieldList(array_map($this->scalarToString(...), $items), $isList);
+    }
+
+    /**
+     * @param array<int, mixed> $values
+     * @return string|array<int, string>|null
+     */
+    private function metafieldList(array $values, bool $isList): string|array|null
+    {
+        $clean = array_values(array_filter($values, fn($v) => is_string($v) && $v !== ''));
+        if ($clean === []) {
+            return null;
+        }
+
+        return $isList ? $clean : $clean[0];
+    }
+
+    private function scalarToString(mixed $value): ?string
+    {
+        if (is_bool($value)) {
+            return $value ? 'true' : 'false';
+        }
+        if (is_int($value) || is_float($value)) {
+            return (string) $value;
+        }
+        if (is_string($value)) {
+            // Only real tags: a bare `<` as in "<5 kg" is text, which strip_tags() would cut.
+            $trimmed = trim((string) preg_replace('/<\/?[a-z][^<>]*>/i', '', $value));
+
+            return $trimmed === '' ? null : mb_substr($trimmed, 0, self::METAFIELD_MAX_VALUE_LENGTH, 'UTF-8');
+        }
+
+        return null;
+    }
+
+    private function formatMeasurement(mixed $item): ?string
+    {
+        if (! is_array($item) || ! isset($item['value']) || ! is_numeric($item['value'])) {
+            return null;
+        }
+        $unit = is_string($item['unit'] ?? null) ? $item['unit'] : '';
+        $label = self::METAFIELD_UNIT_LABELS[$unit] ?? strtolower(str_replace('_', ' ', $unit));
+
+        return trim((string) $item['value'] . ' ' . $label);
+    }
+
+    /**
+     * Translate & Adapt stores a metafield translation under key `value`. Lists come back as a
+     * JSON array string.
+     *
+     * @param array<string, mixed> $metafield
+     * @return string|array<int, string>|null
+     */
+    private function translatedMetafieldValue(array $metafield, string $locale, string $primaryLocale): string|array|null
+    {
+        if ($locale === $primaryLocale || ! is_array($metafield['translations'][$locale] ?? null)) {
+            return null;
+        }
+        $translated = $this->translated($metafield['translations'][$locale], 'value');
+        if ($translated === null) {
+            return null;
+        }
+
+        $type = is_string($metafield['type'] ?? null) ? $metafield['type'] : '';
+        if (str_starts_with($type, 'list.')) {
+            $decoded = json_decode($translated, true);
+
+            return is_array($decoded) ? $this->metafieldList(array_map($this->scalarToString(...), $decoded), true) : null;
+        }
+
+        return $this->scalarToString($translated);
     }
 
     /**
@@ -527,22 +785,19 @@ class ShopifyAdapter
      */
     private function extractTags(array $product): array
     {
-        return isset($product['tags']) && is_array($product['tags']) ? $product['tags'] : [];
+        $tags = isset($product['tags']) && is_array($product['tags']) ? $product['tags'] : [];
+
+        return array_values(array_unique(array_filter($tags, fn($tag) => is_string($tag) && $tag !== '')));
     }
 
     /**
-     * Build categories from a product type string and tags.
-     * Shared by both locale and non-locale code paths.
+     * Categories hold the taxonomy path only. Tags have their own field.
      *
-     * @param array<string> $tags
      * @return array<string>
      */
-    private function buildCategories(string $productType, array $tags): array
+    private function buildCategories(string $categoryDefault): array
     {
-        $raw = $productType !== '' ? [$productType, ...$tags] : $tags;
-        $valid = array_filter($raw, fn($c) => is_string($c) && $c !== '');
-
-        return array_values(array_unique($valid));
+        return $categoryDefault !== '' ? [$categoryDefault] : [];
     }
 
     /**
@@ -691,6 +946,7 @@ class ShopifyAdapter
         string $defaultHandle = '',
         array $translations = [],
         string $primaryLocale = '',
+        array $optionValueTranslations = [],
     ): array {
         if (! isset($variantsData['edges']) || ! is_array($variantsData['edges'])) {
             return [];
@@ -704,7 +960,7 @@ class ShopifyAdapter
             $localeHandles[$locale] = $this->translated($localeTranslations, 'handle');
         }
 
-        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles): array {
+        return array_map(function (array $edge) use ($locales, $productUrl, $defaultHandle, $primaryLocale, $localeHandles, $optionValueTranslations): array {
             if (! isset($edge['node']) || ! is_array($edge['node'])) {
                 throw new ValidationException('Variant has malformed node structure');
             }
@@ -744,7 +1000,7 @@ class ShopifyAdapter
             }
 
             if (! empty($locales)) {
-                $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales);
+                $result['attrs'] = $this->transformVariantOptionsWithLocales($options, $locales, $primaryLocale, $optionValueTranslations);
                 foreach ($locales as $locale) {
                     $url = $this->buildLocaleProductUrl(
                         $productUrl,
@@ -789,20 +1045,67 @@ class ShopifyAdapter
     }
 
     /**
-     * Output: {"color": {"en-US": "White", "lt-LT": "White"}}
+     * Output: {"color": {"en-US": "White", "lt-LT": "Balta"}}. The slug always comes from the
+     * default option name; a locale without a translation keeps the default value.
      *
+     * @param array<string, array<string, array<string, string>>> $optionValueTranslations
      * @return array<string, array<string, string>>
      */
-    private function transformVariantOptionsWithLocales(array $selectedOptions, array $locales): array
-    {
+    private function transformVariantOptionsWithLocales(
+        array $selectedOptions,
+        array $locales,
+        string $primaryLocale = '',
+        array $optionValueTranslations = [],
+    ): array {
         $validOptions = array_filter($selectedOptions, $this->isValidOption(...));
 
         $result = [];
         foreach ($validOptions as $option) {
-            $result[$this->slugifyOptionName($option['name'])] = array_fill_keys($locales, $option['value']);
+            $translated = $optionValueTranslations[$option['name']][$option['value']] ?? [];
+            $values = [];
+            foreach ($locales as $locale) {
+                $values[$locale] = $locale !== $primaryLocale && isset($translated[$locale])
+                    ? $translated[$locale]
+                    : $option['value'];
+            }
+            $result[$this->slugifyOptionName($option['name'])] = $values;
         }
 
         return $result;
+    }
+
+    /**
+     * Index the option value translations the connector attaches to `options[].optionValues[]`:
+     * [option name => [default value => [locale => translated value]]].
+     *
+     * @param array<int, mixed> $options
+     * @return array<string, array<string, array<string, string>>>
+     */
+    private function buildOptionValueTranslations(array $options): array
+    {
+        $map = [];
+
+        foreach ($options as $option) {
+            if (! is_array($option) || ! is_string($option['name'] ?? null)) {
+                continue;
+            }
+            foreach ($option['optionValues'] ?? [] as $value) {
+                if (! is_array($value) || ! is_string($value['name'] ?? null) || ! is_array($value['translations'] ?? null)) {
+                    continue;
+                }
+                foreach ($value['translations'] as $locale => $entries) {
+                    if (! is_string($locale) || ! is_array($entries)) {
+                        continue;
+                    }
+                    $translatedName = $this->translated($entries, 'name');
+                    if ($translatedName !== null) {
+                        $map[$option['name']][$value['name']][$locale] = $translatedName;
+                    }
+                }
+            }
+        }
+
+        return $map;
     }
 
     /**
