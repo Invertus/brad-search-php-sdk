@@ -156,7 +156,7 @@ The `ShopifyAdapter` transforms Shopify GraphQL product data into the standardiz
 - **GraphQL to BradSearch**: Handles Shopify's GraphQL response structure (edges/nodes)
 - **GID extraction**: Converts Shopify GIDs (`gid://shopify/Product/123`) to numeric IDs
 - **Variant transformation**: Converts `selectedOptions` to BradSearch attributes format
-- **Category extraction**: Categories come from the Shopify taxonomy path only; `productType` and `tags` are their own fields
+- **Category extraction**: Categories are the Shopify taxonomy path plus every parent path; `productType` and `tags` are their own fields
 - **Price handling**: Extracts prices from `priceRangeV2` structure with BCMath precision
 - **Image processing**: Flattens GraphQL image edges to simple URLs
 
@@ -197,7 +197,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `descriptionHtml` | `description` | HTML tags stripped |
 | `vendor` | `brand` | Shopify vendor = brand |
 | `category.fullName` | `categoryDefault` | Taxonomy path; absent when the product has no taxonomy category |
-| `category.fullName` | `categories` | Taxonomy path only |
+| `category.fullName` | `categories` | Taxonomy path and every parent path |
 | `productType` | `productType` | Free-text type |
 | `tags` | `tags` | Product tags |
 | `priceRangeV2.minVariantPrice` | `price` | Minimum variant price |
@@ -330,7 +330,7 @@ default option name.
 
 // BradSearch output
 "categoryDefault": "Apparel & Accessories > Shoes",
-"categories": ["Apparel & Accessories > Shoes"],
+"categories": ["Apparel & Accessories", "Apparel & Accessories > Shoes"],
 "productType": "Shoes",
 "tags": ["Running", "Athletic", "Men"]
 ```
