@@ -28,6 +28,7 @@ The V2 design contract lives in `tasks/prd-v2-valueobjects.md` — read it befor
 ```
 tests/fixtures/openapi-examples/
 ├── index-create-darbo-drabuziai.json
+├── index-create-copy-new-features.json
 ├── bulk-operations-darbo-drabuziai.json
 ├── configuration-advanced.json
 ├── search-configuration-request.json
