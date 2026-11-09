@@ -573,6 +573,18 @@ class IndexCreateRequestTest extends TestCase
         ];
     }
 
+    /**
+     * @return array<string, array{callable(IndexCreateRequest): IndexCreateRequest}>
+     */
+    public static function copyNewFeaturesBuilderProvider(): array
+    {
+        return [
+            ...self::builderProvider(),
+            'withSynonyms' => [fn(IndexCreateRequest $r) => $r->withSynonyms([new SynonymConfiguration('en', [['laptop', 'notebook']])])],
+            'withAddedSynonym' => [fn(IndexCreateRequest $r) => $r->withAddedSynonym(new SynonymConfiguration('en', [['laptop', 'notebook']]))],
+        ];
+    }
+
     public function testCopyNewFeaturesToTextDefaultsToFalseAndIsOmittedFromSerialization(): void
     {
         $request = new IndexCreateRequest(
@@ -610,7 +622,7 @@ class IndexCreateRequestTest extends TestCase
     }
 
     /**
-     * @dataProvider builderProvider
+     * @dataProvider copyNewFeaturesBuilderProvider
      * @param callable(IndexCreateRequest): IndexCreateRequest $builder
      */
     public function testBuildersPreserveCopyNewFeaturesToText(callable $builder): void
@@ -624,17 +636,17 @@ class IndexCreateRequestTest extends TestCase
         $this->assertTrue($builder($request)->copyNewFeaturesToText);
     }
 
-    public function testWithSynonymsPreservesCopyNewFeaturesToText(): void
+    public function testWithCopyNewFeaturesToTextKeepsOtherValues(): void
     {
-        $request = new IndexCreateRequest(
-            ['en-US'],
-            [new FieldDefinition('name', FieldType::TEXT)],
-            copyNewFeaturesToText: true
-        );
+        $fields = [new FieldDefinition('name', FieldType::TEXT)];
+        $synonyms = [new SynonymConfiguration('en', [['laptop', 'notebook']])];
+        $request = new IndexCreateRequest(['en-US', 'lt-LT'], $fields, $synonyms);
 
-        $updated = $request->withSynonyms([new SynonymConfiguration('en', [['laptop', 'notebook']])]);
+        $updated = $request->withCopyNewFeaturesToText(true);
 
-        $this->assertTrue($updated->copyNewFeaturesToText);
+        $this->assertSame(['en-US', 'lt-LT'], $updated->locales);
+        $this->assertSame($fields, $updated->fields);
+        $this->assertSame($synonyms, $updated->synonyms);
     }
 
     public function testThrowsExceptionForDuplicateSynonymLanguage(): void
