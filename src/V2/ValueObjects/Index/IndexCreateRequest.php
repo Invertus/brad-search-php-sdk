@@ -17,6 +17,8 @@ use BradSearch\SyncSdk\V2\ValueObjects\ValueObject;
  * - fields: Array of FieldDefinition objects
  * - synonyms: Deprecated, ignored by the engine; synonyms are query-time
  *   `synonym_rules` in the search configuration now.
+ * - copyNewFeaturesToText: Copy a feature field added after index creation
+ *   into `_features_text_<locale>`. Sent only when true.
  */
 final readonly class IndexCreateRequest extends ValueObject
 {
@@ -34,7 +36,8 @@ final readonly class IndexCreateRequest extends ValueObject
         array $locales,
         public array $fields,
         /** @deprecated The engine ignores index-time synonyms; use SearchSettingsRequest::$synonymRules. */
-        public array $synonyms = []
+        public array $synonyms = [],
+        public bool $copyNewFeaturesToText = false
     ) {
         $this->validateLocales($locales);
         $this->validateFields($fields);
@@ -49,7 +52,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withLocales(array $locales): self
     {
-        return new self($locales, $this->fields, $this->synonyms);
+        return new self($locales, $this->fields, $this->synonyms, $this->copyNewFeaturesToText);
     }
 
     /**
@@ -59,7 +62,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withFields(array $fields): self
     {
-        return new self($this->locales, $fields, $this->synonyms);
+        return new self($this->locales, $fields, $this->synonyms, $this->copyNewFeaturesToText);
     }
 
     /**
@@ -71,7 +74,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withSynonyms(array $synonyms): self
     {
-        return new self($this->locales, $this->fields, $synonyms);
+        return new self($this->locales, $this->fields, $synonyms, $this->copyNewFeaturesToText);
     }
 
     /**
@@ -79,7 +82,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withAddedLocale(string $locale): self
     {
-        return new self([...$this->locales, $locale], $this->fields, $this->synonyms);
+        return new self([...$this->locales, $locale], $this->fields, $this->synonyms, $this->copyNewFeaturesToText);
     }
 
     /**
@@ -87,7 +90,7 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withAddedField(FieldDefinition $field): self
     {
-        return new self($this->locales, [...$this->fields, $field], $this->synonyms);
+        return new self($this->locales, [...$this->fields, $field], $this->synonyms, $this->copyNewFeaturesToText);
     }
 
     /**
@@ -95,7 +98,15 @@ final readonly class IndexCreateRequest extends ValueObject
      */
     public function withAddedSynonym(SynonymConfiguration $synonym): self
     {
-        return new self($this->locales, $this->fields, [...$this->synonyms, $synonym]);
+        return new self($this->locales, $this->fields, [...$this->synonyms, $synonym], $this->copyNewFeaturesToText);
+    }
+
+    /**
+     * Returns a new instance that copies (or does not copy) new feature fields into `_features_text_<locale>`.
+     */
+    public function withCopyNewFeaturesToText(bool $copyNewFeaturesToText): self
+    {
+        return new self($this->locales, $this->fields, $this->synonyms, $copyNewFeaturesToText);
     }
 
     /**
@@ -116,6 +127,10 @@ final readonly class IndexCreateRequest extends ValueObject
                 fn(SynonymConfiguration $synonym) => $synonym->jsonSerialize(),
                 $this->synonyms
             );
+        }
+
+        if ($this->copyNewFeaturesToText) {
+            $data['copy_new_features_to_text'] = true;
         }
 
         return $data;

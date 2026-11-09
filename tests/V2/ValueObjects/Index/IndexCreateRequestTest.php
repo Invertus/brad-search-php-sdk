@@ -573,6 +573,70 @@ class IndexCreateRequestTest extends TestCase
         ];
     }
 
+    public function testCopyNewFeaturesToTextDefaultsToFalseAndIsOmittedFromSerialization(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)]
+        );
+
+        $this->assertFalse($request->copyNewFeaturesToText);
+        $this->assertArrayNotHasKey('copy_new_features_to_text', $request->jsonSerialize());
+    }
+
+    public function testCopyNewFeaturesToTextIsSerializedWhenTrue(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)],
+            copyNewFeaturesToText: true
+        );
+
+        $this->assertTrue($request->jsonSerialize()['copy_new_features_to_text']);
+    }
+
+    public function testWithCopyNewFeaturesToTextReturnsNewInstance(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)]
+        );
+
+        $updated = $request->withCopyNewFeaturesToText(true);
+
+        $this->assertNotSame($request, $updated);
+        $this->assertFalse($request->copyNewFeaturesToText);
+        $this->assertTrue($updated->copyNewFeaturesToText);
+    }
+
+    /**
+     * @dataProvider builderProvider
+     * @param callable(IndexCreateRequest): IndexCreateRequest $builder
+     */
+    public function testBuildersPreserveCopyNewFeaturesToText(callable $builder): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)],
+            copyNewFeaturesToText: true
+        );
+
+        $this->assertTrue($builder($request)->copyNewFeaturesToText);
+    }
+
+    public function testWithSynonymsPreservesCopyNewFeaturesToText(): void
+    {
+        $request = new IndexCreateRequest(
+            ['en-US'],
+            [new FieldDefinition('name', FieldType::TEXT)],
+            copyNewFeaturesToText: true
+        );
+
+        $updated = $request->withSynonyms([new SynonymConfiguration('en', [['laptop', 'notebook']])]);
+
+        $this->assertTrue($updated->copyNewFeaturesToText);
+    }
+
     public function testThrowsExceptionForDuplicateSynonymLanguage(): void
     {
         $this->expectException(InvalidArgumentException::class);

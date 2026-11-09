@@ -17,6 +17,17 @@ final class IndexCreateRequestBuilder
     /** @var array<FieldDefinition> */
     private array $fields = [];
 
+    private bool $copyNewFeaturesToText = false;
+
+    /**
+     * Sets whether a feature field added after index creation is copied into `_features_text_<locale>`.
+     */
+    public function copyNewFeaturesToText(bool $copyNewFeaturesToText = true): self
+    {
+        $this->copyNewFeaturesToText = $copyNewFeaturesToText;
+        return $this;
+    }
+
     /**
      * Adds a locale to the request.
      */
@@ -60,7 +71,8 @@ final class IndexCreateRequestBuilder
 
         return new IndexCreateRequest(
             $this->locales,
-            $this->fields
+            $this->fields,
+            copyNewFeaturesToText: $this->copyNewFeaturesToText
         );
     }
 
@@ -71,6 +83,7 @@ final class IndexCreateRequestBuilder
     {
         $this->locales = [];
         $this->fields = [];
+        $this->copyNewFeaturesToText = false;
         return $this;
     }
 }

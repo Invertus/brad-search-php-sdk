@@ -271,6 +271,41 @@ class IndexCreateRequestBuilderTest extends TestCase
         $this->assertEquals(['en-US', 'lt-LT', 'de-DE'], $request->locales);
     }
 
+    public function testCopyNewFeaturesToTextDefaultsToFalse(): void
+    {
+        $request = (new IndexCreateRequestBuilder())
+            ->addLocale('en-US')
+            ->addField(new FieldDefinition('name', FieldType::TEXT))
+            ->build();
+
+        $this->assertFalse($request->copyNewFeaturesToText);
+    }
+
+    public function testCopyNewFeaturesToTextIsPassedToRequest(): void
+    {
+        $builder = new IndexCreateRequestBuilder();
+
+        $this->assertSame($builder, $builder->copyNewFeaturesToText(true));
+        $request = $builder
+            ->addLocale('en-US')
+            ->addField(new FieldDefinition('name', FieldType::TEXT))
+            ->build();
+
+        $this->assertTrue($request->copyNewFeaturesToText);
+    }
+
+    public function testResetClearsCopyNewFeaturesToText(): void
+    {
+        $request = (new IndexCreateRequestBuilder())
+            ->copyNewFeaturesToText(true)
+            ->reset()
+            ->addLocale('en-US')
+            ->addField(new FieldDefinition('name', FieldType::TEXT))
+            ->build();
+
+        $this->assertFalse($request->copyNewFeaturesToText);
+    }
+
     public function testOrderOfFieldsIsPreserved(): void
     {
         $builder = new IndexCreateRequestBuilder();
