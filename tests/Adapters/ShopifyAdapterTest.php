@@ -109,10 +109,44 @@ class ShopifyAdapterTest extends TestCase
         $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
 
         $this->assertSame([
-            ['countries' => ['us'], 'price' => 862.0, 'basePrice' => 972.0, 'currency' => 'USD'],
             ['countries' => ['pl', 'se'], 'price' => 3183.5, 'basePrice' => 3183.5, 'currency' => 'PLN'],
+            ['countries' => ['us'], 'price' => 862.0, 'basePrice' => 972.0, 'currency' => 'USD'],
         ], $p['marketPrices']);
         $this->assertSame('19.99', $p['price']);
+    }
+
+    public function testMarketPricesAreSortedAndEachCountryKeepsItsFirstEntry(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ['SE', 'DE'], 'price' => '20.00', 'currency' => 'EUR'],
+            ['countries' => ['CA'], 'price' => '30.00', 'currency' => 'CAD'],
+            ['countries' => ['DE'], 'price' => '99.00', 'currency' => 'EUR'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['ca'], 'price' => 30.0, 'basePrice' => 30.0, 'currency' => 'CAD'],
+            ['countries' => ['de', 'se'], 'price' => 20.0, 'basePrice' => 20.0, 'currency' => 'EUR'],
+        ], $p['marketPrices']);
+    }
+
+    public function testMarketPricesRejectBadCodesAndCompareAllDecimals(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ["US\n"], 'price' => '10.00', 'currency' => 'USD'],
+            ['countries' => ['GB'], 'price' => "10.00\n", 'currency' => 'GBP'],
+            ['countries' => ['FR'], 'price' => '10.00', 'currency' => 'eur'],
+            ['countries' => ['KW'], 'price' => '10.001', 'compareAtPrice' => '10.009', 'currency' => 'KWD'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['kw'], 'price' => 10.001, 'basePrice' => 10.009, 'currency' => 'KWD'],
+        ], $p['marketPrices']);
     }
 
     /**

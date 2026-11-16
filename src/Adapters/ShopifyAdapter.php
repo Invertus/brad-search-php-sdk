@@ -423,36 +423,43 @@ class ShopifyAdapter
         }
 
         $entries = [];
+        $seen = [];
         foreach ($groups as $group) {
             if (! is_array($group)) {
                 continue;
             }
             $price = $this->decimalString($group['price'] ?? null);
             $currency = $group['currency'] ?? null;
-            if ($price === null || ! is_string($currency) || $currency === '') {
+            if ($price === null || ! is_string($currency) || preg_match('/^[A-Z]{3}\z/', $currency) !== 1) {
                 continue;
             }
 
             $countries = [];
             foreach (is_array($group['countries'] ?? null) ? $group['countries'] : [] as $country) {
-                if (is_string($country) && preg_match('/^[a-z]{2}$/', strtolower($country)) === 1) {
-                    $countries[] = strtolower($country);
+                $code = is_string($country) ? strtolower($country) : '';
+                if (preg_match('/^[a-z]{2}\z/', $code) === 1 && ! isset($seen[$code])) {
+                    $seen[$code] = true;
+                    $countries[] = $code;
                 }
             }
             if ($countries === []) {
                 continue;
             }
+            sort($countries);
 
             $compareAt = $this->decimalString($group['compareAtPrice'] ?? null);
-            $basePrice = ($compareAt !== null && bccomp($compareAt, $price, 2) > 0) ? $compareAt : $price;
+            $scale = max($this->decimals($price), $compareAt !== null ? $this->decimals($compareAt) : 0);
+            $basePrice = ($compareAt !== null && bccomp($compareAt, $price, $scale) > 0) ? $compareAt : $price;
 
             $entries[] = [
-                'countries' => array_values(array_unique($countries)),
+                'countries' => $countries,
                 'price' => (float) $price,
                 'basePrice' => (float) $basePrice,
                 'currency' => $currency,
             ];
         }
+
+        usort($entries, fn (array $a, array $b): int => strcmp($a['countries'][0], $b['countries'][0]));
 
         return $entries;
     }
@@ -464,7 +471,14 @@ class ShopifyAdapter
         }
         $value = (string) $value;
 
-        return preg_match('/^\d+(\.\d+)?$/', $value) === 1 ? $value : null;
+        return preg_match('/^\d+(\.\d+)?\z/', $value) === 1 ? $value : null;
+    }
+
+    private function decimals(string $value): int
+    {
+        $dot = strpos($value, '.');
+
+        return $dot === false ? 0 : strlen($value) - $dot - 1;
     }
 
     /**
