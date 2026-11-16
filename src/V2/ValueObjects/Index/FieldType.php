@@ -19,4 +19,5 @@ enum FieldType: string
     case IMAGE_URL = 'image_url';
     case VARIANTS = 'variants';
     case DATE = 'date';
+    case MARKET_PRICES = 'market_prices';
 }

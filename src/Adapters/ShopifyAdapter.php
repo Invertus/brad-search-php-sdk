@@ -130,6 +130,11 @@ class ShopifyAdapter
             $result['markets'] = $markets;
         }
 
+        $marketPrices = $this->buildMarketPrices($product['marketPrices'] ?? null);
+        if ($marketPrices !== []) {
+            $result['marketPrices'] = $marketPrices;
+        }
+
         $result += $this->buildFeatureFields($product['metafields']['nodes'] ?? [], $locales, $primaryLocale);
 
         if (isset($product['images']) && is_array($product['images'])) {
@@ -403,6 +408,63 @@ class ShopifyAdapter
         sort($countries);
 
         return array_values(array_unique($countries));
+    }
+
+    /**
+     * One entry per market pricing group; basePrice falls back to price unless compare-at is higher.
+     *
+     * @param mixed $groups `marketPrices` from the connector
+     * @return array<int, array{countries: array<int, string>, price: float, basePrice: float, currency: string}>
+     */
+    private function buildMarketPrices(mixed $groups): array
+    {
+        if (! is_array($groups)) {
+            return [];
+        }
+
+        $entries = [];
+        foreach ($groups as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+            $price = $this->decimalString($group['price'] ?? null);
+            $currency = $group['currency'] ?? null;
+            if ($price === null || ! is_string($currency) || $currency === '') {
+                continue;
+            }
+
+            $countries = [];
+            foreach (is_array($group['countries'] ?? null) ? $group['countries'] : [] as $country) {
+                if (is_string($country) && preg_match('/^[a-z]{2}$/', strtolower($country)) === 1) {
+                    $countries[] = strtolower($country);
+                }
+            }
+            if ($countries === []) {
+                continue;
+            }
+
+            $compareAt = $this->decimalString($group['compareAtPrice'] ?? null);
+            $basePrice = ($compareAt !== null && bccomp($compareAt, $price, 2) > 0) ? $compareAt : $price;
+
+            $entries[] = [
+                'countries' => array_values(array_unique($countries)),
+                'price' => (float) $price,
+                'basePrice' => (float) $basePrice,
+                'currency' => $currency,
+            ];
+        }
+
+        return $entries;
+    }
+
+    private function decimalString(mixed $value): ?string
+    {
+        if (! is_string($value) && ! is_int($value) && ! is_float($value)) {
+            return null;
+        }
+        $value = (string) $value;
+
+        return preg_match('/^\d+(\.\d+)?$/', $value) === 1 ? $value : null;
     }
 
     /**

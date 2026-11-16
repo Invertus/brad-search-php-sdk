@@ -11,7 +11,7 @@ class FieldTypeTest extends TestCase
 {
     public function testAllExpectedValuesExist(): void
     {
-        $expectedValues = ['text', 'keyword', 'double', 'integer', 'boolean', 'image_url', 'variants', 'date'];
+        $expectedValues = ['text', 'keyword', 'double', 'integer', 'boolean', 'image_url', 'variants', 'date', 'market_prices'];
 
         $actualValues = array_map(fn(FieldType $case) => $case->value, FieldType::cases());
 
@@ -58,6 +58,11 @@ class FieldTypeTest extends TestCase
         $this->assertEquals('date', FieldType::DATE->value);
     }
 
+    public function testMarketPricesCaseHasCorrectValue(): void
+    {
+        $this->assertEquals('market_prices', FieldType::MARKET_PRICES->value);
+    }
+
     public function testCanCreateFromValidString(): void
     {
         $this->assertEquals(FieldType::TEXT, FieldType::from('text'));
@@ -68,6 +73,7 @@ class FieldTypeTest extends TestCase
         $this->assertEquals(FieldType::IMAGE_URL, FieldType::from('image_url'));
         $this->assertEquals(FieldType::VARIANTS, FieldType::from('variants'));
         $this->assertEquals(FieldType::DATE, FieldType::from('date'));
+        $this->assertEquals(FieldType::MARKET_PRICES, FieldType::from('market_prices'));
     }
 
     public function testThrowsExceptionForInvalidString(): void

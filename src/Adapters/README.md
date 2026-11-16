@@ -207,6 +207,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
 | `variants.selectedOptions` | `variants.attrs` / `variants.attributes` | Keyed by a slug derived from the option name (Unicode-safe, lowercase, dash-joined). Shopify assigns a unique GID per product for the same option, so GIDs cannot be used as a shared key. |
 | `marketAvailability` (added by the connector, not a Shopify field) | `markets` | ISO country codes the product is published in. Only set when the product is hidden in at least one country; absent means available everywhere; `["ZZ"]` means published nowhere. |
+| `marketPrices` (added by the connector, not a Shopify field) | `marketPrices` | One entry per market pricing group: `countries` (lower-cased), `price`, `basePrice`, `currency`. Product level only; absent for a single-market store. |
 
 ### Shopify-Specific Transformations
 
@@ -347,6 +348,19 @@ The connector asks Shopify, per country of every active market, whether the prod
 ```
 
 A product published in every country gets no `markets` field, so brad-search treats it as available everywhere. A product published nowhere gets `markets: ["ZZ"]`: an empty list would be stored as a missing field and read as "available everywhere". `ZZ` is a user-assigned ISO code no market uses. Countries are upper-cased and sorted; keys that are not two letters and values that are not booleans are ignored.
+
+#### Market prices
+The connector sends the price of each market pricing group:
+
+```php
+// Shopify input
+"marketPrices": [{"countries": ["US"], "price": "862.00", "compareAtPrice": "972.00", "currency": "USD"}]
+
+// BradSearch output
+"marketPrices": [{"countries": ["us"], "price": 862.0, "basePrice": 972.0, "currency": "USD"}]
+```
+
+`basePrice` is `compareAtPrice` only when it is higher than `price`; otherwise it equals `price` (EU markets hide compare-at, so they show no sale). Entries without a decimal price, a currency or a two-letter country are skipped. No entries, no field. Variants get no market prices.
 
 ### Error Handling
 
