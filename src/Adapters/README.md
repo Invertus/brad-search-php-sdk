@@ -207,7 +207,7 @@ $syncSdk->syncBulk('my-index', $transformedData['products']);
 | `images.edges[*]` | `imageUrl` | Intelligently selects images by width: smallest for `small`, middle-range for `medium` |
 | `variants.selectedOptions` | `variants.attrs` / `variants.attributes` | Keyed by a slug derived from the option name (Unicode-safe, lowercase, dash-joined). Shopify assigns a unique GID per product for the same option, so GIDs cannot be used as a shared key. |
 | `marketAvailability` (added by the connector, not a Shopify field) | `markets` | ISO country codes the product is published in. Only set when the product is hidden in at least one country; absent means available everywhere; `["ZZ"]` means published nowhere. |
-| `marketPrices` (added by the connector, not a Shopify field) | `marketPrices` | One entry per market pricing group: `countries` (lower-cased), `price`, `basePrice`, `currency`. Product level only. Sorted by country; a country keeps its first entry. Absent when the connector sends no entries (single market, every price equal to the base price, or over the group cap). |
+| `marketPrices` (added by the connector, not a Shopify field) | `marketPrices` | One entry per market pricing group: `countries` (lower-cased), `price`, `basePrice`, `currency`. Product level only. Sorted by country; a country keeps its first entry. Absent when the connector sends no entries (single market, over the group cap, or the pricing step failed for that answer). |
 
 ### Shopify-Specific Transformations
 
