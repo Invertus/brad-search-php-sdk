@@ -185,4 +185,21 @@ final class AdapterUtils
 
         return $levels;
     }
+
+    /**
+     * "A > B > C" becomes ["A", "A > B", "A > B > C"], so a tree filter can select any parent.
+     *
+     * @return array<string>
+     */
+    public static function categoryPathWithParents(string $path): array
+    {
+        $levels = array_values(array_filter(array_map('trim', explode(' > ', $path)), fn($l) => $l !== ''));
+        $paths = [];
+
+        foreach (array_keys($levels) as $i) {
+            $paths[] = implode(' > ', array_slice($levels, 0, $i + 1));
+        }
+
+        return $paths;
+    }
 }
