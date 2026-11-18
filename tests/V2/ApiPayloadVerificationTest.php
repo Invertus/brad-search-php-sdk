@@ -11,6 +11,7 @@ use BradSearch\SyncSdk\V2\ValueObjects\BulkOperations\ProductVariant;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldDefinition;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\FieldType;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\IndexCreateRequest;
+use BradSearch\SyncSdk\V2\ValueObjects\Index\SearchAnalysis;
 use BradSearch\SyncSdk\V2\ValueObjects\Index\VariantAttribute;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ImageUrl;
 use BradSearch\SyncSdk\V2\ValueObjects\Product\ProductPricing;
@@ -116,6 +117,27 @@ class ApiPayloadVerificationTest extends TestCase
             $encodedDecoded,
             'IndexCreateRequest JSON roundtrip does not match expected'
         );
+    }
+
+    /**
+     * Test: IndexCreateRequest JSON matches the 'copy-new-features' example exactly.
+     */
+    public function testIndexCreateRequestMatchesCopyNewFeaturesExample(): void
+    {
+        $expected = $this->loadFixture('index-create-copy-new-features.json');
+
+        $request = new IndexCreateRequest(
+            ['lt-LT'],
+            [
+                new FieldDefinition('name_lt-LT', FieldType::TEXT),
+                new FieldDefinition('feature_1_lt-LT', FieldType::TEXT, searchAnalysis: SearchAnalysis::BASIC, copyTo: '_features_text_lt-LT'),
+                new FieldDefinition('_features_text_lt-LT', FieldType::TEXT, searchAnalysis: SearchAnalysis::BASIC),
+            ],
+            copyNewFeaturesToText: true
+        );
+
+        $this->assertEquals($expected, $request->jsonSerialize());
+        $this->assertEquals($expected, json_decode(json_encode($request), true));
     }
 
     /**
@@ -418,6 +440,7 @@ class ApiPayloadVerificationTest extends TestCase
     {
         $expectedFixtures = [
             'index-create-darbo-drabuziai.json',
+            'index-create-copy-new-features.json',
             'configuration-advanced.json',
             'synonyms-ecommerce-en.json',
             'bulk-operations-darbo-drabuziai.json',
