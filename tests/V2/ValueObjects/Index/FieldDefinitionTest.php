@@ -243,6 +243,8 @@ class FieldDefinitionTest extends TestCase
             'boolean' => [FieldType::BOOLEAN],
             'image_url' => [FieldType::IMAGE_URL],
             'variants' => [FieldType::VARIANTS],
+            'date' => [FieldType::DATE],
+            'market_prices' => [FieldType::MARKET_PRICES],
         ];
     }
 
