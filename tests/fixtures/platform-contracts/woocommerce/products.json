@@ -1,0 +1,168 @@
+{
+    "products": [
+        {
+            "remoteId": "11",
+            "price": "42.00",
+            "basePrice": "42.00",
+            "priceTaxExcluded": "42.00",
+            "basePriceTaxExcluded": "42.00",
+            "localizedNames": {
+                "en_US": "Hoodie"
+            },
+            "sku": "woo-hoodie",
+            "productUrl": {
+                "en_US": "https://shop.example.com/product/hoodie/"
+            },
+            "imageUrl": {
+                "small": "https://shop.example.com/wp-content/uploads/2019/01/hoodie-2-150x150.jpg",
+                "medium": "https://shop.example.com/wp-content/uploads/2019/01/hoodie-2-300x300.jpg"
+            },
+            "categoryDefault": {
+                "remoteId": "23",
+                "localizedNames": {
+                    "en_US": "Hoodies"
+                },
+                "localizedValues": {
+                    "path": {
+                        "en_US": "Hoodies"
+                    }
+                }
+            },
+            "categories": {
+                "lvl2": [
+                    {
+                        "remoteId": "23",
+                        "localizedNames": {
+                            "en_US": "Hoodies"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en_US": "Hoodies"
+                            }
+                        }
+                    }
+                ]
+            },
+            "variants": [
+                {
+                    "remoteId": "34",
+                    "attributes": {
+                        "color": {
+                            "remoteId": "1",
+                            "localizedNames": {
+                                "en_US": "color"
+                            },
+                            "localizedValues": {
+                                "en_US": "Blue"
+                            }
+                        },
+                        "logo": {
+                            "remoteId": "logo",
+                            "localizedNames": {
+                                "en_US": "logo"
+                            },
+                            "localizedValues": {
+                                "en_US": "Yes"
+                            }
+                        }
+                    },
+                    "productUrl": {
+                        "localizedValues": {
+                            "en_US": "https://shop.example.com/product/hoodie/?attribute_pa_color=blue&attribute_logo=Yes"
+                        }
+                    },
+                    "imageUrl": {
+                        "small": "https://shop.example.com/wp-content/uploads/2019/01/hoodie-with-logo-2-150x150.jpg",
+                        "medium": "https://shop.example.com/wp-content/uploads/2019/01/hoodie-with-logo-2-300x300.jpg"
+                    },
+                    "sku": "woo-hoodie-blue-logo",
+                    "price": "45.00",
+                    "basePrice": "45.00",
+                    "priceTaxExcluded": "45.00",
+                    "basePriceTaxExcluded": "45.00"
+                }
+            ],
+            "tags": [],
+            "features": [],
+            "description": {
+                "en_US": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo."
+            },
+            "descriptionShort": {
+                "en_US": "This is a variable product."
+            },
+            "inStock": true,
+            "isNew": false,
+            "createdAt": "2019-01-16 13:01:52",
+            "updatedAt": "2019-01-16 13:01:52"
+        },
+        {
+            "remoteId": "14",
+            "price": "18.00",
+            "basePrice": "20.00",
+            "priceTaxExcluded": "18.00",
+            "basePriceTaxExcluded": "20.00",
+            "localizedNames": {
+                "en_US": "Beanie"
+            },
+            "sku": "woo-beanie",
+            "productUrl": {
+                "en_US": "https://shop.example.com/product/beanie/"
+            },
+            "imageUrl": {
+                "small": "https://shop.example.com/wp-content/uploads/2019/01/beanie-2-150x150.jpg",
+                "medium": "https://shop.example.com/wp-content/uploads/2019/01/beanie-2-300x300.jpg"
+            },
+            "categoryDefault": {
+                "remoteId": "25",
+                "localizedNames": {
+                    "en_US": "Accessories"
+                },
+                "localizedValues": {
+                    "path": {
+                        "en_US": "Accessories"
+                    }
+                }
+            },
+            "categories": {
+                "lvl2": [
+                    {
+                        "remoteId": "25",
+                        "localizedNames": {
+                            "en_US": "Accessories"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en_US": "Accessories"
+                            }
+                        }
+                    }
+                ]
+            },
+            "variants": [],
+            "tags": [],
+            "features": [
+                {
+                    "remoteId": "1",
+                    "localizedNames": {
+                        "en_US": "color"
+                    },
+                    "localizedValues": {
+                        "en_US": "Red"
+                    }
+                }
+            ],
+            "description": {
+                "en_US": "Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. Vestibulum tortor quam, feugiat vitae, ultricies eget, tempor sit amet, ante. Donec eu libero sit amet quam egestas semper. Aenean ultricies mi vitae est. Mauris placerat eleifend leo."
+            },
+            "descriptionShort": {
+                "en_US": "This is a simple product."
+            },
+            "inStock": true,
+            "isNew": false,
+            "createdAt": "2019-01-16 13:01:52",
+            "updatedAt": "2019-01-16 13:01:52"
+        }
+    ],
+    "skipped_count": 0,
+    "skipped_ids": []
+}

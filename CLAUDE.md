@@ -48,6 +48,10 @@ Each file is copied verbatim from an example payload in the server's OpenAPI spe
 
 **Failure smell**: if a fixture test fails, do not "fix" it by editing the fixture to match your output. The fixture mirrors the API spec. Either copy the spec's new example verbatim, or fix your ValueObject — the fixture is never adjusted just to silence a test.
 
+## Platform contract fixtures
+
+`tests/fixtures/platform-contracts/<platform>/{products,health}.json` are the answers the PrestaShop module, WooCommerce plugin, Shopify app and Magento extension serve brad-app. Each extension commits a copy, checks its real responses against the shape in its own CI and diffs its copy against this repo's `main`; brad-app's platform adapter tests read them from `vendor/`. Change a fixture here first, then the extension's copy, then bump the SDK in brad-app.
+
 ## Locale-suffix contract
 
 Documented in `src/Adapters/README.md` ("Locale Handling"):

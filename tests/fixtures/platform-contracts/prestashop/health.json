@@ -1,0 +1,23 @@
+{
+    "status": "PrestaShop connection OK",
+    "module_version": "5.24.0",
+    "client_ip": {
+        "remote_addr": "10.0.0.5",
+        "forwarded_headers": {
+            "X-Forwarded-For": "198.51.100.7"
+        },
+        "client_ip": "198.51.100.7",
+        "peer_trusted": true,
+        "peer_named": false,
+        "peer_is_cloudflare": false,
+        "client_ip_resolved": true,
+        "headers_name_peer": false,
+        "trust_source": "learned",
+        "cloudflare_source": "bundled",
+        "trust_any_peer": false,
+        "secret_configured": false,
+        "learned_proxies": [
+            "203.0.113.10"
+        ]
+    }
+}
