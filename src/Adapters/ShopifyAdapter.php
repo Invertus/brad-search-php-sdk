@@ -130,6 +130,11 @@ class ShopifyAdapter
             $result['markets'] = $markets;
         }
 
+        $marketPrices = $this->buildMarketPrices($product['marketPrices'] ?? null);
+        if ($marketPrices !== []) {
+            $result['marketPrices'] = $marketPrices;
+        }
+
         $result += $this->buildFeatureFields($product['metafields']['nodes'] ?? [], $locales, $primaryLocale);
 
         if (isset($product['images']) && is_array($product['images'])) {
@@ -403,6 +408,77 @@ class ShopifyAdapter
         sort($countries);
 
         return array_values(array_unique($countries));
+    }
+
+    /**
+     * One entry per market pricing group; basePrice falls back to price unless compare-at is higher.
+     *
+     * @param mixed $groups `marketPrices` from the connector
+     * @return array<int, array{countries: array<int, string>, price: float, basePrice: float, currency: string}>
+     */
+    private function buildMarketPrices(mixed $groups): array
+    {
+        if (! is_array($groups)) {
+            return [];
+        }
+
+        $entries = [];
+        $seen = [];
+        foreach ($groups as $group) {
+            if (! is_array($group)) {
+                continue;
+            }
+            $price = $this->decimalString($group['price'] ?? null);
+            $currency = $group['currency'] ?? null;
+            if ($price === null || ! is_string($currency) || preg_match('/^[A-Z]{3}\z/', $currency) !== 1) {
+                continue;
+            }
+
+            $countries = [];
+            foreach (is_array($group['countries'] ?? null) ? $group['countries'] : [] as $country) {
+                $code = is_string($country) ? strtolower($country) : '';
+                if (preg_match('/^[a-z]{2}\z/', $code) === 1 && ! isset($seen[$code])) {
+                    $seen[$code] = true;
+                    $countries[] = $code;
+                }
+            }
+            if ($countries === []) {
+                continue;
+            }
+            sort($countries);
+
+            $compareAt = $this->decimalString($group['compareAtPrice'] ?? null);
+            $scale = max($this->decimals($price), $compareAt !== null ? $this->decimals($compareAt) : 0);
+            $basePrice = ($compareAt !== null && bccomp($compareAt, $price, $scale) > 0) ? $compareAt : $price;
+
+            $entries[] = [
+                'countries' => $countries,
+                'price' => (float) $price,
+                'basePrice' => (float) $basePrice,
+                'currency' => $currency,
+            ];
+        }
+
+        usort($entries, fn (array $a, array $b): int => strcmp($a['countries'][0], $b['countries'][0]));
+
+        return $entries;
+    }
+
+    private function decimalString(mixed $value): ?string
+    {
+        if (! is_string($value) && ! is_int($value) && ! is_float($value)) {
+            return null;
+        }
+        $value = (string) $value;
+
+        return preg_match('/^\d+(\.\d+)?\z/', $value) === 1 ? $value : null;
+    }
+
+    private function decimals(string $value): int
+    {
+        $dot = strpos($value, '.');
+
+        return $dot === false ? 0 : strlen($value) - $dot - 1;
     }
 
     /**

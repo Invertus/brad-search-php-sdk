@@ -1,0 +1,9 @@
+{
+    "locales": ["lt-LT"],
+    "fields": [
+        {"name": "name_lt-LT", "type": "text"},
+        {"name": "feature_1_lt-LT", "type": "text", "search_analysis": "basic", "copy_to": "_features_text_lt-LT"},
+        {"name": "_features_text_lt-LT", "type": "text", "search_analysis": "basic"}
+    ],
+    "copy_new_features_to_text": true
+}
