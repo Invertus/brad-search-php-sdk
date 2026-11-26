@@ -1,0 +1,7 @@
+{
+    "status": "ok",
+    "details": {
+        "database": "connected",
+        "shopify_api": "reachable"
+    }
+}

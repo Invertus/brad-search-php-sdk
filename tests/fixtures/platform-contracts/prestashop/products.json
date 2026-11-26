@@ -1,0 +1,327 @@
+{
+    "products": [
+        {
+            "remoteId": "1001",
+            "brand": {
+                "remoteId": "10",
+                "localizedNames": {
+                    "en-US": "Levi's",
+                    "lt-LT": "Levi's"
+                }
+            },
+            "price": "24.99",
+            "basePrice": "29.99",
+            "priceTaxExcluded": "20.65",
+            "basePriceTaxExcluded": "24.79",
+            "localizedNames": {
+                "en-US": "Levi's LV-501 Original Jeans",
+                "lt-LT": "Levi's LV-501 originalūs džinsai"
+            },
+            "sku": "LV-501",
+            "productUrl": {
+                "en-US": "https://shop.example/en/1001-1001001-product.html",
+                "lt-LT": "https://shop.example/lt/1001-1001001-product.html"
+            },
+            "imageUrl": {
+                "small": "https://shop.example/1001-small_default/product.jpg",
+                "medium": "https://shop.example/1001-medium_default/product.jpg"
+            },
+            "categoryDefault": {
+                "remoteId": "12",
+                "localizedNames": {
+                    "en-US": "Jeans",
+                    "lt-LT": "Džinsai"
+                },
+                "localizedValues": {
+                    "path": {
+                        "en-US": "Clothing > Jeans",
+                        "lt-LT": "Drabužiai > Džinsai"
+                    }
+                }
+            },
+            "categories": {
+                "lvl2": [
+                    {
+                        "remoteId": "11",
+                        "localizedNames": {
+                            "en-US": "Clothing",
+                            "lt-LT": "Drabužiai"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en-US": "Clothing",
+                                "lt-LT": "Drabužiai"
+                            }
+                        }
+                    }
+                ],
+                "lvl3": [
+                    {
+                        "remoteId": "12",
+                        "localizedNames": {
+                            "en-US": "Jeans",
+                            "lt-LT": "Džinsai"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en-US": "Clothing > Jeans",
+                                "lt-LT": "Drabužiai > Džinsai"
+                            }
+                        }
+                    }
+                ]
+            },
+            "variants": [
+                {
+                    "remoteId": "1001001",
+                    "attributes": {
+                        "Size": {
+                            "remoteId": "1",
+                            "localizedNames": {
+                                "en-US": "Size",
+                                "lt-LT": "Dydis"
+                            },
+                            "localizedValues": {
+                                "en-US": "S",
+                                "lt-LT": "S"
+                            }
+                        },
+                        "Color": {
+                            "remoteId": "2",
+                            "localizedNames": {
+                                "en-US": "Color",
+                                "lt-LT": "Spalva"
+                            },
+                            "localizedValues": {
+                                "en-US": "Blue",
+                                "lt-LT": "Mėlyna"
+                            }
+                        }
+                    },
+                    "productUrl": {
+                        "localizedValues": {
+                            "en-US": "https://shop.example/en/1001-1001001-product.html",
+                            "lt-LT": "https://shop.example/lt/1001-1001001-product.html"
+                        }
+                    },
+                    "imageUrl": {
+                        "small": "https://shop.example/1001-small_default/product.jpg",
+                        "medium": "https://shop.example/1001-medium_default/product.jpg"
+                    },
+                    "sku": "LV-501-S",
+                    "price": 24.99,
+                    "basePrice": "29.99",
+                    "priceTaxExcluded": "20.65",
+                    "basePriceTaxExcluded": "24.79"
+                },
+                {
+                    "remoteId": "1001002",
+                    "attributes": {
+                        "Size": {
+                            "remoteId": "1",
+                            "localizedNames": {
+                                "en-US": "Size",
+                                "lt-LT": "Dydis"
+                            },
+                            "localizedValues": {
+                                "en-US": "M",
+                                "lt-LT": "M"
+                            }
+                        },
+                        "Color": {
+                            "remoteId": "2",
+                            "localizedNames": {
+                                "en-US": "Color",
+                                "lt-LT": "Spalva"
+                            },
+                            "localizedValues": {
+                                "en-US": "Black",
+                                "lt-LT": "Juoda"
+                            }
+                        }
+                    },
+                    "productUrl": {
+                        "localizedValues": {
+                            "en-US": "https://shop.example/en/1001-1001002-product.html",
+                            "lt-LT": "https://shop.example/lt/1001-1001002-product.html"
+                        }
+                    },
+                    "imageUrl": {
+                        "small": "https://shop.example/1001-small_default/product.jpg",
+                        "medium": "https://shop.example/1001-medium_default/product.jpg"
+                    },
+                    "sku": "LV-501-M",
+                    "price": 24.99,
+                    "basePrice": "29.99",
+                    "priceTaxExcluded": "20.65",
+                    "basePriceTaxExcluded": "24.79"
+                }
+            ],
+            "tags": {
+                "en-US": [
+                    "denim",
+                    "classic"
+                ],
+                "lt-LT": [
+                    "džinsai",
+                    "klasika"
+                ]
+            },
+            "features": [
+                {
+                    "remoteId": "5",
+                    "localizedNames": {
+                        "en-US": "Material",
+                        "lt-LT": "Medžiaga"
+                    },
+                    "localizedValues": {
+                        "en-US": "Cotton",
+                        "lt-LT": "Medvilnė"
+                    }
+                }
+            ],
+            "description": {
+                "en-US": "<p>Straight-leg jeans in rigid denim.</p>",
+                "lt-LT": "<p>Tiesūs džinsai iš tvirto džinso.</p>"
+            },
+            "descriptionShort": {
+                "en-US": "<p>The original straight fit.</p>",
+                "lt-LT": "<p>Originalus tiesus kirpimas.</p>"
+            },
+            "inStock": false,
+            "isNew": true,
+            "ean13": "5012345678900",
+            "mpn": "MPN-501",
+            "createdAt": "2026-01-15 10:00:00",
+            "updatedAt": "2026-10-01 08:30:00",
+            "customFields": [
+                {
+                    "name": "fit",
+                    "type": "text",
+                    "value": "Regular"
+                }
+            ]
+        },
+        {
+            "remoteId": "1002",
+            "brand": {
+                "remoteId": "10",
+                "localizedNames": {
+                    "en-US": "Levi's",
+                    "lt-LT": "Levi's"
+                }
+            },
+            "price": "24.99",
+            "basePrice": "29.99",
+            "priceTaxExcluded": "20.65",
+            "basePriceTaxExcluded": "24.79",
+            "localizedNames": {
+                "en-US": "Levi's LV-502 Original Jeans",
+                "lt-LT": "Levi's LV-502 originalūs džinsai"
+            },
+            "sku": "LV-502",
+            "productUrl": {
+                "en-US": "https://shop.example/en/1002-product.html",
+                "lt-LT": "https://shop.example/lt/1002-product.html"
+            },
+            "imageUrl": {
+                "small": "https://shop.example/1002-small_default/product.jpg",
+                "medium": "https://shop.example/1002-medium_default/product.jpg"
+            },
+            "categoryDefault": {
+                "remoteId": "12",
+                "localizedNames": {
+                    "en-US": "Jeans",
+                    "lt-LT": "Džinsai"
+                },
+                "localizedValues": {
+                    "path": {
+                        "en-US": "Clothing > Jeans",
+                        "lt-LT": "Drabužiai > Džinsai"
+                    }
+                }
+            },
+            "categories": {
+                "lvl2": [
+                    {
+                        "remoteId": "11",
+                        "localizedNames": {
+                            "en-US": "Clothing",
+                            "lt-LT": "Drabužiai"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en-US": "Clothing",
+                                "lt-LT": "Drabužiai"
+                            }
+                        }
+                    }
+                ],
+                "lvl3": [
+                    {
+                        "remoteId": "12",
+                        "localizedNames": {
+                            "en-US": "Jeans",
+                            "lt-LT": "Džinsai"
+                        },
+                        "localizedValues": {
+                            "path": {
+                                "en-US": "Clothing > Jeans",
+                                "lt-LT": "Drabužiai > Džinsai"
+                            }
+                        }
+                    }
+                ]
+            },
+            "variants": [],
+            "tags": {
+                "en-US": [
+                    "denim",
+                    "classic"
+                ],
+                "lt-LT": [
+                    "džinsai",
+                    "klasika"
+                ]
+            },
+            "features": [
+                {
+                    "remoteId": "5",
+                    "localizedNames": {
+                        "en-US": "Material",
+                        "lt-LT": "Medžiaga"
+                    },
+                    "localizedValues": {
+                        "en-US": "Cotton",
+                        "lt-LT": "Medvilnė"
+                    }
+                }
+            ],
+            "description": {
+                "en-US": "<p>Straight-leg jeans in rigid denim.</p>",
+                "lt-LT": "<p>Tiesūs džinsai iš tvirto džinso.</p>"
+            },
+            "descriptionShort": {
+                "en-US": "<p>The original straight fit.</p>",
+                "lt-LT": "<p>Originalus tiesus kirpimas.</p>"
+            },
+            "inStock": false,
+            "isNew": false,
+            "ean13": "5012345678900",
+            "mpn": "MPN-501",
+            "createdAt": "2026-01-15 10:00:00",
+            "updatedAt": "2026-10-01 08:30:00",
+            "customFields": [
+                {
+                    "name": "fit",
+                    "type": "text",
+                    "value": "Regular"
+                }
+            ]
+        }
+    ],
+    "skipped_count": 1,
+    "skipped_ids": [
+        1003
+    ]
+}

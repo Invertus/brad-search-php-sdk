@@ -1,0 +1,310 @@
+{
+    "data": {
+        "products": {
+            "edges": [
+                {
+                    "cursor": "eyJsYXN0X2lkIjo3MDAxfQ==",
+                    "node": {
+                        "id": "gid://shopify/Product/7001",
+                        "handle": "leather-tote-bag",
+                        "title": "Leather Tote Bag",
+                        "descriptionHtml": "<p>Roomy leather tote.</p>",
+                        "status": "ACTIVE",
+                        "createdAt": "2026-01-10T09:00:00Z",
+                        "updatedAt": "2026-11-02T12:30:00Z",
+                        "publishedAt": "2026-01-10T09:05:00Z",
+                        "vendor": "DKNY",
+                        "productType": "Bags",
+                        "category": {
+                            "id": "gid://shopify/TaxonomyCategory/lb-13",
+                            "name": "Tote Bags",
+                            "fullName": "Luggage & Bags > Handbags > Tote Bags"
+                        },
+                        "tags": [
+                            "leather",
+                            "new"
+                        ],
+                        "onlineStoreUrl": "https://test-store.myshopify.com/products/leather-tote-bag",
+                        "onlineStorePreviewUrl": "https://test-store.myshopify.com/products/leather-tote-bag",
+                        "seoHidden": null,
+                        "priceRangeV2": {
+                            "minVariantPrice": {
+                                "amount": "89.0",
+                                "currencyCode": "EUR"
+                            },
+                            "maxVariantPrice": {
+                                "amount": "99.0",
+                                "currencyCode": "EUR"
+                            }
+                        },
+                        "options": [
+                            {
+                                "name": "Color",
+                                "optionValues": [
+                                    {
+                                        "name": "Black",
+                                        "translations": {
+                                            "lt": [
+                                                {
+                                                    "key": "name",
+                                                    "value": "Juoda"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    {
+                                        "name": "Brown",
+                                        "translations": {
+                                            "lt": [
+                                                {
+                                                    "key": "name",
+                                                    "value": "Ruda"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                ],
+                                "translations": {
+                                    "lt": [
+                                        {
+                                            "key": "name",
+                                            "value": "Spalva"
+                                        }
+                                    ]
+                                }
+                            }
+                        ],
+                        "variants": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "id": "gid://shopify/ProductVariant/8001",
+                                        "title": "Black",
+                                        "sku": "TOTE-BLK",
+                                        "price": "89.00",
+                                        "compareAtPrice": "109.00",
+                                        "inventoryQuantity": 12,
+                                        "availableForSale": true,
+                                        "selectedOptions": [
+                                            {
+                                                "name": "Color",
+                                                "value": "Black"
+                                            }
+                                        ],
+                                        "media": {
+                                            "nodes": [
+                                                {
+                                                    "image": {
+                                                        "url": "https://cdn.shopify.com/s/files/tote-black.jpg",
+                                                        "altText": "Black tote",
+                                                        "width": 1200,
+                                                        "height": 1200
+                                                    }
+                                                }
+                                            ]
+                                        }
+                                    }
+                                },
+                                {
+                                    "node": {
+                                        "id": "gid://shopify/ProductVariant/8002",
+                                        "title": "Brown",
+                                        "sku": "TOTE-BRN",
+                                        "price": "99.00",
+                                        "compareAtPrice": null,
+                                        "inventoryQuantity": 0,
+                                        "availableForSale": false,
+                                        "selectedOptions": [
+                                            {
+                                                "name": "Color",
+                                                "value": "Brown"
+                                            }
+                                        ],
+                                        "media": {
+                                            "nodes": []
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "featuredImage": {
+                            "url": "https://cdn.shopify.com/s/files/tote-black.jpg",
+                            "altText": "Black tote",
+                            "width": 1200,
+                            "height": 1200
+                        },
+                        "metafields": {
+                            "nodes": [
+                                {
+                                    "namespace": "custom",
+                                    "key": "material",
+                                    "type": "single_line_text_field",
+                                    "jsonValue": "Leather",
+                                    "translations": {
+                                        "lt": [
+                                            {
+                                                "key": "value",
+                                                "value": "Oda"
+                                            }
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        "translations": {
+                            "lt": [
+                                {
+                                    "key": "title",
+                                    "value": "Odinis pirkinių krepšys"
+                                },
+                                {
+                                    "key": "body_html",
+                                    "value": "<p>Erdvus odinis krepšys.</p>"
+                                }
+                            ]
+                        },
+                        "marketAvailability": {
+                            "LT": true,
+                            "LV": false
+                        },
+                        "images": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "url": "https://cdn.shopify.com/s/files/tote-black.jpg",
+                                        "altText": "Black tote",
+                                        "width": 1200,
+                                        "height": 1200
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "cursor": "eyJsYXN0X2lkIjo3MDAyfQ==",
+                    "node": {
+                        "id": "gid://shopify/Product/7002",
+                        "handle": "slim-jeans",
+                        "title": "Slim Jeans",
+                        "descriptionHtml": "",
+                        "status": "ACTIVE",
+                        "createdAt": "2026-02-01T08:00:00Z",
+                        "updatedAt": "2026-10-20T16:00:00Z",
+                        "publishedAt": "2026-02-01T08:00:00Z",
+                        "vendor": "Levi's",
+                        "productType": "Jeans",
+                        "category": null,
+                        "tags": [],
+                        "onlineStoreUrl": "https://test-store.myshopify.com/products/slim-jeans",
+                        "onlineStorePreviewUrl": "https://test-store.myshopify.com/products/slim-jeans",
+                        "seoHidden": null,
+                        "priceRangeV2": {
+                            "minVariantPrice": {
+                                "amount": "59.0",
+                                "currencyCode": "EUR"
+                            },
+                            "maxVariantPrice": {
+                                "amount": "59.0",
+                                "currencyCode": "EUR"
+                            }
+                        },
+                        "options": [
+                            {
+                                "name": "Title",
+                                "optionValues": [
+                                    {
+                                        "name": "Default Title",
+                                        "translations": {
+                                            "lt": []
+                                        }
+                                    }
+                                ],
+                                "translations": {
+                                    "lt": []
+                                }
+                            }
+                        ],
+                        "variants": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "id": "gid://shopify/ProductVariant/8003",
+                                        "title": "Default Title",
+                                        "sku": "JEANS-SLIM",
+                                        "price": "59.00",
+                                        "compareAtPrice": null,
+                                        "inventoryQuantity": 30,
+                                        "availableForSale": true,
+                                        "selectedOptions": [
+                                            {
+                                                "name": "Title",
+                                                "value": "Default Title"
+                                            }
+                                        ],
+                                        "media": {
+                                            "nodes": []
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "featuredImage": null,
+                        "metafields": {
+                            "nodes": []
+                        },
+                        "translations": {
+                            "lt": []
+                        },
+                        "marketAvailability": {
+                            "LT": true,
+                            "LV": true
+                        },
+                        "images": {
+                            "edges": [
+                                {
+                                    "node": {
+                                        "url": "https://cdn.shopify.com/shopifycloud/shopify/assets/no-image-2048-5e88c1b20e087fb7bbe9a3771824e743c244f437e4f8ba93bbf7b11b53f7824c.gif",
+                                        "altText": null,
+                                        "width": 2048,
+                                        "height": 2048
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            ],
+            "pageInfo": {
+                "hasNextPage": true,
+                "endCursor": "eyJsYXN0X2lkIjo3MDAyfQ=="
+            }
+        }
+    },
+    "skipped_count": 0,
+    "collections": [
+        {
+            "id": "gid://shopify/Collection/4001",
+            "title": "New Arrivals",
+            "translations": {
+                "lt": [
+                    {
+                        "key": "title",
+                        "value": "Naujienos"
+                    }
+                ]
+            },
+            "product_gids": [
+                "gid://shopify/Product/7001",
+                "gid://shopify/Product/7002"
+            ]
+        }
+    ],
+    "locales": {
+        "primary": "en",
+        "published": [
+            "en",
+            "lt"
+        ]
+    }
+}
