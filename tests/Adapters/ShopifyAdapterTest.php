@@ -98,6 +98,164 @@ class ShopifyAdapterTest extends TestCase
         }
     }
 
+    public function testMarketPricesAreWrittenWithLowerCasedCountriesAndFloatPrices(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ['US'], 'price' => '862.00', 'compareAtPrice' => '972.00', 'currency' => 'USD'],
+            ['countries' => ['PL', 'se'], 'price' => '3183.50', 'compareAtPrice' => null, 'currency' => 'PLN'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['pl', 'se'], 'price' => 3183.5, 'basePrice' => 3183.5, 'currency' => 'PLN'],
+            ['countries' => ['us'], 'price' => 862.0, 'basePrice' => 972.0, 'currency' => 'USD'],
+        ], $p['marketPrices']);
+        $this->assertSame('19.99', $p['price']);
+    }
+
+    public function testMarketPricesAreSortedAndEachCountryKeepsItsFirstEntry(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ['SE', 'DE'], 'price' => '20.00', 'currency' => 'EUR'],
+            ['countries' => ['CA'], 'price' => '30.00', 'currency' => 'CAD'],
+            ['countries' => ['DE'], 'price' => '99.00', 'currency' => 'EUR'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['ca'], 'price' => 30.0, 'basePrice' => 30.0, 'currency' => 'CAD'],
+            ['countries' => ['de', 'se'], 'price' => 20.0, 'basePrice' => 20.0, 'currency' => 'EUR'],
+        ], $p['marketPrices']);
+    }
+
+    public function testMarketPricesRejectBadCodesAndCompareAllDecimals(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ["US\n"], 'price' => '10.00', 'currency' => 'USD'],
+            ['countries' => ['GB'], 'price' => "10.00\n", 'currency' => 'GBP'],
+            ['countries' => ['FR'], 'price' => '10.00', 'currency' => 'eur'],
+            ['countries' => ['KW'], 'price' => '10.001', 'compareAtPrice' => '10.009', 'currency' => 'KWD'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['kw'], 'price' => 10.001, 'basePrice' => 10.009, 'currency' => 'KWD'],
+        ], $p['marketPrices']);
+    }
+
+    /**
+     * @return array<string, array{0: array<string, mixed>, 1: float}>
+     */
+    public static function marketPriceBasePriceCases(): array
+    {
+        return [
+            'compare-at greater' => [['compareAtPrice' => '120.00'], 120.0],
+            'compare-at lower' => [['compareAtPrice' => '80.00'], 100.0],
+            'compare-at equal' => [['compareAtPrice' => '100.00'], 100.0],
+            'compare-at null' => [['compareAtPrice' => null], 100.0],
+            'compare-at missing' => [[], 100.0],
+            'compare-at not a number' => [['compareAtPrice' => 'n/a'], 100.0],
+            'compare-at greater by a cent' => [['compareAtPrice' => '100.01'], 100.01],
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $compareAt
+     */
+    #[DataProvider('marketPriceBasePriceCases')]
+    public function testMarketPriceBasePriceUsesCompareAtOnlyWhenGreater(array $compareAt, float $expected): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ['DE'], 'price' => '100.00', 'currency' => 'EUR'] + $compareAt,
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame(100.0, $p['marketPrices'][0]['price']);
+        $this->assertSame($expected, $p['marketPrices'][0]['basePrice']);
+    }
+
+    /**
+     * @return array<string, array{0: mixed}>
+     */
+    public static function noMarketPricesCases(): array
+    {
+        return [
+            'key absent' => [null],
+            'empty list' => [[]],
+            'not a list' => ['USD'],
+            'no usable price' => [[
+                ['countries' => ['US'], 'currency' => 'USD'],
+                ['countries' => ['US'], 'price' => null, 'currency' => 'USD'],
+                ['countries' => ['US'], 'price' => 'n/a', 'currency' => 'USD'],
+                ['countries' => ['US'], 'price' => '-1.00', 'currency' => 'USD'],
+            ]],
+            'no usable countries' => [[
+                ['price' => '10.00', 'currency' => 'USD'],
+                ['countries' => [], 'price' => '10.00', 'currency' => 'USD'],
+                ['countries' => ['USA', 1], 'price' => '10.00', 'currency' => 'USD'],
+            ]],
+            'no currency' => [[
+                ['countries' => ['US'], 'price' => '10.00'],
+                ['countries' => ['US'], 'price' => '10.00', 'currency' => ''],
+            ]],
+            'entry not an array' => [['US']],
+        ];
+    }
+
+    #[DataProvider('noMarketPricesCases')]
+    public function testNoMarketPricesFieldWhenNothingUsable(mixed $marketPrices): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        if ($marketPrices !== null) {
+            $product['node']['marketPrices'] = $marketPrices;
+        }
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertArrayNotHasKey('marketPrices', $p);
+    }
+
+    public function testMarketPricesSkipUnusableEntriesAndKeepTheRest(): void
+    {
+        $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
+        $product['node']['marketPrices'] = [
+            ['countries' => ['US'], 'price' => null, 'currency' => 'USD'],
+            ['countries' => ['CA', 'ca'], 'price' => 25, 'currency' => 'CAD'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]))['products'][0];
+
+        $this->assertSame([
+            ['countries' => ['ca'], 'price' => 25.0, 'basePrice' => 25.0, 'currency' => 'CAD'],
+        ], $p['marketPrices']);
+    }
+
+    public function testMarketPricesAreProductLevelOnly(): void
+    {
+        $product = $this->makeProductWithVariantPrices([['100.00', '150.00'], ['120.00', null]]);
+        $product['node']['marketPrices'] = [
+            ['countries' => ['US'], 'price' => '110.00', 'compareAtPrice' => '160.00', 'currency' => 'USD'],
+        ];
+
+        $p = $this->adapter->transform($this->makeShopifyResponse([$product]), ['en'])['products'][0];
+
+        $this->assertCount(1, $p['marketPrices']);
+        $this->assertNotEmpty($p['variants']);
+        foreach ($p['variants'] as $variant) {
+            $this->assertArrayNotHasKey('marketPrices', $variant);
+        }
+        $this->assertSame('150.00', $p['variants'][0]['basePrice']);
+        $this->assertSame('120.00', $p['variants'][1]['basePrice']);
+    }
+
     public function testMetafieldsBecomeFeatureFieldsPerLocaleWithTranslationFallback(): void
     {
         $product = $this->makeProduct('gid://shopify/Product/1', 'Board', 'Desc', 'BrandX', 'Snowboards');
