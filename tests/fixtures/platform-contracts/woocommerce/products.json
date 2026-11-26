@@ -97,6 +97,12 @@
         },
         {
             "remoteId": "14",
+            "brand": {
+                "remoteId": "31",
+                "localizedNames": {
+                    "en_US": "Contract Brand"
+                }
+            },
             "price": "18.00",
             "basePrice": "20.00",
             "priceTaxExcluded": "18.00",
@@ -139,7 +145,11 @@
                 ]
             },
             "variants": [],
-            "tags": [],
+            "tags": {
+                "en_US": [
+                    "Contract Tag"
+                ]
+            },
             "features": [
                 {
                     "remoteId": "1",
@@ -159,6 +169,7 @@
             },
             "inStock": true,
             "isNew": false,
+            "ean13": "4006381333931",
             "createdAt": "2019-01-16 13:01:52",
             "updatedAt": "2019-01-16 13:01:52"
         }
